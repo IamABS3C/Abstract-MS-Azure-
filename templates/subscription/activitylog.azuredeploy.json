@@ -1,0 +1,87 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "2.0.0.0",
+  "metadata": {
+    "name": "Abstract Security - Azure Activity Log Export",
+    "description": "Subscription-scope diagnostic setting that streams the Azure Activity Log to an Event Hub for ingestion by Abstract Security. Deploy once per subscription you want to monitor. This template is separate from the main resource-group template because Activity Log diagnostic settings live at subscription scope and cannot be created from a resource-group deployment.",
+    "author": "Abstract Security - Solutions Engineering"
+  },
+  "parameters": {
+    "settingName": {
+      "type": "string",
+      "defaultValue": "abstract-activity-logs",
+      "minLength": 1,
+      "maxLength": 260,
+      "metadata": {
+        "description": "Name of the subscription diagnostic setting. Azure allows up to 5 diagnostic settings per subscription; the name must be unique within the subscription."
+      }
+    },
+    "eventHubAuthorizationRuleId": {
+      "type": "string",
+      "metadata": {
+        "description": "Full resource ID of an Event Hubs namespace authorization rule with Send rights. Example: /subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.EventHub/namespaces/<namespace>/authorizationRules/abstract-access. The 'abstractDiagnosticsAuthRuleId' output of the main Abstract template provides this value."
+      }
+    },
+    "eventHubName": {
+      "type": "string",
+      "defaultValue": "evh-abstract-activity",
+      "metadata": {
+        "description": "Name of the Event Hub (within the namespace) that receives the Activity Log stream. Must already exist - the main Abstract template creates 'evh-abstract-activity' by default."
+      }
+    },
+    "categories": {
+      "type": "array",
+      "defaultValue": [
+        "Administrative",
+        "Security",
+        "ServiceHealth",
+        "Alert",
+        "Recommendation",
+        "Policy",
+        "Autoscale",
+        "ResourceHealth"
+      ],
+      "metadata": {
+        "description": "Activity Log categories to export. The default exports all eight categories, which Abstract Security recommends for full visibility. Remove categories to reduce volume (e.g. keep only Administrative, Security, Policy)."
+      }
+    }
+  },
+  "variables": {
+    "logSelectors": "[map(parameters('categories'), lambda('cat', createObject('category', lambdaVariables('cat'), 'enabled', true())))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "name": "[parameters('settingName')]",
+      "properties": {
+        "eventHubAuthorizationRuleId": "[parameters('eventHubAuthorizationRuleId')]",
+        "eventHubName": "[parameters('eventHubName')]",
+        "logs": "[variables('logSelectors')]"
+      }
+    }
+  ],
+  "outputs": {
+    "diagnosticSettingName": {
+      "type": "string",
+      "value": "[parameters('settingName')]",
+      "metadata": {
+        "description": "Name of the created subscription diagnostic setting."
+      }
+    },
+    "subscriptionId": {
+      "type": "string",
+      "value": "[subscription().subscriptionId]",
+      "metadata": {
+        "description": "Subscription now streaming Activity Logs to Abstract."
+      }
+    },
+    "exportedCategories": {
+      "type": "array",
+      "value": "[parameters('categories')]",
+      "metadata": {
+        "description": "Activity Log categories included in the export."
+      }
+    }
+  }
+}
