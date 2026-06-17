@@ -1,5 +1,56 @@
 # Changelog
 
+## 3.2.0 — 2026-06-17
+
+Packaged the Sentinel work as a **Content Hub solution** and broadened the
+Copilot/agent/MCP surface.
+
+### Added
+- **Content Hub solution** (`solution/Package/mainTemplate.json` + `createUiDefinition.json`,
+  `solution/SolutionMetadata.json`, `ReleaseNotes.md`) — registers the solution
+  package and deploys the connector tile, ASIM parser (savedSearch), analytics
+  rule, and workbook with linked metadata. Branded with the Abstract logo.
+- **Hunting queries** — `solution/hunting/` (rare/new product activity; high
+  cumulative-risk identities) + a second analytics rule (`AbstractBruteForceSuccess.yaml`).
+- **Security Copilot** — `abstract-kql-skills.yaml` (KQL skills over the workspace)
+  and `abstract-agent.yaml` (an agentic triage agent that orchestrates the KQL +
+  API skills and Abstract's ASTRO Verdict workflow; suggest-only by default).
+- **Abstract MCP server** (`solution/mcp/`) — exposes the Abstract API as MCP
+  tools (search, ACS schema, workflows, verdict) for Claude / Copilot / custom
+  agents, reusing the same client as the SDK and playbooks.
+
+### Notes
+- Final Content Hub listing requires running Microsoft's Sentinel solution
+  packaging/validation tooling against this source; logo should be supplied as SVG.
+- The standalone demo under `docs/threat-model/demo/` is a separate workstream and
+  is intentionally not modified or committed by this change.
+
+## 3.1.0 — 2026-06-17
+
+Added a Microsoft Sentinel **solution bundle** that makes the Sentinel
+destination actionable, wired to the Abstract API.
+
+### Added
+- `solution/scripts/abstract_api.py` — runnable Abstract API client/SDK + CLI
+  (env-var auth; verified live against the test tenant).
+- `solution/connector/` — Customizable (CCF) **data connector tile** so Abstract
+  appears in the Sentinel Data connectors gallery with a live ingestion-status graph.
+- `solution/parsers/ASim_AbstractEvent.kql` — ASIM-style normalizer over
+  `AbstractEventLogs_CL`, field-mapped from the live ACS catalog (473 fields).
+- `solution/analytics/` — scheduled analytics rule that raises incidents for
+  high/critical Abstract events and surfaces `AbstractInsightId` as a custom detail.
+- `solution/workbooks/` — pipeline-overview workbook (volume, coverage,
+  reduction/cost estimate).
+- `solution/playbooks/` — two Logic App playbooks: **enrich incident** (Abstract
+  StreamViewer search → comment) and **Verdict** (run Abstract's agentic Verdict
+  workflow → comment + raise severity). API key via securestring/Key Vault.
+- `solution/copilot/` — experimental Security Copilot plugin (search + verdict skills).
+
+### Notes
+- The API key is never committed — playbooks use a `securestring`/Key Vault, the
+  Copilot plugin uses a `Credential` setting, the client reads `ABSTRACT_API_KEY`.
+- Artifacts are schema-validated; deploy to a lab workspace before production.
+
 ## 3.0.0 — 2026-06-16
 
 Added Abstract **destination** integrations alongside the existing Event Hub
