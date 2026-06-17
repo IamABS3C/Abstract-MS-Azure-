@@ -1,0 +1,87 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  json-lint:
+    name: JSON parses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate every JSON file parses
+        run: |
+          set -e
+          fail=0
+          while IFS= read -r -d '' f; do
+            if python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" 2>/dev/null; then
+              echo "ok   : $f"
+            else
+              echo "FAIL : $f"; fail=1
+            fi
+          done < <(find . -name '*.json' -not -path './.git/*' -print0)
+          exit $fail
+
+  bicep:
+    name: Bicep compiles (+ ARM drift)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bicep
+        run: az bicep install
+      - name: Compile every Bicep file (hard gate)
+        run: |
+          set -e
+          for b in main.bicep \
+                   templates/subscription/activitylog.bicep \
+                   templates/destinations/eventhub-destination.bicep \
+                   templates/destinations/sentinel-destination.bicep; do
+            echo "::group::compile $b"
+            az bicep build --file "$b" --stdout > /dev/null
+            echo "::endgroup::"
+          done
+      - name: Check committed ARM matches Bicep (advisory — compiler-version sensitive)
+        continue-on-error: true
+        run: |
+          check() {
+            az bicep build --file "$1" --outfile /tmp/c.json
+            if diff -q <(python3 -c "import json;print(json.dumps(json.load(open('/tmp/c.json')),sort_keys=True))") \
+                       <(python3 -c "import json;print(json.dumps(json.load(open('$2')),sort_keys=True))") >/dev/null; then
+              echo "in sync : $2"
+            else
+              echo "DRIFT   : $2 differs from $1 — run 'az bicep build --file $1 --outfile $2'"
+            fi
+          }
+          check main.bicep azuredeploy.json
+          check templates/subscription/activitylog.bicep templates/subscription/activitylog.azuredeploy.json
+          check templates/destinations/eventhub-destination.bicep templates/destinations/eventhub-destination.azuredeploy.json
+          check templates/destinations/sentinel-destination.bicep templates/destinations/sentinel-destination.azuredeploy.json
+
+  arm-ttk:
+    name: ARM TTK (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run arm-ttk over every ARM + createUiDefinition
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          git clone --depth 1 https://github.com/Azure/arm-ttk.git $env:RUNNER_TEMP/arm-ttk
+          Import-Module $env:RUNNER_TEMP/arm-ttk/arm-ttk/arm-ttk.psd1
+          $targets = @(
+            'azuredeploy.json',
+            'createUiDefinition.json',
+            'templates/subscription/activitylog.azuredeploy.json',
+            'templates/destinations/eventhub-destination.azuredeploy.json',
+            'templates/destinations/eventhub-destination.createUiDefinition.json',
+            'templates/destinations/sentinel-destination.azuredeploy.json',
+            'templates/destinations/sentinel-destination.createUiDefinition.json'
+          )
+          foreach ($t in $targets) {
+            Write-Host "::group::arm-ttk $t"
+            Test-AzTemplate -TemplatePath $t | Format-Table -AutoSize
+            Write-Host "::endgroup::"
+          }

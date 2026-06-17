@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Abstract Security — Azure Onboarding</title>
+<meta name="description" content="Deploy the Azure infrastructure for Abstract Security source and destination integrations — Event Hub, Event Hub Destination, and Microsoft Sentinel Destination — straight from the Azure portal." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --pink:#f8226a; --teal:#01e69d; --bg:#060608; --panel:#101014;
+    --panel2:#16161c; --line:#26262f; --text:#f4f4f6; --muted:#9b9ba6;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Barlow",system-ui,sans-serif; line-height:1.55;
+    background-image:radial-gradient(1100px 520px at 78% -8%, rgba(248,34,106,.16), transparent 60%),
+                     radial-gradient(820px 460px at 6% 4%, rgba(1,230,157,.12), transparent 55%);
+  }
+  a{color:var(--teal); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1060px; margin:0 auto; padding:0 24px}
+  header{padding:64px 0 28px; text-align:center}
+  header img{height:74px; width:auto; margin-bottom:22px}
+  h1{
+    font-family:"Barlow Semi Condensed",sans-serif; font-weight:700;
+    font-size:clamp(30px,5vw,46px); letter-spacing:.4px; margin:0 0 10px;
+  }
+  h1 .accent{color:var(--pink)}
+  .tag{color:var(--muted); font-size:18px; max-width:680px; margin:0 auto 8px}
+  .sub{color:var(--muted); font-size:14px}
+  .sub code{font-family:"JetBrains Mono",monospace; color:var(--teal); font-size:12.5px}
+  section{margin:42px 0}
+  .section-head{display:flex; align-items:center; gap:12px; margin:0 0 6px}
+  .section-head h2{
+    font-family:"Barlow Semi Condensed",sans-serif; font-weight:700;
+    font-size:24px; margin:0; letter-spacing:.3px;
+  }
+  .pill{
+    font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.8px;
+    padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted);
+  }
+  .pill.src{color:var(--teal); border-color:rgba(1,230,157,.4)}
+  .pill.dst{color:var(--pink); border-color:rgba(248,34,106,.4)}
+  .section-sub{color:var(--muted); margin:0 0 20px; font-size:15px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px}
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line); border-radius:16px; padding:22px;
+    display:flex; flex-direction:column; transition:border-color .2s, transform .2s;
+  }
+  .card:hover{border-color:rgba(248,34,106,.45); transform:translateY(-2px)}
+  .card h3{font-size:18px; margin:0 0 8px; font-weight:600}
+  .card p{color:var(--muted); font-size:14px; margin:0 0 16px; flex:1}
+  .btns{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+  .btns img{height:40px}
+  .gov{
+    font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--muted);
+    border:1px solid var(--line); border-radius:8px; padding:9px 12px;
+  }
+  .gov:hover{border-color:var(--teal); text-decoration:none; color:var(--teal)}
+  .docs{margin-top:14px; font-size:13px}
+  .note{
+    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--pink);
+    border-radius:10px; padding:16px 18px; color:var(--muted); font-size:13.5px; margin-top:8px;
+  }
+  .note code, .mono{font-family:"JetBrains Mono",monospace; color:var(--teal); font-size:12.5px}
+  footer{border-top:1px solid var(--line); margin-top:56px; padding:28px 0 60px; color:var(--muted); font-size:13px; text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" />
+    <h1>Azure Onboarding for <span class="accent">Abstract Security</span></h1>
+    <p class="tag">One-click Azure infrastructure for Abstract <strong>source</strong> and <strong>destination</strong> integrations — deployed straight from the Azure portal with a guided wizard.</p>
+    <p class="sub">Repo <code>IamABS3C/Abstract-MS-Azure-</code> · branch <code>main</code> · the repo must be public for the buttons to resolve.</p>
+  </header>
+
+  <section>
+    <div class="section-head"><h2>Sources</h2><span class="pill src">Abstract reads from Azure</span></div>
+    <p class="section-sub">Stand up an Event Hubs namespace, hubs, the <span class="mono">abstract</span> consumer group and the required checkpoint storage so Abstract can ingest Azure logs.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Event Hub (Source)</h3>
+        <p>Namespace, one hub per log source, consumer group, checkpoint Storage Account + container, SAS and/or Service Principal auth, and networking guardrails. Guided 6-step wizard.</p>
+        <div class="btns">
+          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2FcreateUiDefinition.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
+          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2FcreateUiDefinition.json">Azure Gov ↗</a>
+        </div>
+        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/integrations/source-integrations/azure-event-hub/">Source integration docs ↗</a></div>
+      </div>
+      <div class="card">
+        <h3>Activity Log export</h3>
+        <p>Subscription-scope diagnostic setting that streams the Azure Activity Log into the hub. Deploy once per subscription, after the source stack.</p>
+        <div class="btns">
+          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
+          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json">Azure Gov ↗</a>
+        </div>
+        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/pipeline/#route-node">Pipeline / Route node ↗</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Destinations</h2><span class="pill dst">Abstract writes to Azure</span></div>
+    <p class="section-sub">Provision the Azure side of an Abstract destination so processed events land in Event Hub or Microsoft Sentinel.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Event Hub Destination</h3>
+        <p>Namespace + destination hub + least-privilege <span class="mono">Send</span> SAS rule for the connection string, plus optional Entra ID (Data Sender) delivery and networking guardrails.</p>
+        <div class="btns">
+          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
+          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json">Azure Gov ↗</a>
+        </div>
+        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-eventhub-destination/">EventHub Destination docs ↗</a></div>
+      </div>
+      <div class="card">
+        <h3>Sentinel Destination</h3>
+        <p>Full stack: Log Analytics workspace, Microsoft Sentinel, Data Collection Endpoint, custom <span class="mono">_CL</span> table, Data Collection Rule, and DCR role assignments. Outputs the DCR Immutable ID, DCE URL and stream name.</p>
+        <div class="btns">
+          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
+          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json">Azure Gov ↗</a>
+        </div>
+        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/">Sentinel Destination docs ↗</a></div>
+      </div>
+    </div>
+    <div class="note">
+      <strong>Sentinel prerequisite:</strong> an Entra <strong>app registration</strong> + client secret can't be created by ARM. Create it first, then pass its <span class="mono">service principal object ID</span> to the wizard so the template grants <span class="mono">Monitoring Metrics Publisher</span> + <span class="mono">Monitoring Contributor</span> on the DCR. The Client ID / Secret / Tenant ID are entered in Abstract.
+    </div>
+  </section>
+
+  <footer>
+    Test any wizard without deploying at the
+    <a href="https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/SandboxBlade">CreateUiDefinition sandbox ↗</a>.
+    &nbsp;·&nbsp; <a href="https://github.com/IamABS3C/Abstract-MS-Azure-">Source on GitHub ↗</a>
+    &nbsp;·&nbsp; © Abstract Security
+  </footer>
+</div>
+</body>
+</html>

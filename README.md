@@ -1,22 +1,42 @@
-# Abstract Security — Azure Event Hub Onboarding
+<p align="center">
+  <img src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" height="80" />
+</p>
 
-Production-ready Azure infrastructure for the **Abstract Security "Azure Event Hub" integration**: an Event Hubs namespace, one hub per log source, a consumer group, the **checkpoint Storage Account + private blob container Abstract requires for offset/lease tracking**, SAS and/or Entra ID (RBAC) auth, networking guardrails, and optional log-export plumbing — deployable from the portal (Deploy to Azure button with a guided wizard), the CLI, or a menu-driven PowerShell script.
+# Abstract Security — Azure Onboarding
 
-> **Status:** templates are syntax-validated but **not yet runtime-tested against a live tenant**. Run `az deployment group what-if` (or the script's `-Preview`) before the first production deployment, and rebuild `azuredeploy.json` from `main.bicep` with `az bicep build` if you modify the Bicep.
+Production-ready Azure infrastructure for Abstract Security **source** and **destination** integrations, deployable from the portal (Deploy to Azure buttons with guided wizards), the CLI, or a menu-driven PowerShell script:
+
+- **Event Hub (Source)** — Abstract *reads from* Event Hub: namespace, one hub per log source, consumer group, the **checkpoint Storage Account + private blob container Abstract requires**, SAS and/or Entra ID (RBAC) auth, networking guardrails, log-export plumbing.
+- **Event Hub Destination** — Abstract *writes to* an Event Hub: namespace, destination hub, least-privilege **Send** SAS rule (+ optional Entra ID delivery).
+- **Azure Sentinel Destination** — Abstract *writes to* Microsoft Sentinel via the Logs Ingestion API: Log Analytics workspace, Sentinel, Data Collection Endpoint, custom `_CL` table, Data Collection Rule, and the DCR role assignments.
+
+> **One page to deploy anything:** the branded landing page in [`docs/`](docs/index.html) (enable GitHub Pages on `/docs`) renders the logo and every Deploy to Azure button.
+
+> **Status:** templates are syntax-validated and Bicep-compiled but **not yet runtime-tested against a live tenant**. Run `az deployment group what-if` (or the script's `-Preview`) before the first production deployment. The `*.azuredeploy.json` files are generated from the matching `*.bicep` with `az bicep build` — recompile if you edit the Bicep.
 
 ---
 
 ## Deploy to Azure
 
-| What | Deploy | Notes |
-| --- | --- | --- |
-| **Main stack** (namespace, hubs, storage, auth, networking) | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAbstract-Security%2Fazure-eventhub-onboarding%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FAbstract-Security%2Fazure-eventhub-onboarding%2Fmain%2FcreateUiDefinition.json) | Guided 6-step wizard (basics → hubs → auth → networking → storage → monitoring) |
-| Main stack, **Azure Government** | [![Deploy to Azure Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAbstract-Security%2Fazure-eventhub-onboarding%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FAbstract-Security%2Fazure-eventhub-onboarding%2Fmain%2FcreateUiDefinition.json) | Same wizard, Gov portal |
-| **Activity Log export** (subscription scope, run after the main stack) | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAbstract-Security%2Fazure-eventhub-onboarding%2Fmain%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json) | Streams the subscription's Activity Log to the hub. Deploy once per subscription. |
+Buttons target **`IamABS3C/Abstract-MS-Azure-`** on `main`. The repo must be **public** for the portal to fetch the templates.
 
-> **Before the buttons work:** push this repo to GitHub and replace `Abstract-Security/azure-eventhub-onboarding` in the three URLs above with your actual `org/repo`. The button URL format is `https://portal.azure.com/#create/Microsoft.Template/uri/<URL-encoded raw azuredeploy.json>/createUIDefinitionUri/<URL-encoded raw createUiDefinition.json>` — URL-encode the raw.githubusercontent.com link (`:` → `%3A`, `/` → `%2F`). The repo (or at least the two JSON files) must be publicly readable.
+### Sources — Abstract reads *from* Azure
+
+| What | Deploy | Azure Gov | Notes |
+| --- | --- | --- | --- |
+| **Event Hub (Source)** — namespace, hubs, storage, auth, networking | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2FcreateUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2FcreateUiDefinition.json) | Guided 6-step wizard (basics → hubs → auth → networking → storage → monitoring) |
+| **Activity Log export** (subscription scope, run after the source stack) | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json) | Streams the subscription's Activity Log to the hub. Once per subscription. |
+
+### Destinations — Abstract writes *to* Azure
+
+| What | Deploy | Azure Gov | Notes |
+| --- | --- | --- | --- |
+| **Event Hub Destination** — namespace, destination hub, Send SAS rule | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json) | Wizard: basics → destination hub → auth → networking |
+| **Azure Sentinel Destination** — LAW + Sentinel + DCE + DCR + custom table + RBAC | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json) | Wizard: workspace → ingestion (DCE/DCR/table) → auth & RBAC. **Create the Entra app first** (see [Destinations](#destinations)) |
+
+> **Button URL format:** `https://portal.azure.com/#create/Microsoft.Template/uri/<URL-encoded raw azuredeploy.json>[/createUIDefinitionUri/<URL-encoded raw createUiDefinition.json>]` — URL-encode the `raw.githubusercontent.com` link (`:` → `%3A`, `/` → `%2F`). If you fork or rename, replace `IamABS3C/Abstract-MS-Azure-` throughout (and in `docs/index.html`).
 >
-> Test the wizard without deploying anything at the [CreateUiDef sandbox](https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/SandboxBlade) — paste `createUiDefinition.json` in.
+> Test any wizard without deploying at the [CreateUiDef sandbox](https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/SandboxBlade).
 
 ---
 
@@ -38,22 +58,32 @@ Production-ready Azure infrastructure for the **Abstract Security "Azure Event H
 
 ```
 .
-├── main.bicep                     # source of truth (resource-group scope)
-├── azuredeploy.json               # compiled ARM (what the button deploys)
-├── createUiDefinition.json        # portal wizard definition
-├── parameters/                    # ready-made profiles (see matrix below)
+├── main.bicep                       # SOURCE: source of truth (resource-group scope)
+├── azuredeploy.json                 # SOURCE: compiled ARM (what the button deploys)
+├── createUiDefinition.json          # SOURCE: portal wizard
+├── docs/
+│   └── index.html                   # branded GitHub Pages landing page (logo + all buttons)
+├── parameters/                      # ready-made profiles
 │   ├── abstract-recommended.parameters.json
 │   ├── safe-mode.parameters.json
 │   ├── ip-allowlist.parameters.json
 │   ├── private-only.parameters.json
-│   └── hybrid.parameters.json
+│   ├── hybrid.parameters.json
+│   ├── eventhub-destination.parameters.json
+│   └── sentinel-destination.parameters.json
 ├── scripts/
-│   └── Deploy-AbstractEventHub.ps1  # guided deploy / credentials / delete
-├── templates/subscription/
-│   ├── activitylog.bicep            # Activity Log → hub (subscription scope)
-│   └── activitylog.azuredeploy.json
-└── .github/workflows/validate.yml   # CI: JSON + arm-ttk validation
+│   └── Deploy-AbstractEventHub.ps1  # guided deploy / credentials / delete (source only)
+├── templates/
+│   ├── subscription/
+│   │   ├── activitylog.bicep         # Activity Log → hub (subscription scope)
+│   │   └── activitylog.azuredeploy.json
+│   └── destinations/
+│       ├── eventhub-destination.bicep / .azuredeploy.json / .createUiDefinition.json
+│       └── sentinel-destination.bicep / .azuredeploy.json / .createUiDefinition.json
+└── .github/workflows/validate.yml   # CI: JSON parse + Bicep compile/drift + arm-ttk
 ```
+
+Each Deploy button deploys ONE self-contained ARM file (no linked templates), so the buttons work the moment the repo is public.
 
 ---
 
@@ -158,15 +188,64 @@ The service principal needs **`Azure Event Hubs Data Receiver`** on the namespac
 
 ---
 
+## Destinations
+
+These templates provision the **Azure side of an Abstract destination** — where Abstract delivers processed events. They are independent of the source stack; deploy whichever you need.
+
+### Event Hub Destination
+
+Per the [EventHub Destination docs](https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-eventhub-destination/), Abstract delivers events to a hub using a Send connection string. The template (`templates/destinations/eventhub-destination.*`) creates a Standard+ namespace, the destination hub, and a least-privilege **Send** SAS rule (`abstract-send`), with optional Entra ID (`Azure Event Hubs Data Sender`) delivery.
+
+| Abstract destination field | Where it comes from |
+| --- | --- |
+| EventHub Name | the hub you named (output `eventHubName`, default `abstract-destination-hub`) |
+| EventHub Connection String | namespace → Shared access policies → `abstract-send` → **primary connection string** (a Send-only key; never emitted in outputs) |
+
+```bash
+az deployment group create -g rg-abstract-dest \
+  --template-file templates/destinations/eventhub-destination.azuredeploy.json \
+  --parameters parameters/eventhub-destination.parameters.json \
+  --parameters namespaceName=abs-dest001
+```
+
+### Azure Sentinel Destination
+
+Per the [Sentinel Destination docs](https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/), Abstract delivers events through the Azure Monitor **Logs Ingestion API**. The template (`templates/destinations/sentinel-destination.*`) provisions the full stack: Log Analytics workspace → **Microsoft Sentinel** → Data Collection Endpoint → custom `*_CL` table → Data Collection Rule → DCR role assignments.
+
+**Prerequisite — create the Entra app first (ARM cannot):** register an app (e.g. `Abstract-Sentinel-App`), add a client secret, and note its **Application (client) ID**, **Directory (tenant) ID**, the **secret value**, and the **service principal object ID**. Pass the object ID to the template so it grants the SP `Monitoring Metrics Publisher` + `Monitoring Contributor` on the DCR.
+
+| Abstract Sentinel field | Where it comes from |
+| --- | --- |
+| Client ID | your app registration's Application (client) ID |
+| Client Secret Value | the secret you created (store it once) |
+| Application Tenant ID | Directory (tenant) ID (template output also surfaces it) |
+| Data Collection Rule ID | output `dataCollectionRuleImmutableId` |
+| Data Collection Endpoint | output `dataCollectionEndpointUrl` (logs-ingestion URI) |
+| Log Stream Name | output `logStreamName` = `Custom-<table>` (default `Custom-AbstractEventLogs_CL`) |
+
+The default custom-table schema is minimal (`TimeGenerated`, `Message`, `AbstractEvent`). To capture the full Abstract Common Schema, deploy via CLI and pass a `tableColumns` array built from Abstract's `all_fields.json`:
+
+```bash
+az deployment group create -g rg-abstract-sentinel \
+  --template-file templates/destinations/sentinel-destination.azuredeploy.json \
+  --parameters parameters/sentinel-destination.parameters.json \
+  --parameters principalId=<spn-object-id>
+```
+
+---
+
 ## Notable template behaviors (and the bugs they fix)
 
 v1 fixed ten issues found in a hand-written draft, all still guarded here: correct **Event Hubs** role GUIDs (not Service Bus), no conditional-loop syntax, `networkRuleSets` as a child resource, `maximumThroughputUnits` omitted when auto-inflate is off, Basic-SKU feature guards (now moot — Basic removed per Abstract docs), `principalType` set to avoid `PrincipalNotFound` races, `allLogs` category group, and **no secrets in outputs** (the `abstractOnboarding` output points you to where each secret lives instead of echoing it).
 
 v2 adds per the official Abstract documentation: the **checkpoint storage stack** (account + private container + Storage Blob Data Contributor + optional blob private endpoint + firewall mirroring), **Listen-only** default SAS rights, default hub sources `activity/entra/defender`, `defaultPartitionCount`/`defaultRetentionDays`, Standard-minimum SKU, input trimming/filtering so CSV-driven portal inputs can't produce empty hub names, and the portal wizard + subscription Activity Log template.
 
+v3 adds the **Azure Event Hub Destination** and **Azure Sentinel Destination** templates (each with its own wizard + Deploy button), a branded `docs/index.html` landing page, Abstract branding in the wizards, the previously-missing `abstract-diagnostics-send` Send rule + `abstractDiagnosticsAuthRuleId` output (so Activity Log export uses a least-privilege rule instead of RootManageSharedAccessKey), and Bicep-compiled ARM for every template.
+
 Caveats worth knowing:
 
-- **Hand-compiled ARM**: `azuredeploy.json` was written to match `main.bicep`, not generated by the Bicep compiler. If you change the Bicep, regenerate with `az bicep build -f main.bicep --outfile azuredeploy.json`.
+- **Bicep-compiled ARM**: every `*.azuredeploy.json` is generated from its `*.bicep` with `az bicep build`. If you change a `.bicep`, regenerate the matching ARM (`az bicep build --file <f>.bicep --outfile <f>.azuredeploy.json`); CI flags drift.
+- **Sentinel destination needs an Entra app** (client ID/secret/tenant) which ARM cannot create — make it first and pass the SP object ID for the DCR role grants. Existing-workspace mode expects the workspace in the same resource group with Sentinel already enabled.
 - **Premium** ignores auto-inflate (capacity = PUs: 1/2/4/8/16) and `zoneRedundant` behavior differs by region.
 - Deleting the namespace does **not** delete the storage account, private endpoints, diagnostic settings, or the app registration — the script's `Delete` action reminds you.
 - The Entra log export uses the legacy `microsoft.aadiam` API (best effort) and needs Entra P1/P2 plus Security Administrator.

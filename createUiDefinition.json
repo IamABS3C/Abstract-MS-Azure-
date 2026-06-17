@@ -6,7 +6,7 @@
     "config": {
       "isWizard": true,
       "basics": {
-        "description": "**Abstract Security — Azure Event Hub onboarding.** Deploys everything the Abstract *Azure Event Hub* integration needs: an Event Hubs namespace, one Event Hub per log source, the `abstract` consumer group, a checkpoint Storage Account + blob container, and your choice of Connection String and/or Service Principal authentication.\n\nAfter deployment, the **Outputs** tab contains a field-for-field answer key for the Abstract integration modal.",
+        "description": "## Abstract Security — Azure Event Hub (Source)\nThe **security data pipeline platform.** [abstract.security](https://abstract.security) · [Documentation](https://docs.abstractsecurity.app/docs/integrations/source-integrations/azure-event-hub/)\n\n---\nDeploys everything the Abstract *Azure Event Hub* **source** integration needs (Abstract reads *from* Event Hub): an Event Hubs namespace, one Event Hub per log source, the `abstract` consumer group, a checkpoint Storage Account + blob container, and your choice of Connection String and/or Service Principal authentication.\n\nAfter deployment, the **Outputs** tab contains a field-for-field answer key for the Abstract integration modal.",
         "resourceGroup": {
           "constraints": {
             "validations": []

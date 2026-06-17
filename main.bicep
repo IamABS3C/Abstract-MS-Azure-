@@ -134,6 +134,12 @@ param sasRights array = [
 @description('Also create a per-hub SAS rule with the same name/rights - a tighter blast radius than the namespace-level rule.')
 param perHubSasRules bool = false
 
+@description('Create a dedicated Send-only SAS rule for LOG PRODUCERS (Azure diagnostic settings: Activity Log, Entra ID, Defender, resource logs). This is separate from the Listen-only Abstract consumer rule and is what the subscription Activity Log export uses. Requires local auth (enableSas = true).')
+param createDiagnosticsSendRule bool = true
+
+@description('Name of the Send-only diagnostics SAS rule used by log producers / diagnostic settings.')
+param diagnosticsSendRuleName string = 'abstract-diagnostics-send'
+
 @description('Assign Azure RBAC roles for Service Principal (role-based) authentication in Abstract: Event Hubs role on the namespace + Storage Blob Data role on the checkpoint storage account.')
 param enableRbac bool = false
 
@@ -351,6 +357,20 @@ resource hubAuth 'Microsoft.EventHub/namespaces/eventhubs/authorizationRules@202
   }
 }]
 
+// Send-only rule for LOG PRODUCERS (diagnostic settings). Separate from the
+// Listen-only Abstract consumer rule so producers never get the consumer's key
+// and vice-versa. The subscription Activity Log template consumes its id via the
+// abstractDiagnosticsAuthRuleId output below.
+resource diagnosticsSendRule 'Microsoft.EventHub/namespaces/authorizationRules@2024-01-01' = if (enableSas && createDiagnosticsSendRule) {
+  parent: ehNamespace
+  name: diagnosticsSendRuleName
+  properties: {
+    rights: [
+      'Send'
+    ]
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Checkpoint Storage Account + private blob container
 // Required by the Abstract consumer for checkpointing / lease management.
@@ -533,12 +553,17 @@ output eventHubNames array = [for hub in effectiveHubs: hub.name]
 output consumerGroup string = isBasic ? '$Default' : consumerGroupName
 output sasRuleName string = enableSas ? sasRuleName : '(local auth disabled - use RBAC)'
 output storageAccountName string = createStorageAccount ? storageNameEffective : '(not created)'
-output storageAccountUrl string = createStorageAccount ? checkpointStorage.properties.primaryEndpoints.blob : '(not created)'
+output storageAccountUrl string = createStorageAccount ? checkpointStorage!.properties.primaryEndpoints.blob : '(not created)'
 output blobContainerName string = createStorageAccount ? blobContainerName : '(not created)'
 output publicAccess string = effectivePublicAccess
 output firewallDefaultAction string = networkDefaultAction
 output safeModeEnabled bool = safeMode
 output privateEndpointEnabled bool = enablePrivateEndpoint
+
+// Send-only auth rule id for log producers - feed this into the subscription
+// Activity Log template (templates/subscription/activitylog) and any resource
+// diagnostic setting. Falls back to a hint when local auth is disabled.
+output abstractDiagnosticsAuthRuleId string = (enableSas && createDiagnosticsSendRule) ? diagnosticsSendRule!.id : '(diagnostics Send rule not created - enableSas is false / local auth disabled)'
 
 // Field-for-field answers for the Abstract integration modal
 // (docs.abstract.security -> Azure Event Hub -> Event Hub Connection Details)
@@ -551,7 +576,7 @@ output abstractOnboarding object = {
   eventHubConsumerGroup: isBasic ? '$Default' : consumerGroupName
   storageBlobContainerName: createStorageAccount ? blobContainerName : '(bring your own)'
   eventHubNamespaceFqdn: '${ehNamespace.name}.servicebus.windows.net'
-  storageAccountUrl: createStorageAccount ? checkpointStorage.properties.primaryEndpoints.blob : '(bring your own)'
+  storageAccountUrl: createStorageAccount ? checkpointStorage!.properties.primaryEndpoints.blob : '(bring your own)'
   eventHubConnectionString: enableSas ? 'Portal: Event Hubs Namespace > Shared access policies > ${sasRuleName} > Connection string-primary key (or run the companion script with -Action Credentials)' : '(SAS disabled)'
   storageAccountConnectionString: createStorageAccount && storageAllowSharedKeyAccess ? 'Portal: Storage Account > Security + networking > Access keys > Connection string (or run the companion script with -Action Credentials)' : '(shared key access disabled)'
   docs: 'https://docs.abstract.security -> Integrations -> Azure Event Hub'
