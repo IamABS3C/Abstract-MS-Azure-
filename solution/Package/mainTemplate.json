@@ -1,0 +1,398 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "3.2.0.0",
+  "metadata": {
+    "author": "Abstract Security - Solutions Engineering",
+    "comments": "Microsoft Sentinel Content Hub solution for Abstract Security. Deploys the connector tile, ASIM parser, analytics rule, and workbook, and registers the solution package. Playbooks + Copilot deploy separately. Validate with the Sentinel solution packaging tool before Content Hub submission."
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "workspace": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics / Sentinel workspace name."
+      }
+    },
+    "workspace-location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/contentPackages",
+      "apiVersion": "2023-04-01-preview",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/ffb59bbb-ab7c-5964-8c86-22d7b5df331b')]",
+      "location": "[parameters('workspace-location')]",
+      "properties": {
+        "version": "3.2.0",
+        "kind": "Solution",
+        "contentSchemaVersion": "3.0.0",
+        "displayName": "Abstract Security",
+        "contentId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b",
+        "packageId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b",
+        "contentKind": "Solution",
+        "descriptionHtml": "<p><strong>Abstract Security</strong> \u2014 the security data pipeline platform. Normalized, enriched, cost-reduced telemetry into Microsoft Sentinel, with a connector, ASIM parser, analytics, hunting queries, a workbook, SOAR playbooks, and a Security Copilot plugin/agent that call the Abstract API to close the loop.</p>",
+        "icon": "<img src=\"https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png\" width=\"75px\" height=\"75px\">",
+        "author": {
+          "name": "Abstract Security",
+          "email": "support@abstract.security"
+        },
+        "support": {
+          "name": "Abstract Security",
+          "tier": "Partner",
+          "link": "https://abstract.security"
+        },
+        "providers": [
+          "Abstract Security"
+        ],
+        "firstPublishDate": "2026-06-17",
+        "categories": {
+          "domains": [
+            "Security - Threat Protection",
+            "Security - Cloud Security"
+          ]
+        },
+        "source": {
+          "kind": "Solution",
+          "name": "Abstract Security",
+          "sourceId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b"
+        },
+        "dependencies": {
+          "operator": "AND",
+          "criteria": [
+            {
+              "kind": "DataConnector",
+              "contentId": "a05f654e-4beb-537f-bc76-a086be9a1df8",
+              "version": "1.0.0"
+            },
+            {
+              "kind": "Parser",
+              "contentId": "a747a581-030c-585b-b7fe-0d56a851727b",
+              "version": "1.0.0"
+            },
+            {
+              "kind": "AnalyticsRule",
+              "contentId": "c0543ccb-b53d-5e56-917f-9210def2c413",
+              "version": "1.0.0"
+            },
+            {
+              "kind": "Workbook",
+              "contentId": "d67cbed4-8474-5230-8f45-e06905417e1b",
+              "version": "1.0.0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/dataConnectorDefinitions",
+      "apiVersion": "2022-09-01-preview",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/AbstractSecurityConnector')]",
+      "location": "[parameters('workspace-location')]",
+      "kind": "Customizable",
+      "properties": {
+        "connectorUiConfig": {
+          "id": "AbstractSecurityConnector",
+          "title": "Abstract Security (Security Data Pipeline)",
+          "publisher": "Abstract Security",
+          "logo": "[parameters('logoUrl')]",
+          "descriptionMarkdown": "**Abstract Security** delivers normalized, enriched, cost-reduced security telemetry into Microsoft Sentinel through the Azure Monitor Logs Ingestion API (Data Collection Rule). Use this connector to confirm delivery and jump to the deployment + setup steps.",
+          "graphQueriesTableName": "[parameters('customTableName')]",
+          "graphQueries": [
+            {
+              "metricName": "Abstract events received",
+              "legend": "AbstractEventLogs_CL",
+              "baseQuery": "[parameters('customTableName')]"
+            }
+          ],
+          "sampleQueries": [
+            {
+              "description": "All Abstract events (last 24h)",
+              "query": "[concat(parameters('customTableName'), '\n| where TimeGenerated > ago(24h)\n| sort by TimeGenerated desc')]"
+            },
+            {
+              "description": "Abstract events by product",
+              "query": "[concat(parameters('customTableName'), '\n| where TimeGenerated > ago(7d)\n| summarize count() by tostring(AbstractEvent.product)')]"
+            }
+          ],
+          "dataTypes": [
+            {
+              "name": "[parameters('customTableName')]",
+              "lastDataReceivedQuery": "[concat(parameters('customTableName'), '\n| summarize Time = max(TimeGenerated)\n| where isnotempty(Time)')]"
+            }
+          ],
+          "connectivityCriteria": [
+            {
+              "type": "HasDataConnectors"
+            },
+            {
+              "type": "IsConnectedQuery",
+              "value": [
+                "[concat(parameters('customTableName'), '\n| where TimeGenerated > ago(7d)\n| summarize LastLogReceived = max(TimeGenerated)\n| project IsConnected = LastLogReceived > ago(3d)')]"
+              ]
+            }
+          ],
+          "availability": {
+            "isPreview": true
+          },
+          "permissions": {
+            "resourceProvider": [
+              {
+                "provider": "Microsoft.OperationalInsights/workspaces",
+                "permissionsDisplayText": "read and write permissions are required.",
+                "providerDisplayName": "Workspace",
+                "scope": "Workspace",
+                "requiredPermissions": {
+                  "read": true,
+                  "write": true,
+                  "delete": true
+                }
+              }
+            ],
+            "customs": [
+              {
+                "name": "Abstract Security tenant",
+                "description": "An Abstract Security account with a configured Azure Sentinel destination integration."
+              },
+              {
+                "name": "Entra app registration",
+                "description": "An app registration whose service principal holds Monitoring Metrics Publisher on the Data Collection Rule (deployed by the Sentinel Destination template)."
+              }
+            ]
+          },
+          "instructionSteps": [
+            {
+              "title": "1. Deploy the Azure ingestion stack",
+              "description": "Deploy the **Azure Sentinel Destination** template (workspace + Sentinel + Data Collection Endpoint + custom table + Data Collection Rule + RBAC) from the Abstract Azure repo."
+            },
+            {
+              "title": "2. Create the Entra app",
+              "description": "Register an app + client secret and grant its service principal **Monitoring Metrics Publisher** on the DCR (the template does this when you pass the SP object id)."
+            },
+            {
+              "title": "3. Configure the destination in Abstract",
+              "description": "In Abstract, add the **Azure Sentinel Destination** integration and paste the Client ID / Secret / Tenant ID, the **DCR Immutable ID**, the **DCE URL**, and the **Log Stream Name** (Custom-<table>) from the deployment outputs."
+            },
+            {
+              "title": "4. Route data and confirm",
+              "description": "Route a pipeline to the destination. Within minutes the graph above should turn green as events land in the custom table."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/metadata",
+      "apiVersion": "2023-04-01-preview",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/DataConnector-a05f654e-4beb-537f-bc76-a086be9a1df8')]",
+      "location": "[parameters('workspace-location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces/providers/dataConnectorDefinitions', parameters('workspace'),'Microsoft.SecurityInsights','AbstractSecurityConnector')]"
+      ],
+      "properties": {
+        "parentId": "[resourceId('Microsoft.OperationalInsights/workspaces/providers/dataConnectorDefinitions', parameters('workspace'),'Microsoft.SecurityInsights','AbstractSecurityConnector')]",
+        "contentId": "a05f654e-4beb-537f-bc76-a086be9a1df8",
+        "kind": "DataConnector",
+        "version": "1.0.0",
+        "source": {
+          "kind": "Solution",
+          "name": "Abstract Security",
+          "sourceId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b"
+        },
+        "author": {
+          "name": "Abstract Security",
+          "email": "support@abstract.security"
+        },
+        "support": {
+          "name": "Abstract Security",
+          "tier": "Partner",
+          "link": "https://abstract.security"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/savedSearches",
+      "apiVersion": "2022-10-01",
+      "name": "[concat(parameters('workspace'),'/ASim_AbstractEvent')]",
+      "properties": {
+        "etag": "*",
+        "displayName": "ASim_AbstractEvent",
+        "category": "ASIM",
+        "FunctionAlias": "ASim_AbstractEvent",
+        "query": "// =============================================================================\n// ASim_AbstractEvent  \u2014  ASIM-style normalizing parser for Abstract Security\n// -----------------------------------------------------------------------------\n// Source : AbstractEventLogs_CL  (the custom table the Sentinel Destination\n//          template creates; default schema = TimeGenerated, Message,\n//          AbstractEvent:dynamic that carries the Abstract Common Schema event).\n// Purpose: project the Abstract Common Schema (ACS) into ASIM-aligned column\n//          names so Abstract-delivered data lights up Microsoft's ASIM-based\n//          analytics, and add convenient ACS pass-through fields.\n//\n// Deploy : Logs > New query > paste > Save as function, Function alias:\n//          ASim_AbstractEvent   (Legacy category: ASIM)\n//          Then query it like a table:  ASim_AbstractEvent | take 50\n//\n// Field mapping is grounded in the live ACS catalog (473 fields). If you ingest\n// the full all_fields schema as explicit columns instead of the dynamic\n// AbstractEvent column, swap `e.<field>` for `columnname_s` accordingly.\n// =============================================================================\nlet ASim_AbstractEvent = (disabled: bool = false) {\n    AbstractEventLogs_CL\n    | where not(disabled)\n    | extend e = AbstractEvent\n    // ---- core / ASIM common ----\n    | extend\n        EventVendor      = tostring(e.vendor),\n        EventProduct     = tostring(e.product),\n        EventType        = tostring(e.type),\n        EventResult      = tostring(e.action),\n        EventSeverity    = tostring(e.severity),\n        EventMessage     = coalesce(tostring(e.message), Message),\n        EventCount       = toreal(e.aggregation_count),\n        EventRiskScore   = toreal(e.risk_score)\n    // ---- network ----\n    | extend\n        SrcIpAddr        = coalesce(tostring(e.source_ipv4), tostring(e.source_ipv6), tostring(e.source_address)),\n        DstIpAddr        = coalesce(tostring(e.dest_ipv4), tostring(e.dest_ipv6), tostring(e.dest_address)),\n        SrcPortNumber    = toint(e.source_port),\n        DstPortNumber    = toint(e.dest_port),\n        DvcIpAddr        = coalesce(tostring(e.host_ipv4), tostring(e.host_ipv6), tostring(e.host_address)),\n        DvcHostname      = tostring(e.host_name)\n    // ---- identity ----\n    | extend\n        ActorUsername    = coalesce(tostring(e.user_name), tostring(e.user_id)),\n        TargetUsername   = tostring(e['user.target.name']),\n        UserAgent        = tostring(e.user_agent)\n    // ---- correlation back to Abstract ----\n    | extend\n        AbstractEventId    = tostring(e.id),\n        AbstractIdentity   = tostring(e.identity),\n        AbstractMatchedRules = e.matched_rules,\n        AbstractTags       = e.tags,\n        AbstractTimestamp  = todatetime(e['@timestamp'])\n    | project-reorder\n        TimeGenerated, EventVendor, EventProduct, EventType, EventResult, EventSeverity,\n        SrcIpAddr, DstIpAddr, SrcPortNumber, DstPortNumber, ActorUsername, EventMessage,\n        EventRiskScore, AbstractEventId, AbstractIdentity\n};\nASim_AbstractEvent\n",
+        "functionParameters": "",
+        "version": 2
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/metadata",
+      "apiVersion": "2023-04-01-preview",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/Parser-a747a581-030c-585b-b7fe-0d56a851727b')]",
+      "location": "[parameters('workspace-location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces/savedSearches', parameters('workspace'),'ASim_AbstractEvent')]"
+      ],
+      "properties": {
+        "parentId": "[resourceId('Microsoft.OperationalInsights/workspaces/savedSearches', parameters('workspace'),'ASim_AbstractEvent')]",
+        "contentId": "a747a581-030c-585b-b7fe-0d56a851727b",
+        "kind": "Parser",
+        "version": "1.0.0",
+        "source": {
+          "kind": "Solution",
+          "name": "Abstract Security",
+          "sourceId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b"
+        },
+        "author": {
+          "name": "Abstract Security",
+          "email": "support@abstract.security"
+        },
+        "support": {
+          "name": "Abstract Security",
+          "tier": "Partner",
+          "link": "https://abstract.security"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/alertRules",
+      "apiVersion": "2023-02-01-preview",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/c0543ccb-b53d-5e56-917f-9210def2c413')]",
+      "location": "[parameters('workspace-location')]",
+      "kind": "Scheduled",
+      "properties": {
+        "displayName": "Abstract Security - High or Critical event",
+        "enabled": true,
+        "severity": "High",
+        "description": "High/critical Abstract event; surfaces AbstractInsightId for the Verdict playbook.",
+        "query": "AbstractEventLogs_CL\n| where TimeGenerated > ago(1h)\n| extend e = AbstractEvent\n| extend AbstractSeverity=tolower(tostring(e.severity)), SrcIpAddr=coalesce(tostring(e.source_ipv4),tostring(e.source_address)), ActorUsername=coalesce(tostring(e.user_name),tostring(e.user_id)), AbstractInsightId=tostring(e.id), EventProduct=tostring(e.product)\n| where AbstractSeverity in ('high','critical')\n| project TimeGenerated, AbstractSeverity, EventProduct, SrcIpAddr, ActorUsername, AbstractInsightId",
+        "queryFrequency": "PT1H",
+        "queryPeriod": "PT1H",
+        "triggerOperator": "GreaterThan",
+        "triggerThreshold": 0,
+        "suppressionDuration": "PT1H",
+        "suppressionEnabled": false,
+        "tactics": [
+          "InitialAccess"
+        ],
+        "incidentConfiguration": {
+          "createIncident": true,
+          "groupingConfiguration": {
+            "enabled": true,
+            "reopenClosedIncident": false,
+            "lookbackDuration": "PT5H",
+            "matchingMethod": "Selected",
+            "groupByEntities": [
+              "IP",
+              "Account"
+            ],
+            "groupByAlertDetails": [],
+            "groupByCustomDetails": []
+          }
+        },
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
+        "customDetails": {
+          "AbstractInsightId": "AbstractInsightId",
+          "AbstractSeverity": "AbstractSeverity"
+        },
+        "entityMappings": [
+          {
+            "entityType": "IP",
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SrcIpAddr"
+              }
+            ]
+          },
+          {
+            "entityType": "Account",
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "ActorUsername"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/metadata",
+      "apiVersion": "2023-04-01-preview",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/AnalyticsRule-c0543ccb-b53d-5e56-917f-9210def2c413')]",
+      "location": "[parameters('workspace-location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'),'Microsoft.SecurityInsights','c0543ccb-b53d-5e56-917f-9210def2c413')]"
+      ],
+      "properties": {
+        "parentId": "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'),'Microsoft.SecurityInsights','c0543ccb-b53d-5e56-917f-9210def2c413')]",
+        "contentId": "c0543ccb-b53d-5e56-917f-9210def2c413",
+        "kind": "AnalyticsRule",
+        "version": "1.0.0",
+        "source": {
+          "kind": "Solution",
+          "name": "Abstract Security",
+          "sourceId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b"
+        },
+        "author": {
+          "name": "Abstract Security",
+          "email": "support@abstract.security"
+        },
+        "support": {
+          "name": "Abstract Security",
+          "tier": "Partner",
+          "link": "https://abstract.security"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/workbooks",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(parameters('workspace'),'d67cbed4-8474-5230-8f45-e06905417e1b')]",
+      "location": "[parameters('workspace-location')]",
+      "kind": "shared",
+      "properties": {
+        "displayName": "Abstract Security - Pipeline Overview",
+        "serializedData": "{\"version\": \"Notebook/1.0\", \"items\": [{\"type\": 1, \"content\": {\"json\": \"## Abstract Security \\u2014 Pipeline Overview\\nNormalized, enriched, cost-reduced security telemetry delivered into Microsoft Sentinel by the Abstract data pipeline. Volume, coverage, and a pipeline-reduction estimate.\"}}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"AbstractEventLogs_CL\\n| summarize Events=count() by bin(TimeGenerated, 1h)\\n| render timechart\", \"size\": 0, \"title\": \"Events ingested over time\", \"timeContext\": {\"durationMs\": 604800000}, \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"timechart\"}}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"AbstractEventLogs_CL\\n| summarize Events=count()\", \"size\": 4, \"title\": \"Total Abstract events (7d)\", \"timeContext\": {\"durationMs\": 604800000}, \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"tiles\"}}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"AbstractEventLogs_CL\\n| extend product=tostring(AbstractEvent.product)\\n| summarize Events=count() by product\\n| top 15 by Events desc\", \"size\": 0, \"title\": \"Events by product\", \"timeContext\": {\"durationMs\": 604800000}, \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"barchart\"}}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"AbstractEventLogs_CL\\n| extend severity=tostring(AbstractEvent.severity)\\n| summarize Events=count() by severity\", \"size\": 0, \"title\": \"Events by severity\", \"timeContext\": {\"durationMs\": 604800000}, \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"piechart\"}}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"// Pipeline reduction estimate: GB that landed in Sentinel.\\nAbstractEventLogs_CL\\n| extend acs_bytes = estimate_data_size(AbstractEvent)\\n| summarize Events=count(), SentinelGB=round(sum(acs_bytes)/1024.0/1024/1024,3)\", \"size\": 0, \"title\": \"Ingested volume (GB) \\u2014 pair with Abstract source volume for $ saved\", \"timeContext\": {\"durationMs\": 604800000}, \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"table\"}}], \"styleSettings\": {}, \"$schema\": \"https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json\"}",
+        "version": "1.0",
+        "category": "sentinel",
+        "sourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspace'))]"
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/metadata",
+      "apiVersion": "2023-04-01-preview",
+      "name": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/Workbook-d67cbed4-8474-5230-8f45-e06905417e1b')]",
+      "location": "[parameters('workspace-location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/workbooks', guid(parameters('workspace'),'d67cbed4-8474-5230-8f45-e06905417e1b'))]"
+      ],
+      "properties": {
+        "parentId": "[resourceId('Microsoft.Insights/workbooks', guid(parameters('workspace'),'d67cbed4-8474-5230-8f45-e06905417e1b'))]",
+        "contentId": "d67cbed4-8474-5230-8f45-e06905417e1b",
+        "kind": "Workbook",
+        "version": "1.0.0",
+        "source": {
+          "kind": "Solution",
+          "name": "Abstract Security",
+          "sourceId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b"
+        },
+        "author": {
+          "name": "Abstract Security",
+          "email": "support@abstract.security"
+        },
+        "support": {
+          "name": "Abstract Security",
+          "tier": "Partner",
+          "link": "https://abstract.security"
+        }
+      }
+    }
+  ]
+}

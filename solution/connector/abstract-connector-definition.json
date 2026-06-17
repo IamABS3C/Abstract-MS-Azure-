@@ -1,0 +1,100 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "title": "Abstract Security - Sentinel data connector tile (Customizable / CCF)",
+    "description": "Registers a branded 'Abstract Security' connector in the Microsoft Sentinel Data connectors gallery for the workspace. Because Abstract delivers via the Logs Ingestion API (push, through a DCR), this is a Customizable connector: it documents setup and shows a live ingestion-status graph against the custom table, rather than polling a remote API.",
+    "author": "Abstract Security - Solutions Engineering"
+  },
+  "parameters": {
+    "workspaceName": { "type": "string", "metadata": { "description": "Log Analytics / Sentinel workspace name." } },
+    "customTableName": { "type": "string", "defaultValue": "AbstractEventLogs_CL" },
+    "logoUrl": { "type": "string", "defaultValue": "https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces/providers/dataConnectorDefinitions",
+      "apiVersion": "2022-09-01-preview",
+      "name": "[concat(parameters('workspaceName'), '/Microsoft.SecurityInsights/AbstractSecurityConnector')]",
+      "kind": "Customizable",
+      "properties": {
+        "connectorUiConfig": {
+          "id": "AbstractSecurityConnector",
+          "title": "Abstract Security (Security Data Pipeline)",
+          "publisher": "Abstract Security",
+          "logo": "[parameters('logoUrl')]",
+          "descriptionMarkdown": "**Abstract Security** delivers normalized, enriched, cost-reduced security telemetry into Microsoft Sentinel through the Azure Monitor Logs Ingestion API (Data Collection Rule). Use this connector to confirm delivery and jump to the deployment + setup steps.",
+          "graphQueriesTableName": "[parameters('customTableName')]",
+          "graphQueries": [
+            {
+              "metricName": "Abstract events received",
+              "legend": "AbstractEventLogs_CL",
+              "baseQuery": "[parameters('customTableName')]"
+            }
+          ],
+          "sampleQueries": [
+            {
+              "description": "All Abstract events (last 24h)",
+              "query": "[concat(parameters('customTableName'), '\n| where TimeGenerated > ago(24h)\n| sort by TimeGenerated desc')]"
+            },
+            {
+              "description": "Abstract events by product",
+              "query": "[concat(parameters('customTableName'), '\n| where TimeGenerated > ago(7d)\n| summarize count() by tostring(AbstractEvent.product)')]"
+            }
+          ],
+          "dataTypes": [
+            {
+              "name": "[parameters('customTableName')]",
+              "lastDataReceivedQuery": "[concat(parameters('customTableName'), '\n| summarize Time = max(TimeGenerated)\n| where isnotempty(Time)')]"
+            }
+          ],
+          "connectivityCriteria": [
+            {
+              "type": "HasDataConnectors"
+            },
+            {
+              "type": "IsConnectedQuery",
+              "value": [
+                "[concat(parameters('customTableName'), '\n| where TimeGenerated > ago(7d)\n| summarize LastLogReceived = max(TimeGenerated)\n| project IsConnected = LastLogReceived > ago(3d)')]"
+              ]
+            }
+          ],
+          "availability": { "isPreview": true },
+          "permissions": {
+            "resourceProvider": [
+              {
+                "provider": "Microsoft.OperationalInsights/workspaces",
+                "permissionsDisplayText": "read and write permissions are required.",
+                "providerDisplayName": "Workspace",
+                "scope": "Workspace",
+                "requiredPermissions": { "read": true, "write": true, "delete": true }
+              }
+            ],
+            "customs": [
+              { "name": "Abstract Security tenant", "description": "An Abstract Security account with a configured Azure Sentinel destination integration." },
+              { "name": "Entra app registration", "description": "An app registration whose service principal holds Monitoring Metrics Publisher on the Data Collection Rule (deployed by the Sentinel Destination template)." }
+            ]
+          },
+          "instructionSteps": [
+            {
+              "title": "1. Deploy the Azure ingestion stack",
+              "description": "Deploy the **Azure Sentinel Destination** template (workspace + Sentinel + Data Collection Endpoint + custom table + Data Collection Rule + RBAC) from the Abstract Azure repo."
+            },
+            {
+              "title": "2. Create the Entra app",
+              "description": "Register an app + client secret and grant its service principal **Monitoring Metrics Publisher** on the DCR (the template does this when you pass the SP object id)."
+            },
+            {
+              "title": "3. Configure the destination in Abstract",
+              "description": "In Abstract, add the **Azure Sentinel Destination** integration and paste the Client ID / Secret / Tenant ID, the **DCR Immutable ID**, the **DCE URL**, and the **Log Stream Name** (Custom-<table>) from the deployment outputs."
+            },
+            {
+              "title": "4. Route data and confirm",
+              "description": "Route a pipeline to the destination. Within minutes the graph above should turn green as events land in the custom table."
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,759 @@
+{
+  "catalog": {
+    "fieldsets": 9,
+    "scenarios": 32,
+    "by_model": {
+      "identity": 7,
+      "cloud": 6,
+      "network_firewall": 4,
+      "dns_web": 2,
+      "edr_xdr": 4,
+      "email": 2,
+      "wildfire": 2,
+      "threat_intel": 2,
+      "nhi_agent": 3
+    },
+    "suppressions": 2,
+    "analytics_fields": 5
+  },
+  "fieldsets": {
+    "identity": "TdTNzx8tMj",
+    "network_firewall": "obEbwCS94K",
+    "cloud": "i0pYxGeL-w",
+    "edr_xdr": "DoEnUyQm3B",
+    "email": "946WxK921c",
+    "dns_web": "ZTlT8DQT27",
+    "threat_intel": "AIylZ16dRi",
+    "nhi_agent": "V1FRkgQzsS",
+    "wildfire": "nFsm3BLD8l"
+  },
+  "views_created": 32,
+  "views_failed": 0,
+  "views": [
+    {
+      "key": "ato-bruteforce",
+      "title": "ATO \u2014 Okta brute force",
+      "id": "nCk9cv3v0e",
+      "model": "identity",
+      "mitre": [
+        "T1110"
+      ],
+      "severity": "high",
+      "tags": [
+        "identity",
+        "ato",
+        "okta"
+      ]
+    },
+    {
+      "key": "ato-mfa-fatigue",
+      "title": "ATO \u2014 MFA fatigue / push bombing",
+      "id": "xC07r2YX04",
+      "model": "identity",
+      "mitre": [
+        "T1621"
+      ],
+      "severity": "high",
+      "tags": [
+        "identity",
+        "ato",
+        "mfa"
+      ]
+    },
+    {
+      "key": "ato-new-asn",
+      "title": "ATO \u2014 login from new/proxy ASN",
+      "id": "9XvfwvyBN2",
+      "model": "identity",
+      "mitre": [
+        "T1078"
+      ],
+      "severity": "high",
+      "tags": [
+        "identity",
+        "ato",
+        "geo"
+      ]
+    },
+    {
+      "key": "ato-impossible-travel",
+      "title": "ATO \u2014 impossible travel",
+      "id": "jbvOf8KPom",
+      "model": "identity",
+      "mitre": [
+        "T1078"
+      ],
+      "severity": "high",
+      "tags": [
+        "identity",
+        "ato",
+        "geo"
+      ]
+    },
+    {
+      "key": "ato-account-manip",
+      "title": "ATO \u2014 account manipulation / MFA factor add",
+      "id": "wBktTFkKOm",
+      "model": "identity",
+      "mitre": [
+        "T1098"
+      ],
+      "severity": "critical",
+      "tags": [
+        "identity",
+        "persistence"
+      ]
+    },
+    {
+      "key": "ato-oauth-grant",
+      "title": "ATO \u2014 OAuth grant to unknown app",
+      "id": "LvrqM1sYcJ",
+      "model": "identity",
+      "mitre": [
+        "T1528"
+      ],
+      "severity": "medium",
+      "tags": [
+        "identity",
+        "oauth",
+        "saas"
+      ]
+    },
+    {
+      "key": "cloud-accesskey",
+      "title": "Cloud \u2014 new access key created",
+      "id": "dQp4d5lIq3",
+      "model": "cloud",
+      "mitre": [
+        "T1098"
+      ],
+      "severity": "high",
+      "tags": [
+        "cloud",
+        "aws",
+        "persistence"
+      ]
+    },
+    {
+      "key": "cloud-root-usage",
+      "title": "Cloud \u2014 root / privileged account usage",
+      "id": "inJhNRGbjD",
+      "model": "cloud",
+      "mitre": [
+        "T1078.004"
+      ],
+      "severity": "high",
+      "tags": [
+        "cloud",
+        "aws",
+        "privilege"
+      ]
+    },
+    {
+      "key": "cloud-iam-policy",
+      "title": "Cloud \u2014 IAM policy change",
+      "id": "f5jxrbNZm-",
+      "model": "cloud",
+      "mitre": [
+        "T1098"
+      ],
+      "severity": "medium",
+      "tags": [
+        "cloud",
+        "aws",
+        "iam"
+      ]
+    },
+    {
+      "key": "cloud-bulk-export",
+      "title": "Cloud \u2014 bulk data export / exfil",
+      "id": "G_LPpyyWFf",
+      "model": "cloud",
+      "mitre": [
+        "T1567"
+      ],
+      "severity": "critical",
+      "tags": [
+        "cloud",
+        "exfil",
+        "data"
+      ]
+    },
+    {
+      "key": "cloud-failed-api",
+      "title": "Cloud \u2014 burst of failed API calls",
+      "id": "Qizt6lnCgL",
+      "model": "cloud",
+      "mitre": [
+        "T1595"
+      ],
+      "severity": "medium",
+      "tags": [
+        "cloud",
+        "recon"
+      ]
+    },
+    {
+      "key": "net-c2-beacon",
+      "title": "Network \u2014 C2 beaconing",
+      "id": "tQY88u_6Gb",
+      "model": "network_firewall",
+      "mitre": [
+        "T1071.001"
+      ],
+      "severity": "high",
+      "tags": [
+        "network",
+        "c2",
+        "firewall"
+      ]
+    },
+    {
+      "key": "net-threat-reset",
+      "title": "Network \u2014 threat blocked (reset-both)",
+      "id": "ptPJfuoESl",
+      "model": "network_firewall",
+      "mitre": [
+        "T1071"
+      ],
+      "severity": "high",
+      "tags": [
+        "network",
+        "firewall",
+        "threat"
+      ]
+    },
+    {
+      "key": "net-exfil-volume",
+      "title": "Network \u2014 large outbound transfer",
+      "id": "detgdGblnU",
+      "model": "network_firewall",
+      "mitre": [
+        "T1030"
+      ],
+      "severity": "high",
+      "tags": [
+        "network",
+        "exfil"
+      ]
+    },
+    {
+      "key": "net-portscan",
+      "title": "Network \u2014 port scan / sweep",
+      "id": "ryM1-SskuL",
+      "model": "network_firewall",
+      "mitre": [
+        "T1046"
+      ],
+      "severity": "medium",
+      "tags": [
+        "network",
+        "recon"
+      ]
+    },
+    {
+      "key": "dns-tunneling",
+      "title": "DNS \u2014 tunneling / high-entropy queries",
+      "id": "zlSm85DnQS",
+      "model": "dns_web",
+      "mitre": [
+        "T1071.004"
+      ],
+      "severity": "high",
+      "tags": [
+        "dns",
+        "c2",
+        "exfil"
+      ]
+    },
+    {
+      "key": "dns-nrd",
+      "title": "DNS \u2014 newly registered / suspicious domain",
+      "id": "d33VTv4Dhv",
+      "model": "dns_web",
+      "mitre": [
+        "T1568"
+      ],
+      "severity": "medium",
+      "tags": [
+        "dns",
+        "c2"
+      ]
+    },
+    {
+      "key": "edr-malware-exec",
+      "title": "EDR \u2014 malware execution",
+      "id": "lmii-wDunr",
+      "model": "edr_xdr",
+      "mitre": [
+        "T1204"
+      ],
+      "severity": "critical",
+      "tags": [
+        "edr",
+        "malware"
+      ]
+    },
+    {
+      "key": "edr-lolbin-powershell",
+      "title": "EDR \u2014 encoded PowerShell (LOLBin)",
+      "id": "x1zEBTa7IL",
+      "model": "edr_xdr",
+      "mitre": [
+        "T1059.001"
+      ],
+      "severity": "high",
+      "tags": [
+        "edr",
+        "execution"
+      ]
+    },
+    {
+      "key": "edr-process-injection",
+      "title": "EDR \u2014 process injection",
+      "id": "ewdHE92Pzx",
+      "model": "edr_xdr",
+      "mitre": [
+        "T1055"
+      ],
+      "severity": "high",
+      "tags": [
+        "edr",
+        "defense-evasion"
+      ]
+    },
+    {
+      "key": "edr-cred-dumping",
+      "title": "EDR \u2014 credential dumping",
+      "id": "A-t82KKL1e",
+      "model": "edr_xdr",
+      "mitre": [
+        "T1003"
+      ],
+      "severity": "critical",
+      "tags": [
+        "edr",
+        "credential-access"
+      ]
+    },
+    {
+      "key": "email-malware-attach",
+      "title": "Email \u2014 malicious attachment",
+      "id": "u5R-R7_q42",
+      "model": "email",
+      "mitre": [
+        "T1566.001"
+      ],
+      "severity": "high",
+      "tags": [
+        "email",
+        "phishing"
+      ]
+    },
+    {
+      "key": "email-phish-url",
+      "title": "Email \u2014 phishing URL",
+      "id": "M6r-0GVSGb",
+      "model": "email",
+      "mitre": [
+        "T1566.002"
+      ],
+      "severity": "high",
+      "tags": [
+        "email",
+        "phishing"
+      ]
+    },
+    {
+      "key": "wf-malicious-verdict",
+      "title": "WildFire \u2014 malicious verdict",
+      "id": "wvJvtlpImv",
+      "model": "wildfire",
+      "mitre": [
+        "T1204"
+      ],
+      "severity": "critical",
+      "tags": [
+        "wildfire",
+        "malware",
+        "verdict"
+      ]
+    },
+    {
+      "key": "wf-c2-ioc",
+      "title": "WildFire \u2014 report C2 IOC contact",
+      "id": "mk8UKifkFW",
+      "model": "wildfire",
+      "mitre": [
+        "T1071.001"
+      ],
+      "severity": "high",
+      "tags": [
+        "wildfire",
+        "c2",
+        "ioc"
+      ]
+    },
+    {
+      "key": "ti-known-bad-ip",
+      "title": "Threat Intel \u2014 known-bad IP match",
+      "id": "MTyl7bv0oo",
+      "model": "threat_intel",
+      "mitre": [
+        "T1071"
+      ],
+      "severity": "high",
+      "tags": [
+        "threat-intel",
+        "ioc"
+      ]
+    },
+    {
+      "key": "ti-technique-sighting",
+      "title": "Threat Intel \u2014 ATT&CK technique sighting",
+      "id": "9aluEnxl3j",
+      "model": "threat_intel",
+      "mitre": [
+        "T1595"
+      ],
+      "severity": "medium",
+      "tags": [
+        "threat-intel",
+        "mitre"
+      ]
+    },
+    {
+      "key": "exposure-stolen-session",
+      "title": "Identity Exposure \u2014 stolen session / cookie reuse",
+      "id": "b3tOkgh-s8",
+      "model": "identity",
+      "mitre": [
+        "T1539"
+      ],
+      "severity": "high",
+      "tags": [
+        "identity-exposure",
+        "session",
+        "ato"
+      ]
+    },
+    {
+      "key": "nhi-token-new-asn",
+      "title": "NHI \u2014 service token used from new ASN",
+      "id": "qWVJTRKusI",
+      "model": "nhi_agent",
+      "mitre": [
+        "T1078"
+      ],
+      "severity": "high",
+      "tags": [
+        "nhi",
+        "non-human",
+        "cloud"
+      ]
+    },
+    {
+      "key": "agent-anomalous-tool",
+      "title": "Agentic \u2014 AI agent anomalous tool call / exfil",
+      "id": "X5NELZVH9u",
+      "model": "nhi_agent",
+      "mitre": [
+        "T1567"
+      ],
+      "severity": "high",
+      "tags": [
+        "agentic",
+        "ai",
+        "exfil"
+      ]
+    },
+    {
+      "key": "supplychain-ci-token",
+      "title": "Supply Chain \u2014 CI token harvest + startup mod",
+      "id": "Tkljkuo62Y",
+      "model": "cloud",
+      "mitre": [
+        "T1195"
+      ],
+      "severity": "critical",
+      "tags": [
+        "supply-chain",
+        "ci-cd"
+      ]
+    },
+    {
+      "key": "genai-agent-abuse",
+      "title": "GenAI \u2014 agent abuse / permission bypass",
+      "id": "fsLQbgtOAN",
+      "model": "nhi_agent",
+      "mitre": [
+        "T1562"
+      ],
+      "severity": "critical",
+      "tags": [
+        "genai",
+        "ai",
+        "defense-evasion"
+      ]
+    }
+  ],
+  "failed": [],
+  "suppressions": [
+    {
+      "title": "[ABS-DEMO] Suppress known scanner ASN (demo)",
+      "id": "YA0pYObbK7",
+      "status": 201
+    },
+    {
+      "title": "[ABS-DEMO] Suppress corp VPN egress (demo)",
+      "id": "kVhNLTRHWD",
+      "status": 201
+    }
+  ],
+  "rules_created": 32,
+  "rules_failed": 0,
+  "rules": [
+    {
+      "key": "ato-bruteforce",
+      "id": "NdaK7LaNfS"
+    },
+    {
+      "key": "ato-mfa-fatigue",
+      "id": "bRJt9ZM7MU"
+    },
+    {
+      "key": "ato-new-asn",
+      "id": "KOLYX3LBAo"
+    },
+    {
+      "key": "ato-impossible-travel",
+      "id": "eWoJ4Igmjd"
+    },
+    {
+      "key": "ato-account-manip",
+      "id": "E7MhVVRs6J"
+    },
+    {
+      "key": "ato-oauth-grant",
+      "id": "Aejnrt4CrE"
+    },
+    {
+      "key": "cloud-accesskey",
+      "id": "dag6Fw9f4m"
+    },
+    {
+      "key": "cloud-root-usage",
+      "id": "R_aNSDTURH"
+    },
+    {
+      "key": "cloud-iam-policy",
+      "id": "nTUf_3qj0B"
+    },
+    {
+      "key": "cloud-bulk-export",
+      "id": "prC16tRy3v"
+    },
+    {
+      "key": "cloud-failed-api",
+      "id": "BPbza_Qaw9"
+    },
+    {
+      "key": "net-c2-beacon",
+      "id": "Y0Fgz_lUA4"
+    },
+    {
+      "key": "net-threat-reset",
+      "id": "40mEg8Vb8R"
+    },
+    {
+      "key": "net-exfil-volume",
+      "id": "z1eBt9X6uj"
+    },
+    {
+      "key": "net-portscan",
+      "id": "bTicYPoJTv"
+    },
+    {
+      "key": "dns-tunneling",
+      "id": "FEZawGQNQu"
+    },
+    {
+      "key": "dns-nrd",
+      "id": "e9ZXeJ1CId"
+    },
+    {
+      "key": "edr-malware-exec",
+      "id": "dLUF"
+    },
+    {
+      "key": "edr-lolbin-powershell",
+      "id": "ZQUgSR6Iku"
+    },
+    {
+      "key": "edr-process-injection",
+      "id": null
+    },
+    {
+      "key": "edr-cred-dumping",
+      "id": "P70NG2RyE7"
+    },
+    {
+      "key": "email-malware-attach",
+      "id": "ry7AxZk7Ua"
+    },
+    {
+      "key": "email-phish-url",
+      "id": "vBkDwKm3"
+    },
+    {
+      "key": "wf-malicious-verdict",
+      "id": "e7ap4MDd06"
+    },
+    {
+      "key": "wf-c2-ioc",
+      "id": "XlVabbm_Va"
+    },
+    {
+      "key": "ti-known-bad-ip",
+      "id": "0a23Y2T67m"
+    },
+    {
+      "key": "ti-technique-sighting",
+      "id": "G4gqzDEr7C"
+    },
+    {
+      "key": "exposure-stolen-session",
+      "id": "qdW4Vau8qv"
+    },
+    {
+      "key": "nhi-token-new-asn",
+      "id": "ZRcX"
+    },
+    {
+      "key": "agent-anomalous-tool",
+      "id": "ucE"
+    },
+    {
+      "key": "supplychain-ci-token",
+      "id": "AkWXySEKlA"
+    },
+    {
+      "key": "genai-agent-abuse",
+      "id": "C_HFce2mGp"
+    }
+  ],
+  "analytics": {
+    "mitre_coverage": {
+      "total": 363,
+      "enabled": 318
+    },
+    "detection_effectiveness_status": 502,
+    "field_analytics": {
+      "vendor": {
+        "total": 350562,
+        "top": [
+          [
+            "AWS",
+            350127
+          ],
+          [
+            "Abstract Security",
+            401
+          ],
+          [
+            "okta",
+            32
+          ],
+          [
+            "Microsoft",
+            2
+          ]
+        ]
+      },
+      "severity": {
+        "total": 401,
+        "top": [
+          [
+            "medium",
+            206
+          ],
+          [
+            "low",
+            191
+          ],
+          [
+            "high",
+            4
+          ]
+        ]
+      },
+      "event.outcome": {
+        "total": 350562,
+        "top": [
+          [
+            "success",
+            256230
+          ],
+          [
+            "failure",
+            94326
+          ],
+          [
+            "unknown",
+            6
+          ]
+        ]
+      },
+      "source_address": {
+        "total": 350532,
+        "top": [
+          [
+            "172.16.101.153",
+            145643
+          ],
+          [
+            "172.16.98.197",
+            65960
+          ],
+          [
+            "cloudtrail.amazonaws.com",
+            60817
+          ],
+          [
+            "fas.s3.amazonaws.com",
+            25538
+          ],
+          [
+            "172.16.126.18",
+            22903
+          ]
+        ]
+      },
+      "user_name": {
+        "total": 262671,
+        "top": [
+          [
+            "tenant-absecsa-prod-flink",
+            234797
+          ],
+          [
+            "AbstractIntegrationStacktra-AbstractIntegrationRole-Ffrz85nblOeU",
+            6158
+          ],
+          [
+            "prod-absecsa-karpenter-node",
+            3740
+          ],
+          [
+            "prod-absecsa-karpenter-controller",
+            2549
+          ],
+          [
+            "AWSReservedSSO_Abstract-SE-Admin_300802403a73eba6",
+            2205
+          ]
+        ]
+      }
+    }
+  }
+}

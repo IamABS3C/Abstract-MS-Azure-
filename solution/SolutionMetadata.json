@@ -1,0 +1,43 @@
+{
+  "Name": "AbstractSecurity",
+  "Author": "Abstract Security - Solutions Engineering",
+  "Logo": "<img src=\"https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png\" width=\"75px\" height=\"75px\">",
+  "Description": "The **Abstract Security** solution turns the Abstract Security data pipeline into a first-class, actionable Microsoft Sentinel integration. Abstract delivers normalized, enriched, cost-reduced security telemetry into Sentinel via the Logs Ingestion API, and this solution makes that data discoverable and bidirectional: a branded data connector, an ASIM parser, analytics rules, hunting queries, a pipeline-overview workbook, SOAR playbooks, and a Security Copilot plugin + agent that call the Abstract API to close the loop (triage in Sentinel, act on the pipeline).",
+  "Metadata": "SolutionMetadata.json",
+  "BasePath": "solution",
+  "Version": "3.2.0",
+  "publisherId": "abstractsecurity",
+  "offerId": "abstract-security-sentinel",
+  "providers": ["Abstract Security"],
+  "categories": {
+    "domains": ["Security - Threat Protection", "Security - Cloud Security", "IT Operations"],
+    "verticals": []
+  },
+  "firstPublishDate": "2026-06-17",
+  "support": {
+    "name": "Abstract Security",
+    "email": "support@abstract.security",
+    "tier": "Partner",
+    "link": "https://abstract.security"
+  },
+  "Data Connectors": [
+    "connector/abstract-connector-definition.json"
+  ],
+  "Parsers": [
+    "parsers/ASim_AbstractEvent.kql"
+  ],
+  "Analytic Rules": [
+    "analytics/AbstractBruteForceSuccess.yaml"
+  ],
+  "Hunting Queries": [
+    "hunting/AbstractRareProduct.yaml",
+    "hunting/AbstractHighRiskIdentities.yaml"
+  ],
+  "Workbooks": [
+    "workbooks/abstract-pipeline-overview.workbook.json"
+  ],
+  "Playbooks": [
+    "playbooks/abstract-enrich-incident.json",
+    "playbooks/abstract-verdict.json"
+  ]
+}
