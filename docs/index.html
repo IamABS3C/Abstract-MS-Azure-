@@ -3,143 +3,565 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Abstract Security — Azure Onboarding</title>
-<meta name="description" content="Deploy the Azure infrastructure for Abstract Security source and destination integrations — Event Hub, Event Hub Destination, and Microsoft Sentinel Destination — straight from the Azure portal." />
+<title>Abstract Security · Azure Deployment Console</title>
+<meta name="description" content="Deploy the Azure infrastructure for Abstract Security source and destination integrations — Event Hub, Event Hub Destination, and Microsoft Sentinel — from one interactive console. Pick a direction, an integration, a cloud, and deploy." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --pink:#f8226a; --teal:#01e69d; --bg:#060608; --panel:#101014;
-    --panel2:#16161c; --line:#26262f; --text:#f4f4f6; --muted:#9b9ba6;
+    --pink:#f8226a; --teal:#01e69d; --bg:#060608; --bg2:#0b0b10;
+    --panel:#101016; --panel2:#15151d; --line:#24242f; --line2:#33333f;
+    --text:#f4f4f7; --muted:#9c9caa; --dim:#6c6c79;
+    --pink-soft:rgba(248,34,106,.14); --teal-soft:rgba(1,230,157,.12);
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --display:"Barlow Semi Condensed",system-ui,sans-serif;
+    --body:"Barlow",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,monospace;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0; background:var(--bg); color:var(--text);
-    font-family:"Barlow",system-ui,sans-serif; line-height:1.55;
-    background-image:radial-gradient(1100px 520px at 78% -8%, rgba(248,34,106,.16), transparent 60%),
-                     radial-gradient(820px 460px at 6% 4%, rgba(1,230,157,.12), transparent 55%);
+    font-family:var(--body); line-height:1.6; overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
   }
   a{color:var(--teal); text-decoration:none}
   a:hover{text-decoration:underline}
-  .wrap{max-width:1060px; margin:0 auto; padding:0 24px}
-  header{padding:64px 0 28px; text-align:center}
-  header img{height:74px; width:auto; margin-bottom:22px}
-  h1{
-    font-family:"Barlow Semi Condensed",sans-serif; font-weight:700;
-    font-size:clamp(30px,5vw,46px); letter-spacing:.4px; margin:0 0 10px;
+  h1,h2,h3{font-family:var(--display); font-weight:700; letter-spacing:.4px; line-height:1.04; margin:0}
+  ::selection{background:var(--pink); color:#fff}
+
+  /* ---- ambient background layers ---- */
+  .bg{position:fixed; inset:0; z-index:-3; background:
+      radial-gradient(1200px 600px at var(--mx,78%) -6%, rgba(248,34,106,.20), transparent 60%),
+      radial-gradient(900px 520px at 4% 8%, rgba(1,230,157,.13), transparent 55%),
+      linear-gradient(180deg,var(--bg),var(--bg2));}
+  .grid{position:fixed; inset:0; z-index:-2; opacity:.5;
+      background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+      background-size:54px 54px;
+      -webkit-mask-image:radial-gradient(circle at 50% 18%,#000 0%,transparent 78%);
+      mask-image:radial-gradient(circle at 50% 18%,#000 0%,transparent 78%);}
+  .grain{position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.05; mix-blend-mode:overlay;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+  .wrap{max-width:1140px; margin:0 auto; padding:0 24px}
+
+  /* ---- nav ---- */
+  nav{position:sticky; top:0; z-index:50; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+      background:rgba(6,6,8,.62); border-bottom:1px solid var(--line);}
+  .nav-in{max-width:1140px; margin:0 auto; padding:13px 24px; display:flex; align-items:center; gap:26px}
+  .nav-in img{height:30px}
+  .nav-links{display:flex; gap:24px; margin-left:auto; font-size:14px; font-weight:500}
+  .nav-links a{color:var(--muted)}
+  .nav-links a:hover{color:var(--text); text-decoration:none}
+  .nav-cta{font-family:var(--mono); font-size:12px; border:1px solid var(--line2); color:var(--text);
+      padding:8px 14px; border-radius:8px}
+  .nav-cta:hover{border-color:var(--pink); text-decoration:none; color:#fff}
+  @media(max-width:760px){.nav-links{display:none}}
+
+  /* ---- buttons ---- */
+  .btn{display:inline-flex; align-items:center; gap:9px; font-family:var(--body); font-weight:600;
+      font-size:15px; padding:13px 22px; border-radius:11px; border:1px solid transparent; cursor:pointer;
+      transition:transform .15s var(--ease), box-shadow .25s, background .2s; text-decoration:none}
+  .btn:hover{text-decoration:none; transform:translateY(-2px)}
+  .btn-primary{background:linear-gradient(135deg,var(--pink),#ff5e92); color:#fff; box-shadow:0 10px 30px -8px rgba(248,34,106,.6)}
+  .btn-primary:hover{box-shadow:0 16px 44px -8px rgba(248,34,106,.75)}
+  .btn-ghost{border-color:var(--line2); color:var(--text); background:rgba(255,255,255,.02)}
+  .btn-ghost:hover{border-color:var(--teal); color:#fff}
+
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--teal)}
+  .eyebrow.pink{color:var(--pink)}
+
+  /* ---- hero ---- */
+  header.hero{padding:78px 0 30px; text-align:center}
+  .hero .logo{height:78px; margin-bottom:26px; filter:drop-shadow(0 8px 30px rgba(248,34,106,.35))}
+  .hero h1{font-size:clamp(40px,7.5vw,90px); letter-spacing:.5px}
+  .hero h1 .g{background:linear-gradient(115deg,var(--pink),var(--teal)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .hero p.lead{max-width:660px; margin:20px auto 0; color:var(--muted); font-size:19px}
+  .hero .cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:34px}
+  .stats{display:flex; gap:34px; justify-content:center; flex-wrap:wrap; margin-top:46px; color:var(--dim); font-family:var(--mono); font-size:12.5px; letter-spacing:1px}
+  .stats b{display:block; font-family:var(--display); font-size:30px; color:var(--text); letter-spacing:0}
+
+  /* staggered reveal on load */
+  .rise{opacity:0; transform:translateY(22px); animation:rise .9s var(--ease) forwards}
+  @keyframes rise{to{opacity:1; transform:none}}
+  .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.27s}.d4{animation-delay:.4s}.d5{animation-delay:.55s}.d6{animation-delay:.7s}
+
+  /* ---- pipeline ---- */
+  .pipe{margin:64px auto 8px; max-width:980px; position:relative}
+  .pipe-grid{display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:0}
+  .node{border:1px solid var(--line2); background:linear-gradient(180deg,var(--panel),var(--panel2)); border-radius:14px;
+      padding:18px 16px; text-align:center; position:relative; z-index:2}
+  .node .lbl{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim)}
+  .node .ttl{font-family:var(--display); font-weight:600; font-size:18px; margin-top:5px}
+  .node.core{border-color:var(--pink); box-shadow:0 0 0 1px rgba(248,34,106,.4),0 14px 50px -14px rgba(248,34,106,.55)}
+  .node.core .ttl{color:var(--pink)}
+  .node.azure .ttl{color:var(--teal)}
+  .conduit{position:relative; height:3px; background:linear-gradient(90deg,var(--line2),var(--line2)); border-radius:3px; overflow:visible; margin:0 -2px}
+  .conduit::before{content:""; position:absolute; inset:0; border-radius:3px;
+      background:linear-gradient(90deg,transparent,var(--teal),transparent); opacity:.0}
+  .packet{position:absolute; top:50%; width:9px; height:9px; border-radius:50%; transform:translateY(-50%);
+      background:var(--teal); box-shadow:0 0 12px var(--teal); }
+  .conduit.to-core .packet{background:var(--teal); box-shadow:0 0 12px 2px rgba(1,230,157,.8); animation:flowR 2.4s linear infinite}
+  .conduit.from-core .packet{background:var(--pink); box-shadow:0 0 12px 2px rgba(248,34,106,.8); animation:flowR 2.4s linear infinite}
+  .conduit .packet:nth-child(2){animation-delay:.8s}
+  .conduit .packet:nth-child(3){animation-delay:1.6s}
+  @keyframes flowR{0%{left:-4%; opacity:0}10%{opacity:1}90%{opacity:1}100%{left:104%; opacity:0}}
+  .pipe-cap{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; color:var(--dim); margin-top:14px; letter-spacing:1px}
+  @media(max-width:720px){.pipe-grid{grid-template-columns:1fr; gap:14px}.conduit{height:26px; width:3px; margin:0 auto; justify-self:center}
+    .conduit .packet{top:auto; left:50%!important; transform:translateX(-50%); animation:flowD 2.4s linear infinite!important}
+    @keyframes flowD{0%{top:-10%;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:110%;opacity:0}}}
+
+  /* ---- sections ---- */
+  section{padding:64px 0; position:relative}
+  .sec-head{max-width:680px; margin-bottom:38px}
+  .sec-head h2{font-size:clamp(28px,4.4vw,46px); margin-top:10px}
+  .sec-head p{color:var(--muted); font-size:17px; margin:14px 0 0}
+  .reveal{opacity:0; transform:translateY(28px); transition:opacity .7s var(--ease), transform .7s var(--ease)}
+  .reveal.in{opacity:1; transform:none}
+
+  /* steps */
+  .steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px}
+  .step{border:1px solid var(--line); border-radius:16px; padding:24px; background:linear-gradient(180deg,var(--panel),transparent)}
+  .step .n{font-family:var(--mono); font-size:13px; color:var(--pink); border:1px solid var(--line2); width:38px; height:38px;
+      display:grid; place-items:center; border-radius:10px; margin-bottom:16px}
+  .step h3{font-size:20px; margin-bottom:8px}
+  .step p{color:var(--muted); font-size:14.5px; margin:0}
+
+  /* ---- gallery ---- */
+  .tabs{display:inline-flex; padding:5px; border:1px solid var(--line2); border-radius:12px; background:var(--panel); gap:4px; margin-bottom:26px}
+  .tab{font-family:var(--mono); font-size:13px; letter-spacing:.5px; padding:9px 18px; border-radius:8px; cursor:pointer; color:var(--muted); border:none; background:none; transition:.2s}
+  .tab[aria-selected="true"]{background:linear-gradient(135deg,var(--pink),#ff5e92); color:#fff}
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:18px}
+  .card{border:1px solid var(--line); border-radius:18px; padding:24px; background:linear-gradient(180deg,var(--panel),var(--panel2));
+      display:flex; flex-direction:column; transition:border-color .25s, transform .25s; position:relative; overflow:hidden}
+  .card::after{content:""; position:absolute; inset:0; border-radius:18px; padding:1px; pointer-events:none;
+      background:linear-gradient(135deg,transparent 40%,rgba(248,34,106,.5));
+      -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+      mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+      -webkit-mask-composite:xor; mask-composite:exclude; opacity:0; transition:opacity .25s}
+  .card:hover{transform:translateY(-4px)}
+  .card:hover::after{opacity:1}
+  .badge{align-self:flex-start; font-family:var(--mono); font-size:10.5px; letter-spacing:1.4px; text-transform:uppercase;
+      padding:4px 10px; border-radius:999px; border:1px solid var(--line2); color:var(--muted); margin-bottom:14px}
+  .badge.src{color:var(--teal); border-color:rgba(1,230,157,.4)}
+  .badge.dst{color:var(--pink); border-color:rgba(248,34,106,.4)}
+  .card h3{font-size:22px}
+  .card .sub{font-family:var(--mono); font-size:12px; color:var(--dim); margin:4px 0 12px}
+  .card p{color:var(--muted); font-size:14px; flex:1; margin:0 0 16px}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px}
+  .chip{font-size:11.5px; font-family:var(--mono); color:var(--muted); background:rgba(255,255,255,.03);
+      border:1px solid var(--line); border-radius:6px; padding:4px 8px}
+  .card-actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  .link-sm{font-family:var(--mono); font-size:12px; color:var(--muted)}
+
+  /* ---- builder ---- */
+  .builder{border:1px solid var(--line2); border-radius:22px; background:
+      radial-gradient(900px 400px at 100% 0%, rgba(248,34,106,.08), transparent 60%),
+      linear-gradient(180deg,var(--panel),var(--panel2)); overflow:hidden}
+  .builder-grid{display:grid; grid-template-columns:1.05fr 1fr}
+  @media(max-width:880px){.builder-grid{grid-template-columns:1fr}}
+  .b-config{padding:30px; border-right:1px solid var(--line)}
+  @media(max-width:880px){.b-config{border-right:none; border-bottom:1px solid var(--line)}}
+  .b-step{margin-bottom:26px}
+  .b-step .k{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:11px; display:flex; gap:8px; align-items:center}
+  .b-step .k b{color:var(--pink); font-weight:700}
+  .seg{display:inline-flex; border:1px solid var(--line2); border-radius:11px; padding:4px; gap:4px; background:var(--bg)}
+  .seg button{font-family:var(--body); font-weight:600; font-size:14px; padding:9px 16px; border-radius:8px; border:none; background:none; color:var(--muted); cursor:pointer; transition:.2s}
+  .seg button[aria-pressed="true"]{color:#fff}
+  .seg.dir button[aria-pressed="true"][data-v="source"]{background:linear-gradient(135deg,#019a6c,var(--teal)); color:#04140e}
+  .seg.dir button[aria-pressed="true"][data-v="destination"]{background:linear-gradient(135deg,var(--pink),#ff5e92)}
+  .seg.cloud button[aria-pressed="true"]{background:#222}
+  .opts{display:flex; flex-direction:column; gap:10px}
+  .opt{display:flex; gap:13px; align-items:flex-start; border:1px solid var(--line2); border-radius:13px; padding:14px 16px; cursor:pointer; transition:.2s; background:var(--bg)}
+  .opt:hover{border-color:var(--line2); background:#0e0e14}
+  .opt[aria-checked="true"]{border-color:var(--pink); box-shadow:0 0 0 1px rgba(248,34,106,.35) inset; background:#120c10}
+  .opt .dot{width:18px; height:18px; border-radius:50%; border:2px solid var(--line2); margin-top:2px; flex:none; transition:.2s}
+  .opt[aria-checked="true"] .dot{border-color:var(--pink); background:radial-gradient(circle,var(--pink) 42%,transparent 46%)}
+  .opt .o-ttl{font-weight:600; font-size:15px}
+  .opt .o-sub{font-family:var(--mono); font-size:11.5px; color:var(--dim); margin-top:2px}
+
+  /* output panel */
+  .b-out{padding:30px; display:flex; flex-direction:column; gap:18px; min-width:0}
+  .out-head{display:flex; align-items:center; gap:12px}
+  .out-head h3{font-size:24px}
+  .out-scope{font-family:var(--mono); font-size:11px; color:var(--dim)}
+  .deploy-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .deploy-row img{height:42px}
+  .field-block{border:1px solid var(--line); border-radius:12px; background:var(--bg); overflow:hidden}
+  .field-block .fb-h{display:flex; justify-content:space-between; align-items:center; padding:10px 13px; border-bottom:1px solid var(--line);
+      font-family:var(--mono); font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--dim)}
+  .copy{font-family:var(--mono); font-size:11px; color:var(--teal); background:none; border:1px solid var(--line2); border-radius:6px; padding:4px 9px; cursor:pointer; transition:.2s}
+  .copy:hover{border-color:var(--teal)}
+  .copy.done{color:var(--bg); background:var(--teal); border-color:var(--teal)}
+  .field-block pre{margin:0; padding:13px; font-family:var(--mono); font-size:12px; color:#d6d6e0; overflow-x:auto; white-space:pre; line-height:1.7}
+  .field-block .url{font-family:var(--mono); font-size:11.5px; color:var(--muted); padding:12px 13px; word-break:break-all; line-height:1.6}
+  .needs{border:1px solid var(--line); border-left:3px solid var(--pink); border-radius:10px; padding:14px 16px; background:var(--panel)}
+  .needs h4{font-family:var(--display); font-size:15px; margin:0 0 8px}
+  .needs ul{margin:0; padding-left:18px; color:var(--muted); font-size:13px}
+  .needs.none{border-left-color:var(--teal); color:var(--muted); font-size:13px}
+  .map{width:100%; border-collapse:collapse; font-size:13px}
+  .map td{padding:7px 0; border-bottom:1px solid var(--line); vertical-align:top}
+  .map td:first-child{color:var(--text); font-weight:500; width:46%; padding-right:12px}
+  .map td:last-child{color:var(--muted); font-family:var(--mono); font-size:11.5px}
+
+  /* ---- timeline ---- */
+  .timeline{position:relative; margin-left:8px; padding-left:30px; border-left:2px solid var(--line2)}
+  .tl{position:relative; padding:0 0 26px}
+  .tl::before{content:""; position:absolute; left:-39px; top:2px; width:16px; height:16px; border-radius:50%;
+      background:var(--bg); border:2px solid var(--pink); box-shadow:0 0 0 4px rgba(248,34,106,.12)}
+  .tl h4{font-family:var(--display); font-size:18px; margin:0 0 5px}
+  .tl p{margin:0; color:var(--muted); font-size:14px}
+  .tl code{font-family:var(--mono); font-size:12px; color:var(--teal); background:rgba(1,230,157,.08); padding:1px 6px; border-radius:5px}
+
+  /* ---- footer ---- */
+  footer{border-top:1px solid var(--line); margin-top:40px; padding:40px 0 64px; color:var(--dim); font-size:13.5px}
+  .foot-in{display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; align-items:center}
+  .foot-in img{height:26px; opacity:.9}
+  .foot-links{display:flex; gap:20px; flex-wrap:wrap}
+  .foot-links a{color:var(--muted)}
+
+  @media(prefers-reduced-motion:reduce){
+    *{animation-duration:.001s!important; animation-iteration-count:1!important; transition-duration:.001s!important}
+    .reveal{opacity:1; transform:none}
   }
-  h1 .accent{color:var(--pink)}
-  .tag{color:var(--muted); font-size:18px; max-width:680px; margin:0 auto 8px}
-  .sub{color:var(--muted); font-size:14px}
-  .sub code{font-family:"JetBrains Mono",monospace; color:var(--teal); font-size:12.5px}
-  section{margin:42px 0}
-  .section-head{display:flex; align-items:center; gap:12px; margin:0 0 6px}
-  .section-head h2{
-    font-family:"Barlow Semi Condensed",sans-serif; font-weight:700;
-    font-size:24px; margin:0; letter-spacing:.3px;
-  }
-  .pill{
-    font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.8px;
-    padding:3px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted);
-  }
-  .pill.src{color:var(--teal); border-color:rgba(1,230,157,.4)}
-  .pill.dst{color:var(--pink); border-color:rgba(248,34,106,.4)}
-  .section-sub{color:var(--muted); margin:0 0 20px; font-size:15px}
-  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px}
-  .card{
-    background:linear-gradient(180deg,var(--panel),var(--panel2));
-    border:1px solid var(--line); border-radius:16px; padding:22px;
-    display:flex; flex-direction:column; transition:border-color .2s, transform .2s;
-  }
-  .card:hover{border-color:rgba(248,34,106,.45); transform:translateY(-2px)}
-  .card h3{font-size:18px; margin:0 0 8px; font-weight:600}
-  .card p{color:var(--muted); font-size:14px; margin:0 0 16px; flex:1}
-  .btns{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
-  .btns img{height:40px}
-  .gov{
-    font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--muted);
-    border:1px solid var(--line); border-radius:8px; padding:9px 12px;
-  }
-  .gov:hover{border-color:var(--teal); text-decoration:none; color:var(--teal)}
-  .docs{margin-top:14px; font-size:13px}
-  .note{
-    background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--pink);
-    border-radius:10px; padding:16px 18px; color:var(--muted); font-size:13.5px; margin-top:8px;
-  }
-  .note code, .mono{font-family:"JetBrains Mono",monospace; color:var(--teal); font-size:12.5px}
-  footer{border-top:1px solid var(--line); margin-top:56px; padding:28px 0 60px; color:var(--muted); font-size:13px; text-align:center}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
+<div class="bg" id="bg"></div><div class="grid"></div><div class="grain"></div>
+
+<nav>
+  <div class="nav-in">
     <img src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" />
-    <h1>Azure Onboarding for <span class="accent">Abstract Security</span></h1>
-    <p class="tag">One-click Azure infrastructure for Abstract <strong>source</strong> and <strong>destination</strong> integrations — deployed straight from the Azure portal with a guided wizard.</p>
-    <p class="sub">Repo <code>IamABS3C/Abstract-MS-Azure-</code> · branch <code>main</code> · the repo must be public for the buttons to resolve.</p>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#integrations">Integrations</a>
+      <a href="#builder">Deploy</a>
+      <a href="#sentinel-prereqs">Sentinel setup</a>
+    </div>
+    <a class="nav-cta" href="https://github.com/IamABS3C/Abstract-MS-Azure-" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <!-- ===================== HERO ===================== -->
+  <header class="hero">
+    <img class="logo rise d1" src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" />
+    <div class="eyebrow rise d2">Azure Deployment Console</div>
+    <h1 class="rise d3">Pipe Azure into Abstract.<br /><span class="g">And back out again.</span></h1>
+    <p class="lead rise d4">The Security Data Pipeline Platform. Stand up every Azure <strong>source</strong> and <strong>destination</strong> integration — Event Hub, Activity Log, and Microsoft Sentinel — from one console. Pick a direction, pick an integration, pick a cloud, and deploy.</p>
+    <div class="cta rise d5">
+      <a class="btn btn-primary" href="#builder">⚡ Build your deployment</a>
+      <a class="btn btn-ghost" href="#how">See how it works</a>
+    </div>
+    <div class="stats rise d6">
+      <div><b>4</b> integrations</div>
+      <div><b>2</b> clouds · Public + Gov</div>
+      <div><b>0</b> secrets in outputs</div>
+      <div><b>1</b>-click portal deploy</div>
+    </div>
+
+    <!-- animated pipeline -->
+    <div class="pipe rise d6" aria-hidden="true">
+      <div class="pipe-grid">
+        <div class="node azure"><div class="lbl">Azure</div><div class="ttl">Log Sources</div></div>
+        <div class="conduit to-core"><span class="packet"></span><span class="packet"></span><span class="packet"></span></div>
+        <div class="node core"><div class="lbl">Pipeline</div><div class="ttl">Abstract</div></div>
+        <div class="conduit from-core"><span class="packet"></span><span class="packet"></span><span class="packet"></span></div>
+        <div class="node azure"><div class="lbl">Azure</div><div class="ttl">Destinations</div></div>
+      </div>
+      <div class="pipe-cap"><span>↳ ingest · reduce · enrich</span><span>route anywhere ↲</span></div>
+    </div>
   </header>
 
-  <section>
-    <div class="section-head"><h2>Sources</h2><span class="pill src">Abstract reads from Azure</span></div>
-    <p class="section-sub">Stand up an Event Hubs namespace, hubs, the <span class="mono">abstract</span> consumer group and the required checkpoint storage so Abstract can ingest Azure logs.</p>
-    <div class="grid">
-      <div class="card">
-        <h3>Event Hub (Source)</h3>
-        <p>Namespace, one hub per log source, consumer group, checkpoint Storage Account + container, SAS and/or Service Principal auth, and networking guardrails. Guided 6-step wizard.</p>
-        <div class="btns">
-          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2FcreateUiDefinition.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
-          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2FcreateUiDefinition.json">Azure Gov ↗</a>
+  <!-- ===================== HOW IT WORKS ===================== -->
+  <section id="how">
+    <div class="sec-head reveal">
+      <div class="eyebrow">The flow</div>
+      <h2>Two directions. One pipeline.</h2>
+      <p>Abstract decouples your security data from your tools. These templates provision the Azure side of that pipeline — whichever way the data needs to move.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><div class="n">01</div><h3>Choose a direction</h3><p><b style="color:var(--teal)">Source</b> = Abstract reads <em>from</em> Azure. <b style="color:var(--pink)">Destination</b> = Abstract writes <em>to</em> Azure.</p></div>
+      <div class="step reveal"><div class="n">02</div><h3>Pick the integration</h3><p>Event Hub, Activity Log export, Event Hub Destination, or Microsoft Sentinel — each is a focused, self-contained template.</p></div>
+      <div class="step reveal"><div class="n">03</div><h3>Deploy from the portal</h3><p>The console builds the exact Azure portal deep-link and a matching CLI command. One click launches the guided wizard.</p></div>
+      <div class="step reveal"><div class="n">04</div><h3>Wire up Abstract</h3><p>The deployment <b>Outputs</b> tab is a field-for-field answer key for the Abstract integration modal — copy and paste.</p></div>
+    </div>
+  </section>
+
+  <!-- ===================== INTEGRATIONS GALLERY ===================== -->
+  <section id="integrations">
+    <div class="sec-head reveal">
+      <div class="eyebrow pink">Catalog</div>
+      <h2>Choose your integration</h2>
+      <p>Every card deploys one self-contained ARM template with its own guided wizard. Send any of them straight to the builder.</p>
+    </div>
+    <div class="tabs reveal" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-filter="all">All</button>
+      <button class="tab" role="tab" aria-selected="false" data-filter="source">Sources →</button>
+      <button class="tab" role="tab" aria-selected="false" data-filter="destination">→ Destinations</button>
+    </div>
+    <div class="cards" id="gallery"></div>
+  </section>
+
+  <!-- ===================== BUILDER ===================== -->
+  <section id="builder">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Deployment builder</div>
+      <h2>Configure &amp; deploy</h2>
+      <p>Select a direction, an integration and a cloud — the console assembles your portal deep-link, CLI command, prerequisites and the Abstract field map in real time.</p>
+    </div>
+    <div class="builder reveal">
+      <div class="builder-grid">
+        <div class="b-config">
+          <div class="b-step">
+            <div class="k"><b>01</b> Direction</div>
+            <div class="seg dir" id="seg-dir">
+              <button data-v="source" aria-pressed="true">Source →</button>
+              <button data-v="destination" aria-pressed="false">→ Destination</button>
+            </div>
+          </div>
+          <div class="b-step">
+            <div class="k"><b>02</b> Integration</div>
+            <div class="opts" id="b-opts"></div>
+          </div>
+          <div class="b-step">
+            <div class="k"><b>03</b> Cloud</div>
+            <div class="seg cloud" id="seg-cloud">
+              <button data-v="public" aria-pressed="true">Azure Public</button>
+              <button data-v="gov" aria-pressed="false">Azure Government</button>
+            </div>
+          </div>
         </div>
-        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/integrations/source-integrations/azure-event-hub/">Source integration docs ↗</a></div>
-      </div>
-      <div class="card">
-        <h3>Activity Log export</h3>
-        <p>Subscription-scope diagnostic setting that streams the Azure Activity Log into the hub. Deploy once per subscription, after the source stack.</p>
-        <div class="btns">
-          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
-          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json">Azure Gov ↗</a>
-        </div>
-        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/pipeline/#route-node">Pipeline / Route node ↗</a></div>
+        <div class="b-out" id="b-out"><!-- rendered --></div>
       </div>
     </div>
   </section>
 
-  <section>
-    <div class="section-head"><h2>Destinations</h2><span class="pill dst">Abstract writes to Azure</span></div>
-    <p class="section-sub">Provision the Azure side of an Abstract destination so processed events land in Event Hub or Microsoft Sentinel.</p>
-    <div class="grid">
-      <div class="card">
-        <h3>Event Hub Destination</h3>
-        <p>Namespace + destination hub + least-privilege <span class="mono">Send</span> SAS rule for the connection string, plus optional Entra ID (Data Sender) delivery and networking guardrails.</p>
-        <div class="btns">
-          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
-          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json">Azure Gov ↗</a>
-        </div>
-        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-eventhub-destination/">EventHub Destination docs ↗</a></div>
-      </div>
-      <div class="card">
-        <h3>Sentinel Destination</h3>
-        <p>Full stack: Log Analytics workspace, Microsoft Sentinel, Data Collection Endpoint, custom <span class="mono">_CL</span> table, Data Collection Rule, and DCR role assignments. Outputs the DCR Immutable ID, DCE URL and stream name.</p>
-        <div class="btns">
-          <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>
-          <a class="gov" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json">Azure Gov ↗</a>
-        </div>
-        <div class="docs"><a href="https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/">Sentinel Destination docs ↗</a></div>
-      </div>
+  <!-- ===================== SENTINEL PREREQS ===================== -->
+  <section id="sentinel-prereqs">
+    <div class="sec-head reveal">
+      <div class="eyebrow pink">Before you deploy · Sentinel only</div>
+      <h2>Create the Entra app first</h2>
+      <p>ARM can't create app registrations, so the Sentinel Destination needs an Entra app you make ahead of time. Five minutes, once.</p>
     </div>
-    <div class="note">
-      <strong>Sentinel prerequisite:</strong> an Entra <strong>app registration</strong> + client secret can't be created by ARM. Create it first, then pass its <span class="mono">service principal object ID</span> to the wizard so the template grants <span class="mono">Monitoring Metrics Publisher</span> + <span class="mono">Monitoring Contributor</span> on the DCR. The Client ID / Secret / Tenant ID are entered in Abstract.
+    <div class="reveal">
+      <div class="timeline">
+        <div class="tl"><h4>1 · Register the app</h4><p>Entra ID → App registrations → <b>New registration</b> (e.g. <code>Abstract-Sentinel-App</code>, single tenant). Save the <b>Application (client) ID</b> and <b>Directory (tenant) ID</b>.</p></div>
+        <div class="tl"><h4>2 · Add a client secret</h4><p>Certificates &amp; secrets → <b>New client secret</b>. Copy the <b>Value</b> immediately — it's shown once.</p></div>
+        <div class="tl"><h4>3 · Grab the service principal object ID</h4><p>Entra ID → Enterprise applications → your app → <code>Object ID</code>. This goes in the wizard so the template grants it <code>Monitoring Metrics Publisher</code> + <code>Monitoring Contributor</code> on the DCR.</p></div>
+        <div class="tl"><h4>4 · Deploy</h4><p>Run the <b>Sentinel Destination</b> template below. It builds the workspace, Sentinel, DCE, custom table, DCR and the role assignments.</p></div>
+        <div class="tl"><h4>5 · Paste into Abstract</h4><p>Client ID, Client Secret, Tenant ID, plus the deployment's <b>DCR Immutable ID</b>, <b>DCE URL</b> and <b>Stream Name</b> outputs.</p></div>
+      </div>
     </div>
   </section>
-
-  <footer>
-    Test any wizard without deploying at the
-    <a href="https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/SandboxBlade">CreateUiDefinition sandbox ↗</a>.
-    &nbsp;·&nbsp; <a href="https://github.com/IamABS3C/Abstract-MS-Azure-">Source on GitHub ↗</a>
-    &nbsp;·&nbsp; © Abstract Security
-  </footer>
 </div>
+
+<footer>
+  <div class="wrap foot-in">
+    <img src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" />
+    <div class="foot-links">
+      <a href="https://abstract.security" target="_blank" rel="noopener">Website ↗</a>
+      <a href="https://docs.abstractsecurity.app" target="_blank" rel="noopener">Docs ↗</a>
+      <a href="https://github.com/IamABS3C/Abstract-MS-Azure-" target="_blank" rel="noopener">Repo ↗</a>
+      <a href="https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/SandboxBlade" target="_blank" rel="noopener">Wizard sandbox ↗</a>
+    </div>
+    <div>© <span id="yr"></span> Abstract Security · repo must be public for buttons to resolve</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var REPO = {owner:"IamABS3C", repo:"Abstract-MS-Azure-", branch:"main"};
+  var RAW = "https://raw.githubusercontent.com/"+REPO.owner+"/"+REPO.repo+"/"+REPO.branch+"/";
+  var CLOUDS = {
+    public:{label:"Azure Public", portal:"https://portal.azure.com"},
+    gov:{label:"Azure Government", portal:"https://portal.azure.us"}
+  };
+
+  var INTEGRATIONS = [
+    {
+      id:"eh-source", dir:"source", name:"Event Hub", kind:"Source",
+      sub:"Abstract reads ← Event Hub", scope:"Resource group",
+      blurb:"Namespace, one hub per log source, the abstract consumer group, the required checkpoint storage, and SAS and/or Service Principal auth — with Safe Mode networking so onboarding never breaks.",
+      tmpl:"azuredeploy.json", ui:"createUiDefinition.json",
+      chips:["Namespace","Hub / source","Consumer group","Checkpoint storage","SAS + RBAC","Safe Mode"],
+      cli:["az deployment group create -g rg-abstract \\","  --template-file azuredeploy.json \\","  --parameters parameters/abstract-recommended.parameters.json \\","  --parameters namespaceName=abs-eh001"],
+      needs:[],
+      map:[["Event Hub Name","output: eventHubNames"],["Consumer Group","abstract"],["Blob Container Name","abstract-checkpoints"],["Fully Qualified Namespace","output: namespaceFqdn"],["Storage Account URL","output: storageAccountUrl"]],
+      docs:"https://docs.abstractsecurity.app/docs/integrations/source-integrations/azure-event-hub/"
+    },
+    {
+      id:"activity", dir:"source", name:"Activity Log Export", kind:"Source",
+      sub:"Subscription → Hub", scope:"Subscription",
+      blurb:"A subscription-scope diagnostic setting that streams the Azure Activity Log into your Abstract hub. Deploy once per subscription, after the Event Hub source stack.",
+      tmpl:"templates/subscription/activitylog.azuredeploy.json", ui:null,
+      chips:["Subscription scope","8 log categories","Send auth rule"],
+      cli:["az deployment sub create --location eastus \\","  --template-file templates/subscription/activitylog.azuredeploy.json \\","  --parameters eventHubAuthorizationRuleId=<abstractDiagnosticsAuthRuleId> \\","               eventHubName=evh-abstract-activity"],
+      needs:["The Event Hub source stack deployed first (for the hub + abstractDiagnosticsAuthRuleId output)"],
+      map:[["Streams to","your Activity Log hub"],["Auth rule","abstract-diagnostics-send (Send)"],["Scope","one per subscription"]],
+      docs:"https://docs.abstractsecurity.app/docs/pipeline/#route-node"
+    },
+    {
+      id:"eh-dest", dir:"destination", name:"Event Hub Destination", kind:"Destination",
+      sub:"Abstract writes → Event Hub", scope:"Resource group",
+      blurb:"Namespace + destination hub + a least-privilege Send SAS rule for the connection string (keys never appear in outputs), with optional Entra ID delivery and networking guardrails.",
+      tmpl:"templates/destinations/eventhub-destination.azuredeploy.json", ui:"templates/destinations/eventhub-destination.createUiDefinition.json",
+      chips:["Namespace","Destination hub","Send SAS rule","Optional Data Sender RBAC","Safe Mode"],
+      cli:["az deployment group create -g rg-abstract-dest \\","  --template-file templates/destinations/eventhub-destination.azuredeploy.json \\","  --parameters parameters/eventhub-destination.parameters.json \\","  --parameters namespaceName=abs-dest001"],
+      needs:[],
+      map:[["EventHub Name","output: eventHubName"],["EventHub Connection String","namespace → Shared access policies → abstract-send → primary"]],
+      docs:"https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-eventhub-destination/"
+    },
+    {
+      id:"sentinel", dir:"destination", name:"Microsoft Sentinel", kind:"Destination",
+      sub:"Abstract writes → Sentinel", scope:"Resource group",
+      blurb:"The full Logs Ingestion stack: Log Analytics workspace, Microsoft Sentinel, Data Collection Endpoint, a custom _CL table, a Data Collection Rule, and the DCR role assignments — all in one deployment.",
+      tmpl:"templates/destinations/sentinel-destination.azuredeploy.json", ui:"templates/destinations/sentinel-destination.createUiDefinition.json",
+      chips:["Log Analytics","Sentinel","DCE","Custom _CL table","DCR","DCR RBAC"],
+      cli:["az deployment group create -g rg-abstract-sentinel \\","  --template-file templates/destinations/sentinel-destination.azuredeploy.json \\","  --parameters parameters/sentinel-destination.parameters.json \\","  --parameters principalId=<spn-object-id>"],
+      needs:["Entra app registration + client secret (ARM can't create it)","The app's service principal OBJECT id","Rights to assign roles on the DCR (Owner / User Access Administrator)"],
+      map:[["Client ID","your app registration"],["Client Secret Value","your app registration"],["Application Tenant ID","output: tenantId"],["Data Collection Rule ID","output: dataCollectionRuleImmutableId"],["Data Collection Endpoint","output: dataCollectionEndpointUrl"],["Log Stream Name","output: logStreamName (Custom-<table>)"]],
+      docs:"https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/"
+    }
+  ];
+
+  function portalUrl(integ, cloudKey){
+    var base = CLOUDS[cloudKey].portal + "/#create/Microsoft.Template/uri/" + encodeURIComponent(RAW + integ.tmpl);
+    if(integ.ui){ base += "/createUIDefinitionUri/" + encodeURIComponent(RAW + integ.ui); }
+    return base;
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+  function $(s,r){ return (r||document).querySelector(s); }
+
+  /* ---------- gallery ---------- */
+  function cardHtml(it){
+    var cls = it.dir==="source"?"src":"dst";
+    return '<article class="card" data-dir="'+it.dir+'">'
+      + '<span class="badge '+cls+'">'+it.kind+'</span>'
+      + '<h3>'+esc(it.name)+'</h3>'
+      + '<div class="sub">'+esc(it.sub)+' · '+esc(it.scope)+'</div>'
+      + '<p>'+esc(it.blurb)+'</p>'
+      + '<div class="chips">'+it.chips.map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join('')+'</div>'
+      + '<div class="card-actions">'
+      +   '<button class="btn btn-primary" data-deploy="'+it.id+'" style="padding:10px 16px;font-size:14px">Configure &amp; deploy</button>'
+      +   '<a class="link-sm" href="'+it.docs+'" target="_blank" rel="noopener">Docs ↗</a>'
+      + '</div></article>';
+  }
+  function renderGallery(filter){
+    var g = $("#gallery");
+    g.innerHTML = INTEGRATIONS.filter(function(it){return filter==="all"||it.dir===filter;}).map(cardHtml).join("");
+    g.querySelectorAll("[data-deploy]").forEach(function(b){
+      b.addEventListener("click", function(){ selectIntegration(b.getAttribute("data-deploy"), true); });
+    });
+  }
+
+  /* ---------- builder state ---------- */
+  var state = { dir:"source", id:"eh-source", cloud:"public" };
+
+  function renderOpts(){
+    var box = $("#b-opts");
+    var list = INTEGRATIONS.filter(function(it){return it.dir===state.dir;});
+    if(list.map(function(i){return i.id;}).indexOf(state.id)<0){ state.id = list[0].id; }
+    box.innerHTML = list.map(function(it){
+      var on = it.id===state.id;
+      return '<div class="opt" role="radio" tabindex="0" aria-checked="'+on+'" data-id="'+it.id+'">'
+        + '<span class="dot"></span>'
+        + '<span><span class="o-ttl">'+esc(it.name)+'</span><span class="o-sub">'+esc(it.sub)+' · '+esc(it.scope)+'</span></span>'
+        + '</div>';
+    }).join("");
+    box.querySelectorAll(".opt").forEach(function(o){
+      function pick(){ state.id=o.getAttribute("data-id"); renderOpts(); renderOut(); }
+      o.addEventListener("click", pick);
+      o.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pick(); }});
+    });
+  }
+
+  function renderOut(){
+    var it = INTEGRATIONS.filter(function(i){return i.id===state.id;})[0];
+    var url = portalUrl(it, state.cloud);
+    var cli = it.cli.join("\n");
+    var needs = it.needs.length
+      ? '<div class="needs"><h4>What you\'ll need</h4><ul>'+it.needs.map(function(n){return '<li>'+esc(n)+'</li>';}).join('')+'</ul></div>'
+      : '<div class="needs none">✓ No prerequisites — deploy straight away.</div>';
+    var rows = it.map.map(function(m){return '<tr><td>'+esc(m[0])+'</td><td>'+esc(m[1])+'</td></tr>';}).join('');
+    var badgeCls = it.dir==="source"?"src":"dst";
+
+    $("#b-out").innerHTML =
+        '<div class="out-head"><span class="badge '+badgeCls+'" style="margin:0">'+it.kind+'</span>'
+      +   '<h3>'+esc(it.name)+'</h3></div>'
+      + '<div class="out-scope">'+esc(it.scope)+' deployment · '+esc(CLOUDS[state.cloud].label)+(it.ui?' · guided wizard':' · parameters only')+'</div>'
+      + '<div class="deploy-row">'
+      +   '<a href="'+url+'" target="_blank" rel="noopener" title="Open the Azure portal"><img src="https://aka.ms/deploytoazure'+(state.cloud==="gov"?"gov":"")+'button" alt="Deploy to Azure" /></a>'
+      +   '<a class="link-sm" href="'+it.docs+'" target="_blank" rel="noopener">Integration docs ↗</a>'
+      + '</div>'
+      + needs
+      + '<div class="field-block"><div class="fb-h"><span>Portal deep-link</span><button class="copy" data-copy="url">Copy</button></div><div class="url" id="out-url">'+esc(url)+'</div></div>'
+      + '<div class="field-block"><div class="fb-h"><span>Azure CLI</span><button class="copy" data-copy="cli">Copy</button></div><pre id="out-cli">'+esc(cli)+'</pre></div>'
+      + '<div class="field-block"><div class="fb-h"><span>Abstract modal · answer key</span><span style="color:var(--dim)">from Outputs</span></div><div style="padding:6px 13px 12px"><table class="map">'+rows+'</table></div></div>';
+
+    $("#b-out").querySelectorAll(".copy").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var txt = btn.getAttribute("data-copy")==="url" ? url : cli;
+        navigator.clipboard.writeText(txt).then(function(){
+          btn.textContent="Copied ✓"; btn.classList.add("done");
+          setTimeout(function(){ btn.textContent="Copy"; btn.classList.remove("done"); },1400);
+        });
+      });
+    });
+  }
+
+  function selectIntegration(id, scroll){
+    var it = INTEGRATIONS.filter(function(i){return i.id===id;})[0];
+    if(!it) return;
+    state.id = id; state.dir = it.dir;
+    $("#seg-dir").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-v")===state.dir); });
+    renderOpts(); renderOut();
+    if(scroll){ document.getElementById("builder").scrollIntoView({behavior:"smooth"}); }
+  }
+
+  /* ---------- wire segmented controls ---------- */
+  $("#seg-dir").querySelectorAll("button").forEach(function(b){
+    b.addEventListener("click", function(){
+      state.dir=b.getAttribute("data-v");
+      $("#seg-dir").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed", x===b);});
+      renderOpts(); renderOut();
+    });
+  });
+  $("#seg-cloud").querySelectorAll("button").forEach(function(b){
+    b.addEventListener("click", function(){
+      state.cloud=b.getAttribute("data-v");
+      $("#seg-cloud").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed", x===b);});
+      renderOut();
+    });
+  });
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click", function(){
+      document.querySelectorAll(".tab").forEach(function(x){x.setAttribute("aria-selected", x===t);});
+      renderGallery(t.getAttribute("data-filter"));
+    });
+  });
+
+  /* ---------- scroll reveal ---------- */
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }});
+  }, {threshold:.14});
+  document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
+
+  /* ---------- hero pointer glow ---------- */
+  window.addEventListener("pointermove", function(e){
+    document.getElementById("bg").style.setProperty("--mx", (e.clientX/window.innerWidth*100)+"%");
+  });
+
+  /* ---------- init ---------- */
+  $("#yr").textContent = new Date().getFullYear();
+  renderGallery("all");
+  renderOpts();
+  renderOut();
+})();
+</script>
 </body>
 </html>
