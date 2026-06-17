@@ -1,252 +1,399 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "contentVersion": "2.0.0.0",
+  "contentVersion": "1.0.0.0",
   "metadata": {
-    "_generator": { "name": "Abstract Security - Solutions Engineering", "version": "2.0" },
-    "description": "Deploys the complete Azure infrastructure required by the Abstract Security 'Azure Event Hub' integration: Event Hubs namespace, one or many Event Hubs, the 'abstract' consumer group, a checkpoint Storage Account + private blob container, Connection String (SAS) and/or Service Principal (RBAC) authentication, optional IP allowlist / Private Endpoints / Safe Mode guardrails, and namespace diagnostics. No secrets are ever emitted in outputs."
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "188097116880316201"
+    }
   },
   "parameters": {
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
-      "metadata": { "description": "Azure region for all resources. Event Hubs must be in the same region as the resources being monitored when those resources are regional." }
+      "metadata": {
+        "description": "Azure region for all resources. Event Hubs must be in the same region as the resources being monitored when those resources are regional."
+      }
     },
     "namespaceName": {
       "type": "string",
       "minLength": 6,
       "maxLength": 50,
-      "metadata": { "description": "Event Hubs namespace name - globally unique, 6-50 chars, letters/numbers/hyphens, must start with a letter." }
+      "metadata": {
+        "description": "Event Hubs namespace name - globally unique, 6-50 chars, letters/numbers/hyphens, must start with a letter."
+      }
     },
     "sku": {
       "type": "string",
       "defaultValue": "Standard",
-      "allowedValues": ["Basic", "Standard", "Premium"],
-      "metadata": { "description": "Namespace pricing tier. Abstract requires STANDARD as the minimum tier (Basic lacks custom consumer groups, IP firewall and >1 day retention; it is allowed here only for lab scenarios)." }
+      "allowedValues": [
+        "Basic",
+        "Standard",
+        "Premium"
+      ],
+      "metadata": {
+        "description": "Namespace pricing tier. Abstract requires STANDARD as the minimum tier (Basic lacks custom consumer groups, IP firewall and >1 day retention; it is allowed here only for lab scenarios)."
+      }
     },
     "capacity": {
       "type": "int",
       "defaultValue": 1,
       "minValue": 1,
       "maxValue": 40,
-      "metadata": { "description": "Throughput Units (Basic/Standard, 1-40) or Processing Units (Premium: 1, 2, 4, 8, 16). Sizing per Abstract docs: ~1 TU per 1 MB/s of expected ingress (1 MB/s = 1 TU; 10 MB/s = 10 TU; 32 MB/s = 32 TU)." }
+      "metadata": {
+        "description": "Throughput Units (Basic/Standard, 1-40) or Processing Units (Premium: 1, 2, 4, 8, 16). Sizing: ~1 TU per 1 MB/s of expected ingress - see the table in the template header."
+      }
     },
     "autoInflate": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "Enable Auto-Inflate so the namespace scales Throughput Units automatically with load (Standard tier only; ignored on Basic/Premium)." }
+      "metadata": {
+        "description": "Enable Auto-Inflate so the namespace scales Throughput Units automatically with load (Standard tier only; ignored on Basic/Premium)."
+      }
     },
     "maxThroughputUnits": {
       "type": "int",
       "defaultValue": 20,
       "minValue": 1,
       "maxValue": 40,
-      "metadata": { "description": "Auto-Inflate ceiling in Throughput Units (Standard only, max 40)." }
+      "metadata": {
+        "description": "Auto-Inflate ceiling in Throughput Units (Standard only, max 40)."
+      }
     },
     "minimumTlsVersion": {
       "type": "string",
       "defaultValue": "1.2",
-      "allowedValues": ["1.0", "1.1", "1.2"],
-      "metadata": { "description": "Minimum TLS version the namespace accepts. Leave at 1.2 unless a legacy producer forces otherwise." }
+      "allowedValues": [
+        "1.0",
+        "1.1",
+        "1.2"
+      ],
+      "metadata": {
+        "description": "Minimum TLS version the namespace accepts. Leave at 1.2 unless a legacy producer forces otherwise."
+      }
     },
     "tags": {
       "type": "object",
       "defaultValue": {},
-      "metadata": { "description": "Tags applied to every resource created by this template." }
+      "metadata": {
+        "description": "Tags applied to every resource created by this template."
+      }
     },
     "autoHubNaming": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "true = generate hub names as <hubPrefix>-<environment>-<source> from hubSources; false = use the eventHubs array verbatim." }
+      "metadata": {
+        "description": "true = generate hub names as <hubPrefix>-<environment>-<source> from hubSources; false = use the eventHubs array verbatim."
+      }
     },
     "hubPrefix": {
       "type": "string",
       "defaultValue": "abs",
-      "metadata": { "description": "Prefix for auto-generated hub names (e.g. 'abs' -> abs-prod-entra)." }
+      "metadata": {
+        "description": "Prefix for auto-generated hub names (e.g. \"abs\" -> abs-prod-entra)."
+      }
     },
     "environment": {
       "type": "string",
       "defaultValue": "prod",
-      "metadata": { "description": "Environment token used in auto-generated hub names (prod, staging, dev, ...)." }
+      "metadata": {
+        "description": "Environment token used in auto-generated hub names (prod, staging, dev, ...)."
+      }
     },
     "hubSources": {
       "type": "array",
-      "defaultValue": ["activity", "entra", "defender"],
-      "metadata": { "description": "Log sources - one Event Hub is generated per entry when autoHubNaming = true. Typical sources: activity (Azure Activity Log), entra (Entra ID sign-in/audit), defender (Defender XDR streaming), m365, resource (Azure Resource Logs)." }
+      "defaultValue": [
+        "activity",
+        "entra",
+        "defender"
+      ],
+      "metadata": {
+        "description": "Log sources - one Event Hub is generated per entry when autoHubNaming = true. Typical sources: activity (Azure Activity Log), entra (Entra ID sign-in/audit), defender (Defender XDR streaming), m365, resource (Azure Resource Logs)."
+      }
     },
     "eventHubs": {
       "type": "array",
       "defaultValue": [
-        { "name": "default-hub", "partitionCount": 4, "retentionDays": 7 }
+        {
+          "name": "default-hub",
+          "partitionCount": 4,
+          "retentionDays": 7
+        }
       ],
-      "metadata": { "description": "Explicit hub definitions, used only when autoHubNaming = false: [{ name, partitionCount, retentionDays }]." }
+      "metadata": {
+        "description": "Explicit hub definitions, used only when autoHubNaming = false: [{ name, partitionCount, retentionDays }]."
+      }
     },
     "defaultPartitionCount": {
       "type": "int",
       "defaultValue": 4,
       "minValue": 1,
       "maxValue": 32,
-      "metadata": { "description": "Partition count for auto-generated hubs. Abstract docs recommend AT LEAST 4. Partitions cannot be reduced after creation; max 32 on Standard." }
+      "metadata": {
+        "description": "Partition count for auto-generated hubs. Abstract docs recommend AT LEAST 4. Partitions cannot be reduced after creation; max 32 on Standard."
+      }
     },
     "defaultRetentionDays": {
       "type": "int",
       "defaultValue": 7,
       "minValue": 1,
       "maxValue": 7,
-      "metadata": { "description": "Message retention in days for auto-generated hubs. Size this to ride out ingestion downtime/delay (Abstract docs). Standard allows 1-7; Basic is forced to 1." }
+      "metadata": {
+        "description": "Message retention in days for auto-generated hubs. Size this to ride out ingestion downtime/delay (Abstract docs). Standard allows 1-7; Basic is forced to 1."
+      }
     },
     "consumerGroupName": {
       "type": "string",
       "defaultValue": "abstract",
-      "metadata": { "description": "Consumer group created on every hub for the Abstract platform. Enter this value in the 'Event Hub Consumer Group' field of the Abstract integration. Ignored on Basic SKU (only $Default exists there)." }
+      "metadata": {
+        "description": "Consumer group created on every hub for the Abstract platform. Enter this value in the \"Event Hub Consumer Group\" field of the Abstract integration. Ignored on Basic SKU (only $Default exists there)."
+      }
     },
     "enableSas": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "Create SAS authorization rules for Connection String authentication in Abstract. When false, local (SAS) auth is fully DISABLED on the namespace and only Entra ID / RBAC works." }
+      "metadata": {
+        "description": "Create SAS authorization rules for Connection String authentication in Abstract. When false, local (SAS) auth is fully DISABLED on the namespace and only Entra ID / RBAC works."
+      }
     },
     "sasRuleName": {
       "type": "string",
       "defaultValue": "abstract-access",
-      "metadata": { "description": "Name of the least-privilege SAS rule created at namespace level (and per hub when perHubSasRules = true). Prefer this over RootManageSharedAccessKey when pasting a connection string into Abstract." }
+      "metadata": {
+        "description": "Name of the least-privilege SAS rule created at namespace level (and per hub when perHubSasRules = true). Prefer this over RootManageSharedAccessKey when pasting a connection string into Abstract."
+      }
     },
     "sasRights": {
       "type": "array",
-      "defaultValue": ["Listen"],
-      "metadata": { "description": "Rights for the SAS rule. Listen is all Abstract needs to consume; include Send only if log producers will share the same rule." }
+      "defaultValue": [
+        "Listen"
+      ],
+      "metadata": {
+        "description": "Rights for the SAS rule. Listen is all Abstract needs to consume; include Send only if log producers will share the same rule."
+      }
     },
     "perHubSasRules": {
       "type": "bool",
       "defaultValue": false,
-      "metadata": { "description": "Also create a per-hub SAS rule with the same name/rights - a tighter blast radius than the namespace-level rule." }
+      "metadata": {
+        "description": "Also create a per-hub SAS rule with the same name/rights - a tighter blast radius than the namespace-level rule."
+      }
+    },
+    "createDiagnosticsSendRule": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Create a dedicated Send-only SAS rule for LOG PRODUCERS (Azure diagnostic settings: Activity Log, Entra ID, Defender, resource logs). This is separate from the Listen-only Abstract consumer rule and is what the subscription Activity Log export uses. Requires local auth (enableSas = true)."
+      }
+    },
+    "diagnosticsSendRuleName": {
+      "type": "string",
+      "defaultValue": "abstract-diagnostics-send",
+      "metadata": {
+        "description": "Name of the Send-only diagnostics SAS rule used by log producers / diagnostic settings."
+      }
     },
     "enableRbac": {
       "type": "bool",
       "defaultValue": false,
-      "metadata": { "description": "Assign Azure RBAC roles for Service Principal (role-based) authentication in Abstract: Event Hubs role on the namespace + Storage Blob Data role on the checkpoint storage account." }
+      "metadata": {
+        "description": "Assign Azure RBAC roles for Service Principal (role-based) authentication in Abstract: Event Hubs role on the namespace + Storage Blob Data role on the checkpoint storage account."
+      }
     },
     "principalId": {
       "type": "string",
       "defaultValue": "",
-      "metadata": { "description": "Object ID of the service principal (or managed identity) Abstract will authenticate as. Find it on the Enterprise Application blade - this is the SP object ID, NOT the app/client ID." }
+      "metadata": {
+        "description": "Object ID of the service principal (or managed identity) Abstract will authenticate as. Find it on the Enterprise Application blade - this is the SP object ID, NOT the app/client ID."
+      }
     },
     "roleDefinitionName": {
       "type": "string",
       "defaultValue": "Azure Event Hubs Data Receiver",
-      "allowedValues": ["Azure Event Hubs Data Sender", "Azure Event Hubs Data Receiver", "Azure Event Hubs Data Owner"],
-      "metadata": { "description": "Built-in Event Hubs data-plane role assigned on the namespace. Abstract docs specify Azure Event Hubs Data Receiver." }
+      "allowedValues": [
+        "Azure Event Hubs Data Sender",
+        "Azure Event Hubs Data Receiver",
+        "Azure Event Hubs Data Owner"
+      ],
+      "metadata": {
+        "description": "Built-in Event Hubs data-plane role assigned on the namespace. Abstract docs specify Azure Event Hubs Data Receiver."
+      }
     },
     "storageRoleDefinitionName": {
       "type": "string",
       "defaultValue": "Storage Blob Data Contributor",
-      "allowedValues": ["Storage Blob Data Contributor", "Storage Blob Data Owner"],
-      "metadata": { "description": "Built-in Storage data-plane role assigned on the checkpoint storage account. Abstract docs specify Storage Blob Data Contributor." }
+      "allowedValues": [
+        "Storage Blob Data Contributor",
+        "Storage Blob Data Owner"
+      ],
+      "metadata": {
+        "description": "Built-in Storage data-plane role assigned on the checkpoint storage account. Abstract docs specify Storage Blob Data Contributor."
+      }
     },
     "principalType": {
       "type": "string",
       "defaultValue": "ServicePrincipal",
-      "allowedValues": ["ServicePrincipal", "User", "Group"],
-      "metadata": { "description": "Type of the principal being granted RBAC (setting this avoids PrincipalNotFound failures from directory replication delay on freshly created SPNs)." }
+      "allowedValues": [
+        "ServicePrincipal",
+        "User",
+        "Group"
+      ],
+      "metadata": {
+        "description": "Type of the principal being granted RBAC (setting this avoids PrincipalNotFound failures from directory replication delay on freshly created SPNs)."
+      }
     },
     "createStorageAccount": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "Create the checkpoint Storage Account + blob container required by the Abstract integration. Set false only if you will point Abstract at an existing storage account you manage yourself." }
+      "metadata": {
+        "description": "Create the checkpoint Storage Account + blob container required by the Abstract integration. Set false only if you will point Abstract at an existing storage account you manage yourself."
+      }
     },
     "storageAccountName": {
       "type": "string",
       "defaultValue": "",
       "maxLength": 24,
-      "metadata": { "description": "Checkpoint storage account name (3-24 lowercase letters/numbers, globally unique). Leave EMPTY to auto-generate a unique name (abs<hash>)." }
+      "metadata": {
+        "description": "Checkpoint storage account name (3-24 lowercase letters/numbers, globally unique). Leave EMPTY to auto-generate a unique name (abs<hash>)."
+      }
     },
     "storageSkuName": {
       "type": "string",
       "defaultValue": "Standard_LRS",
-      "allowedValues": ["Standard_LRS", "Standard_ZRS", "Standard_GRS", "Standard_RAGRS"],
-      "metadata": { "description": "Replication SKU for the checkpoint storage account. LRS is sufficient - checkpoints are rebuildable consumer state, not log data." }
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_ZRS",
+        "Standard_GRS",
+        "Standard_RAGRS"
+      ],
+      "metadata": {
+        "description": "Replication SKU for the checkpoint storage account. LRS is sufficient - checkpoints are rebuildable consumer state, not log data."
+      }
     },
     "blobContainerName": {
       "type": "string",
       "defaultValue": "abstract-checkpoints",
       "minLength": 3,
       "maxLength": 63,
-      "metadata": { "description": "Private blob container that stores Event Hub processing checkpoints. Enter this value in the 'Storage Blob Container Name' field of the Abstract integration. Lowercase letters, numbers and dashes." }
+      "metadata": {
+        "description": "Private blob container that stores Event Hub processing checkpoints. Enter this value in the \"Storage Blob Container Name\" field of the Abstract integration. Lowercase letters, numbers and dashes."
+      }
     },
     "storageAllowSharedKeyAccess": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "Allow shared-key (connection string) access on the storage account. REQUIRED true for Connection String authentication in Abstract. Set false only for pure Service Principal deployments." }
+      "metadata": {
+        "description": "Allow shared-key (connection string) access on the storage account. REQUIRED true for Connection String authentication in Abstract. Set false only for pure Service Principal deployments."
+      }
     },
     "storageApplyIpRules": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "Mirror the Event Hub IP allowlist onto the storage account firewall. NOTE: the storage firewall rejects /31 and /32 prefixes - list single addresses as bare IPs." }
+      "metadata": {
+        "description": "Mirror the Event Hub IP allowlist onto the storage account firewall. NOTE: the storage firewall rejects /31 and /32 prefixes - list single addresses as bare IPs."
+      }
     },
     "createStoragePrivateEndpoint": {
       "type": "bool",
       "defaultValue": false,
-      "metadata": { "description": "Also create a Private Endpoint (blob sub-resource) for the checkpoint storage account when private networking is used." }
+      "metadata": {
+        "description": "Also create a Private Endpoint (blob sub-resource) for the checkpoint storage account when private networking is used."
+      }
     },
     "storageBlobPrivateDnsZoneId": {
       "type": "string",
       "defaultValue": "",
-      "metadata": { "description": "Resource ID of the privatelink.blob.core.windows.net Private DNS zone (recommended with the storage Private Endpoint)." }
+      "metadata": {
+        "description": "Resource ID of the privatelink.blob.core.windows.net Private DNS zone (recommended with the storage Private Endpoint)."
+      }
     },
     "enablePrivateEndpoint": {
       "type": "bool",
       "defaultValue": false,
-      "metadata": { "description": "Create a Private Endpoint for the Event Hubs namespace (Standard/Premium only)." }
+      "metadata": {
+        "description": "Create a Private Endpoint for the Event Hubs namespace (Standard/Premium only)."
+      }
     },
     "subnetId": {
       "type": "string",
       "defaultValue": "",
-      "metadata": { "description": "Resource ID of the subnet that will host the Private Endpoint NIC(s)." }
+      "metadata": {
+        "description": "Resource ID of the subnet that will host the Private Endpoint NIC(s)."
+      }
     },
     "privateDnsZoneId": {
       "type": "string",
       "defaultValue": "",
-      "metadata": { "description": "Resource ID of the privatelink.servicebus.windows.net Private DNS zone (recommended with the namespace Private Endpoint)." }
+      "metadata": {
+        "description": "Resource ID of the privatelink.servicebus.windows.net Private DNS zone (recommended with the namespace Private Endpoint)."
+      }
     },
     "allowedIpRanges": {
       "type": "array",
       "defaultValue": [],
-      "metadata": { "description": "Public IP ranges (CIDR) allowed through the namespace firewall - e.g. Abstract egress IPs plus your admin ranges. A non-empty list flips the firewall default action to Deny (unless Safe Mode is on). Empty entries are filtered out automatically." }
+      "metadata": {
+        "description": "Public IP ranges (CIDR) allowed through the namespace firewall - e.g. Abstract egress IPs plus your admin ranges. A non-empty list flips the firewall default action to Deny (unless Safe Mode is on). Empty entries are filtered out automatically."
+      }
     },
     "allowAzureServices": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "Allow trusted Microsoft services (Azure Monitor diagnostic settings, Defender streaming, ...) through the firewall. REQUIRED when the firewall is in Deny mode and Azure services stream logs into these hubs." }
+      "metadata": {
+        "description": "Allow trusted Microsoft services (Azure Monitor diagnostic settings, Defender streaming, ...) through the firewall. REQUIRED when the firewall is in Deny mode and Azure services stream logs into these hubs."
+      }
     },
     "disablePublicNetwork": {
       "type": "bool",
       "defaultValue": false,
-      "metadata": { "description": "Disable ALL public network access on the namespace (Private Endpoint only). Only honored when safeMode = false." }
+      "metadata": {
+        "description": "Disable ALL public network access on the namespace (Private Endpoint only). Only honored when safeMode = false."
+      }
     },
     "safeMode": {
       "type": "bool",
       "defaultValue": true,
-      "metadata": { "description": "Safe Mode guardrails for external SaaS ingestion (Abstract). true -> public network access stays ON for BOTH the namespace and the checkpoint storage account, the IP allowlist is ignored, and the firewall default action stays Allow; Private Endpoints may still be created (hybrid) but can never lock Abstract out. false -> disablePublicNetwork / allowedIpRanges are honored exactly as set. Ship customers safeMode=true for onboarding; flip to false in a hardening phase." }
+      "metadata": {
+        "description": "Safe Mode guardrails for external SaaS ingestion (Abstract):\n  true  -> public network access stays ON for BOTH the namespace and the\n           checkpoint storage account, the IP allowlist is ignored, and the\n           firewall default action stays Allow. Private Endpoints may still be\n           created (hybrid connectivity), but they can never lock Abstract out.\n  false -> disablePublicNetwork / allowedIpRanges are honored exactly as set.\nShip customers safeMode=true for onboarding; flip to false in a hardening phase\nonce Abstract egress IPs are in the allowlist or private connectivity is up.\n"
+      }
     },
     "enableDiagnostics": {
       "type": "bool",
       "defaultValue": false,
-      "metadata": { "description": "Enable diagnostic settings on the namespace so you can monitor the health of the log pipeline itself." }
+      "metadata": {
+        "description": "Enable diagnostic settings on the namespace so you can monitor the health of the log pipeline itself."
+      }
     },
     "logAnalyticsWorkspaceId": {
       "type": "string",
       "defaultValue": "",
-      "metadata": { "description": "Resource ID of the Log Analytics workspace for namespace diagnostics." }
+      "metadata": {
+        "description": "Resource ID of the Log Analytics workspace for namespace diagnostics."
+      }
     },
     "storageAccountId": {
       "type": "string",
       "defaultValue": "",
-      "metadata": { "description": "Optional storage account resource ID for diagnostics archive (this is for namespace diagnostics - NOT the checkpoint storage account)." }
+      "metadata": {
+        "description": "Optional storage account resource ID for diagnostics archive (this is for namespace diagnostics - NOT the checkpoint storage account)."
+      }
     }
   },
   "variables": {
+    "copy": [
+      {
+        "name": "generatedHubs",
+        "count": "[length(variables('cleanedSources'))]",
+        "input": {
+          "name": "[toLower(format('{0}-{1}-{2}', parameters('hubPrefix'), parameters('environment'), variables('cleanedSources')[copyIndex('generatedHubs')]))]",
+          "partitionCount": "[parameters('defaultPartitionCount')]",
+          "retentionDays": "[if(variables('isBasic'), 1, parameters('defaultRetentionDays'))]"
+        }
+      }
+    ],
     "isStandard": "[equals(parameters('sku'), 'Standard')]",
     "isBasic": "[equals(parameters('sku'), 'Basic')]",
     "cleanedSources": "[filter(map(parameters('hubSources'), lambda('s', trim(string(lambdaVariables('s'))))), lambda('s', not(empty(lambdaVariables('s')))))]",
-    "generatedHubs": "[map(variables('cleanedSources'), lambda('src', createObject('name', toLower(format('{0}-{1}-{2}', parameters('hubPrefix'), parameters('environment'), lambdaVariables('src'))), 'partitionCount', parameters('defaultPartitionCount'), 'retentionDays', if(variables('isBasic'), 1, parameters('defaultRetentionDays')))))]",
     "effectiveHubs": "[if(parameters('autoHubNaming'), variables('generatedHubs'), parameters('eventHubs'))]",
     "cleanedIpRanges": "[filter(parameters('allowedIpRanges'), lambda('ip', not(empty(trim(string(lambdaVariables('ip')))))))]",
     "effectivePublicAccess": "[if(parameters('safeMode'), 'Enabled', if(parameters('disablePublicNetwork'), 'Disabled', 'Enabled'))]",
@@ -290,20 +437,32 @@
       "condition": "[not(variables('isBasic'))]",
       "type": "Microsoft.EventHub/namespaces/networkRuleSets",
       "apiVersion": "2024-01-01",
-      "name": "[format('{0}/default', parameters('namespaceName'))]",
+      "name": "[format('{0}/{1}', parameters('namespaceName'), 'default')]",
       "properties": {
+        "copy": [
+          {
+            "name": "ipRules",
+            "count": "[length(variables('effectiveIpRules'))]",
+            "input": {
+              "ipMask": "[variables('effectiveIpRules')[copyIndex('ipRules')]]",
+              "action": "Allow"
+            }
+          }
+        ],
         "publicNetworkAccess": "[variables('effectivePublicAccess')]",
         "defaultAction": "[variables('networkDefaultAction')]",
         "trustedServiceAccessEnabled": "[parameters('allowAzureServices')]",
-        "virtualNetworkRules": [],
-        "ipRules": "[map(variables('effectiveIpRules'), lambda('ip', createObject('ipMask', lambdaVariables('ip'), 'action', 'Allow')))]"
+        "virtualNetworkRules": []
       },
       "dependsOn": [
         "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]"
       ]
     },
     {
-      "copy": { "name": "hubs", "count": "[length(variables('effectiveHubs'))]" },
+      "copy": {
+        "name": "hubs",
+        "count": "[length(variables('effectiveHubs'))]"
+      },
       "type": "Microsoft.EventHub/namespaces/eventhubs",
       "apiVersion": "2024-01-01",
       "name": "[format('{0}/{1}', parameters('namespaceName'), variables('effectiveHubs')[copyIndex()].name)]",
@@ -316,8 +475,11 @@
       ]
     },
     {
+      "copy": {
+        "name": "consumerGroups",
+        "count": "[length(variables('effectiveHubs'))]"
+      },
       "condition": "[not(variables('isBasic'))]",
-      "copy": { "name": "consumerGroups", "count": "[length(variables('effectiveHubs'))]" },
       "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
       "apiVersion": "2024-01-01",
       "name": "[format('{0}/{1}/{2}', parameters('namespaceName'), variables('effectiveHubs')[copyIndex()].name, parameters('consumerGroupName'))]",
@@ -339,8 +501,11 @@
       ]
     },
     {
+      "copy": {
+        "name": "hubAuth",
+        "count": "[length(variables('effectiveHubs'))]"
+      },
       "condition": "[and(parameters('enableSas'), parameters('perHubSasRules'))]",
-      "copy": { "name": "hubAuthRules", "count": "[length(variables('effectiveHubs'))]" },
       "type": "Microsoft.EventHub/namespaces/eventhubs/authorizationRules",
       "apiVersion": "2024-01-01",
       "name": "[format('{0}/{1}/{2}', parameters('namespaceName'), variables('effectiveHubs')[copyIndex()].name, parameters('sasRuleName'))]",
@@ -349,6 +514,20 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.EventHub/namespaces/eventhubs', parameters('namespaceName'), variables('effectiveHubs')[copyIndex()].name)]"
+      ]
+    },
+    {
+      "condition": "[and(parameters('enableSas'), parameters('createDiagnosticsSendRule'))]",
+      "type": "Microsoft.EventHub/namespaces/authorizationRules",
+      "apiVersion": "2024-01-01",
+      "name": "[format('{0}/{1}', parameters('namespaceName'), parameters('diagnosticsSendRuleName'))]",
+      "properties": {
+        "rights": [
+          "Send"
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]"
       ]
     },
     {
@@ -370,9 +549,18 @@
         "accessTier": "Hot",
         "publicNetworkAccess": "[variables('storagePublicAccess')]",
         "networkAcls": {
+          "copy": [
+            {
+              "name": "ipRules",
+              "count": "[length(if(variables('storageLockedDown'), variables('effectiveIpRules'), createArray()))]",
+              "input": {
+                "value": "[if(variables('storageLockedDown'), variables('effectiveIpRules'), createArray())[copyIndex('ipRules')]]",
+                "action": "Allow"
+              }
+            }
+          ],
           "defaultAction": "[if(variables('storageLockedDown'), 'Deny', 'Allow')]",
           "bypass": "AzureServices",
-          "ipRules": "[map(if(variables('storageLockedDown'), variables('effectiveIpRules'), createArray()), lambda('ip', createObject('value', lambdaVariables('ip'), 'action', 'Allow')))]",
           "virtualNetworkRules": []
         }
       }
@@ -381,7 +569,7 @@
       "condition": "[parameters('createStorageAccount')]",
       "type": "Microsoft.Storage/storageAccounts/blobServices",
       "apiVersion": "2023-05-01",
-      "name": "[format('{0}/default', variables('storageNameEffective'))]",
+      "name": "[format('{0}/{1}', variables('storageNameEffective'), 'default')]",
       "dependsOn": [
         "[resourceId('Microsoft.Storage/storageAccounts', variables('storageNameEffective'))]"
       ]
@@ -390,7 +578,7 @@
       "condition": "[parameters('createStorageAccount')]",
       "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
       "apiVersion": "2023-05-01",
-      "name": "[format('{0}/default/{1}', variables('storageNameEffective'), parameters('blobContainerName'))]",
+      "name": "[format('{0}/{1}/{2}', variables('storageNameEffective'), 'default', parameters('blobContainerName'))]",
       "properties": {
         "publicAccess": "None"
       },
@@ -402,7 +590,7 @@
       "condition": "[and(parameters('enableRbac'), not(empty(parameters('principalId'))))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[format('Microsoft.EventHub/namespaces/{0}', parameters('namespaceName'))]",
+      "scope": "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]",
       "name": "[guid(resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName')), parameters('principalId'), variables('roleMap')[parameters('roleDefinitionName')])]",
       "properties": {
         "principalId": "[parameters('principalId')]",
@@ -417,7 +605,7 @@
       "condition": "[and(and(parameters('enableRbac'), not(empty(parameters('principalId')))), parameters('createStorageAccount'))]",
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2022-04-01",
-      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('storageNameEffective'))]",
+      "scope": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageNameEffective'))]",
       "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', variables('storageNameEffective')), parameters('principalId'), variables('storageRoleMap')[parameters('storageRoleDefinitionName')])]",
       "properties": {
         "principalId": "[parameters('principalId')]",
@@ -444,7 +632,9 @@
             "name": "eventhub-connection",
             "properties": {
               "privateLinkServiceId": "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]",
-              "groupIds": ["namespace"]
+              "groupIds": [
+                "namespace"
+              ]
             }
           }
         ]
@@ -457,7 +647,7 @@
       "condition": "[and(and(parameters('enablePrivateEndpoint'), not(empty(parameters('subnetId')))), not(empty(parameters('privateDnsZoneId'))))]",
       "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
       "apiVersion": "2023-11-01",
-      "name": "[format('{0}-pe/default', parameters('namespaceName'))]",
+      "name": "[format('{0}/{1}', format('{0}-pe', parameters('namespaceName')), 'default')]",
       "properties": {
         "privateDnsZoneConfigs": [
           {
@@ -488,7 +678,9 @@
             "name": "blob-connection",
             "properties": {
               "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageNameEffective'))]",
-              "groupIds": ["blob"]
+              "groupIds": [
+                "blob"
+              ]
             }
           }
         ]
@@ -501,7 +693,7 @@
       "condition": "[and(and(and(parameters('createStorageAccount'), parameters('createStoragePrivateEndpoint')), not(empty(parameters('subnetId')))), not(empty(parameters('storageBlobPrivateDnsZoneId'))))]",
       "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
       "apiVersion": "2023-11-01",
-      "name": "[format('{0}-blob-pe/default', variables('storageNameEffective'))]",
+      "name": "[format('{0}/{1}', format('{0}-blob-pe', variables('storageNameEffective')), 'default')]",
       "properties": {
         "privateDnsZoneConfigs": [
           {
@@ -520,7 +712,7 @@
       "condition": "[and(parameters('enableDiagnostics'), or(not(empty(parameters('logAnalyticsWorkspaceId'))), not(empty(parameters('storageAccountId')))))]",
       "type": "Microsoft.Insights/diagnosticSettings",
       "apiVersion": "2021-05-01-preview",
-      "scope": "[format('Microsoft.EventHub/namespaces/{0}', parameters('namespaceName'))]",
+      "scope": "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]",
       "name": "[format('{0}-diagnostics', parameters('namespaceName'))]",
       "properties": {
         "workspaceId": "[if(empty(parameters('logAnalyticsWorkspaceId')), null(), parameters('logAnalyticsWorkspaceId'))]",
@@ -558,7 +750,10 @@
     },
     "eventHubNames": {
       "type": "array",
-      "value": "[map(variables('effectiveHubs'), lambda('h', lambdaVariables('h').name))]"
+      "copy": {
+        "count": "[length(variables('effectiveHubs'))]",
+        "input": "[variables('effectiveHubs')[copyIndex()].name]"
+      }
     },
     "consumerGroup": {
       "type": "string",
@@ -596,9 +791,12 @@
       "type": "bool",
       "value": "[parameters('enablePrivateEndpoint')]"
     },
+    "abstractDiagnosticsAuthRuleId": {
+      "type": "string",
+      "value": "[if(and(parameters('enableSas'), parameters('createDiagnosticsSendRule')), resourceId('Microsoft.EventHub/namespaces/authorizationRules', parameters('namespaceName'), parameters('diagnosticsSendRuleName')), '(diagnostics Send rule not created - enableSas is false / local auth disabled)')]"
+    },
     "abstractOnboarding": {
       "type": "object",
-      "metadata": { "description": "Field-for-field answers for the Abstract integration modal (docs.abstract.security -> Azure Event Hub -> Event Hub Connection Details). No secrets - retrieval pointers only." },
       "value": {
         "authenticationMethods": {
           "connectionString": "[parameters('enableSas')]",

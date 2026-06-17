@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.0.0 — 2026-06-16
+
+Added Abstract **destination** integrations alongside the existing Event Hub
+**source** stack, retargeted the Deploy buttons to the public repo, and added
+branding.
+
+### Added
+- **Azure Event Hub Destination** template (`templates/destinations/eventhub-destination.*`)
+  — namespace + destination hub + least-privilege `abstract-send` Send SAS rule,
+  optional Entra ID (`Azure Event Hubs Data Sender`) delivery, networking
+  guardrails, and a dedicated portal wizard + Deploy to Azure button. Outputs
+  map to the Abstract EventHub Destination modal (EventHub Name + connection
+  string pointer).
+- **Azure Sentinel Destination** template (`templates/destinations/sentinel-destination.*`)
+  — full Logs Ingestion stack: Log Analytics workspace (new or existing),
+  Microsoft Sentinel onboarding, Data Collection Endpoint, custom `*_CL` table
+  (parameterizable schema), Data Collection Rule, and `Monitoring Metrics
+  Publisher` + `Monitoring Contributor` role assignments on the DCR. Outputs the
+  DCR Immutable ID, DCE logs-ingestion URL, and stream name for the Abstract modal.
+- **Branded GitHub Pages landing page** (`docs/index.html`) with the Abstract
+  logo and every Deploy to Azure button (sources + destinations, public + Gov).
+- Abstract-branded intro text + doc links in every portal wizard's Basics step.
+- Example parameter files for both destinations.
+- `abstract-diagnostics-send` Send SAS rule + `abstractDiagnosticsAuthRuleId`
+  output in the source template, so the subscription Activity Log export uses a
+  least-privilege Send rule instead of RootManageSharedAccessKey
+  (`createDiagnosticsSendRule` / `diagnosticsSendRuleName` parameters).
+- `.github/workflows/validate.yml` — the CI the README referenced now exists:
+  JSON parse + Bicep compile + ARM drift check + arm-ttk over all templates.
+
+### Changed
+- **Deploy to Azure buttons retargeted** to `IamABS3C/Abstract-MS-Azure-` @ `main`
+  (were placeholder `Abstract-Security/azure-eventhub-onboarding`); added Gov
+  buttons for the destinations.
+- **ARM is now Bicep-compiled**, not hand-written — every `*.azuredeploy.json`
+  is generated from its `*.bicep` with `az bicep build`.
+- README retitled "Azure Onboarding" (sources + destinations) with a logo header
+  and a Destinations section mapping both destination modals field-for-field.
+
+### Fixed
+- Storage-account outputs in `main.bicep` no longer trip Bicep `BCP318`
+  null-dereference warnings (non-null assertion behind the `createStorageAccount`
+  guard).
+
 ## 2.0.0 — 2026-06-11
 
 Aligned with the official Abstract Security "Azure Event Hub" documentation and
