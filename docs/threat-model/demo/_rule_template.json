@@ -1,0 +1,300 @@
+{
+ "actions": [
+  {
+   "type": "CREATE_FINDING",
+   "config": {
+    "security.abs.rules.avro.state.CreateFindingConfig": {}
+   },
+   "triggers": [
+    {
+     "security.abs.rules.avro.state.OnFirstThresholdTrigger": {}
+    }
+   ],
+   "is_action_enabled": true
+  },
+  {
+   "type": "CREATE_INSIGHT",
+   "config": {
+    "security.abs.rules.avro.state.CreateInsightConfig": {
+     "groupByFields": [
+      "rule.id"
+     ],
+     "enableGrouping": true,
+     "insightCategory": "detection"
+    }
+   },
+   "triggers": [
+    {
+     "security.abs.rules.avro.state.OnFirstThresholdTrigger": {}
+    }
+   ],
+   "is_action_enabled": true
+  }
+ ],
+ "condition_combination": {
+  "security.abs.rules.avro.state.ConditionCombination": {
+   "operator": "ALL",
+   "conditions": [
+    {
+     "field": {
+      "fieldPath": "type",
+      "fieldType": "STRING"
+     },
+     "comparison": {
+      "security.abs.rules.avro.state.Compare_String_String": {
+       "target": {
+        "string": "event"
+       },
+       "operator": "EQUALS",
+       "case_sensitive": true
+      }
+     }
+    },
+    {
+     "field": {
+      "fieldPath": "vendor",
+      "fieldType": "STRING"
+     },
+     "comparison": {
+      "security.abs.rules.avro.state.Compare_String_String": {
+       "target": {
+        "string": "Microsoft"
+       },
+       "operator": "CONTAINS",
+       "case_sensitive": false
+      }
+     }
+    },
+    {
+     "field": {
+      "fieldPath": "product",
+      "fieldType": "STRING"
+     },
+     "comparison": {
+      "security.abs.rules.avro.state.Compare_String_String": {
+       "target": {
+        "string": "Graph API"
+       },
+       "operator": "CONTAINS",
+       "case_sensitive": false
+      }
+     }
+    },
+    {
+     "field": {
+      "fieldPath": "action",
+      "fieldType": "STRING"
+     },
+     "comparison": {
+      "security.abs.rules.avro.state.Compare_String_String": {
+       "target": {
+        "string": "Entra ID Sign-in"
+       },
+       "operator": "EQUALS",
+       "case_sensitive": false
+      }
+     }
+    }
+   ],
+   "combinations": [],
+   "jqConditions": [],
+   "modelConditions": []
+  }
+ },
+ "aggregation_combination": {
+  "security.abs.rules.avro.state.AggregationCombinationConfig": {
+   "window_spec": {
+    "window_type": "ROLLING",
+    "window_minutes": "_10"
+   },
+   "aggregation_combination": {
+    "operator": "ALL",
+    "combinations": [],
+    "aggregation_with_comparisons": [
+     {
+      "id": "_default-aggregation",
+      "aggregation": {
+       "field": "user_name",
+       "operator": "COUNT_DISTINCT",
+       "field_config": {
+        "fieldPath": "user_name",
+        "fieldType": "STRING"
+       }
+      },
+      "groupby_fields": [
+       "source_address"
+      ],
+      "conditionCombination": {
+       "security.abs.rules.avro.state.ConditionCombination": {
+        "operator": "ALL",
+        "conditions": [
+         {
+          "field": {
+           "fieldPath": "vendor",
+           "fieldType": "STRING"
+          },
+          "comparison": {
+           "security.abs.rules.avro.state.Compare_String_String": {
+            "target": {
+             "string": "Microsoft"
+            },
+            "operator": "CONTAINS",
+            "case_sensitive": false
+           }
+          }
+         },
+         {
+          "field": {
+           "fieldPath": "product",
+           "fieldType": "STRING"
+          },
+          "comparison": {
+           "security.abs.rules.avro.state.Compare_String_String": {
+            "target": {
+             "string": "Graph API"
+            },
+            "operator": "CONTAINS",
+            "case_sensitive": false
+           }
+          }
+         },
+         {
+          "field": {
+           "fieldPath": "action",
+           "fieldType": "STRING"
+          },
+          "comparison": {
+           "security.abs.rules.avro.state.Compare_String_String": {
+            "target": {
+             "string": "Entra ID Sign-in"
+            },
+            "operator": "EQUALS",
+            "case_sensitive": false
+           }
+          }
+         },
+         {
+          "field": {
+           "fieldPath": "event.outcome",
+           "fieldType": "STRING"
+          },
+          "comparison": {
+           "security.abs.rules.avro.state.Compare_String_String": {
+            "target": {
+             "string": "failure"
+            },
+            "operator": "EQUALS",
+            "case_sensitive": false
+           }
+          }
+         }
+        ],
+        "combinations": [],
+        "jqConditions": [],
+        "modelConditions": []
+       }
+      },
+      "comparisonCombination": {
+       "operator": "ALL",
+       "comparisons": [
+        {
+         "security.abs.rules.avro.state.Compare_Float64_Float64": {
+          "target": {
+           "double": 10
+          },
+          "operator": "IS_GREATER_THAN_OR_EQUAL_TO"
+         }
+        }
+       ],
+       "combinations": []
+      }
+     },
+     {
+      "id": "UBSgdUd3y24oj0rYMN1Aj",
+      "aggregation": {
+       "field": "",
+       "operator": "COUNT",
+       "field_config": {
+        "fieldPath": "type",
+        "fieldType": "STRING"
+       }
+      },
+      "groupby_fields": [
+       "source_address"
+      ],
+      "conditionCombination": {
+       "security.abs.rules.avro.state.ConditionCombination": {
+        "operator": "ALL",
+        "conditions": [
+         {
+          "field": {
+           "fieldPath": "vendor",
+           "fieldType": "STRING"
+          },
+          "comparison": {
+           "security.abs.rules.avro.state.Compare_String_String": {
+            "target": {
+             "string": "Microsoft"
+            },
+            "operator": "CONTAINS",
+            "case_sensitive": false
+           }
+          }
+         },
+         {
+          "field": {
+           "fieldPath": "product",
+           "fieldType": "STRING"
+          },
+          "comparison": {
+           "security.abs.rules.avro.state.Compare_String_String": {
+            "target": {
+             "string": "Graph API"
+            },
+            "operator": "CONTAINS",
+            "case_sensitive": false
+           }
+          }
+         },
+         {
+          "field": {
+           "fieldPath": "event.outcome",
+           "fieldType": "STRING"
+          },
+          "comparison": {
+           "security.abs.rules.avro.state.Compare_String_String": {
+            "target": {
+             "string": "success"
+            },
+            "operator": "EQUALS",
+            "case_sensitive": false
+           }
+          }
+         }
+        ],
+        "combinations": [],
+        "jqConditions": [],
+        "modelConditions": []
+       }
+      },
+      "comparisonCombination": {
+       "operator": "ALL",
+       "comparisons": [
+        {
+         "security.abs.rules.avro.state.Compare_Float64_Float64": {
+          "target": {
+           "double": 1
+          },
+          "operator": "IS_GREATER_THAN_OR_EQUAL_TO"
+         }
+        }
+       ],
+       "combinations": []
+      }
+     }
+    ],
+    "aggregation_with_comparison_map": {}
+   }
+  }
+ }
+}
