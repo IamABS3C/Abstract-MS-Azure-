@@ -1,0 +1,22 @@
+# Secrets — never commit (the demo's .env.example documents this assumption)
+.env
+*.env
+!*.env.example
+.abstract.env
+.abstract/
+*.key
+*.pem
+credentials
+
+# Local artifacts that may contain tenant data
+docs/threat-model/demo/*.local.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db

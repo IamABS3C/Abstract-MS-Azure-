@@ -12,7 +12,9 @@ Production-ready Azure infrastructure for Abstract Security **source** and **des
 
 > **One page to deploy anything:** the branded landing page in [`docs/`](docs/index.html) (enable GitHub Pages on `/docs`) renders the logo and every Deploy to Azure button.
 
-> **Make Sentinel actionable:** the [`solution/`](solution/) bundle adds a Sentinel connector tile, ASIM parser, analytics rule, workbook, Logic App playbooks, and a Security Copilot plugin — all wired to the Abstract API (triage in Sentinel, act on the pipeline in Abstract). See [solution/README.md](solution/README.md).
+> **Make Sentinel actionable:** the [`solution/`](solution/) bundle adds a Sentinel connector tile, ASIM parser, analytics rule, workbook, Logic App playbooks, a Security Copilot plugin/agent, an MCP server, and OSINT pivots — all wired to the Abstract API (triage in Sentinel, act on the pipeline in Abstract). See [solution/README.md](solution/README.md).
+
+> **See the model run:** the [`docs/threat-model/demo/`](docs/threat-model/demo/) shift-left simulation (entity graph, replay, continuous scoring, sub-agents, live write-back) produces the synthetic campaign that `solution/scripts/seed_sentinel.py --from-demo` streams into Sentinel.
 
 > **Status:** templates are syntax-validated and Bicep-compiled but **not yet runtime-tested against a live tenant**. Run `az deployment group what-if` (or the script's `-Preview`) before the first production deployment. The `*.azuredeploy.json` files are generated from the matching `*.bicep` with `az bicep build` — recompile if you edit the Bicep.
 
