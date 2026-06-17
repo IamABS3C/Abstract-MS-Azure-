@@ -1,0 +1,65 @@
+{
+  "attribution": {
+    "source": "awesome-hacker-search-engines",
+    "url": "https://github.com/edoardottt/awesome-hacker-search-engines",
+    "note": "Curated SOC-investigation subset distilled from the awesome-hacker-search-engines list. Each entry is a deep-link pivot for an indicator type. 'auth' notes whether the linked web view is usable without an API key; many engines also offer keyed APIs for automation.",
+    "indicatorTemplates": ["{ip}", "{cidr}", "{domain}", "{hash}", "{email}", "{username}", "{url}", "{asn}", "{cve}", "{query}"]
+  },
+  "engines": [
+    { "name": "Shodan", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://www.shodan.io/host/{ip}", "auth": "login", "tags": ["exposure", "ports", "banners"] },
+    { "name": "Censys", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://search.censys.io/hosts/{ip}", "auth": "free", "tags": ["exposure", "certs"] },
+    { "name": "GreyNoise", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://viz.greynoise.io/ip/{ip}", "auth": "free", "tags": ["scanner", "benign-vs-malicious"] },
+    { "name": "AbuseIPDB", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://www.abuseipdb.com/check/{ip}", "auth": "none", "tags": ["reputation", "reports"] },
+    { "name": "VirusTotal (IP)", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://www.virustotal.com/gui/ip-address/{ip}", "auth": "free", "tags": ["reputation", "passive-dns"] },
+    { "name": "IPinfo", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://ipinfo.io/{ip}", "auth": "none", "tags": ["geo", "asn", "hosting"] },
+    { "name": "Spur", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://spur.us/context/{ip}", "auth": "none", "tags": ["vpn", "proxy", "anonymization"] },
+    { "name": "Onyphe", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://search.onyphe.io/search?q={ip}", "auth": "free", "tags": ["exposure", "cti"] },
+    { "name": "Pulsedive", "category": "Host / IP", "indicator_types": ["ip", "domain", "url"], "url": "https://pulsedive.com/indicator/?ioc={query}", "auth": "free", "tags": ["threat-intel", "risk"] },
+    { "name": "AlienVault OTX (IP)", "category": "Host / IP", "indicator_types": ["ip"], "url": "https://otx.alienvault.com/indicator/ip/{ip}", "auth": "free", "tags": ["threat-intel", "pulses"] },
+
+    { "name": "Shodan (net)", "category": "Network / ASN", "indicator_types": ["cidr"], "url": "https://www.shodan.io/search?query=net%3A{cidr}", "auth": "login", "tags": ["range"] },
+    { "name": "BGP.he.net", "category": "Network / ASN", "indicator_types": ["asn"], "url": "https://bgp.he.net/{asn}", "auth": "none", "tags": ["asn", "prefixes", "peers"] },
+    { "name": "Shodan (asn)", "category": "Network / ASN", "indicator_types": ["asn"], "url": "https://www.shodan.io/search?query=asn%3A{asn}", "auth": "login", "tags": ["asn", "exposure"] },
+
+    { "name": "VirusTotal (domain)", "category": "Domain / DNS", "indicator_types": ["domain"], "url": "https://www.virustotal.com/gui/domain/{domain}", "auth": "free", "tags": ["reputation", "passive-dns"] },
+    { "name": "SecurityTrails", "category": "Domain / DNS", "indicator_types": ["domain"], "url": "https://securitytrails.com/domain/{domain}/dns", "auth": "free", "tags": ["dns-history", "subdomains"] },
+    { "name": "crt.sh", "category": "Domain / DNS", "indicator_types": ["domain"], "url": "https://crt.sh/?q={domain}", "auth": "none", "tags": ["certificates", "subdomains"] },
+    { "name": "urlscan (domain)", "category": "Domain / DNS", "indicator_types": ["domain"], "url": "https://urlscan.io/domain/{domain}", "auth": "none", "tags": ["scans", "screenshots"] },
+    { "name": "who.is", "category": "Domain / DNS", "indicator_types": ["domain"], "url": "https://who.is/whois/{domain}", "auth": "none", "tags": ["whois", "registration"] },
+    { "name": "ViewDNS", "category": "Domain / DNS", "indicator_types": ["domain"], "url": "https://viewdns.info/whois/?domain={domain}", "auth": "none", "tags": ["whois", "reverse"] },
+    { "name": "AlienVault OTX (domain)", "category": "Domain / DNS", "indicator_types": ["domain"], "url": "https://otx.alienvault.com/indicator/domain/{domain}", "auth": "free", "tags": ["threat-intel"] },
+
+    { "name": "crt.sh (cert)", "category": "Certificates", "indicator_types": ["hash"], "url": "https://crt.sh/?q={hash}", "auth": "none", "tags": ["ct-logs"] },
+    { "name": "Censys (certs)", "category": "Certificates", "indicator_types": ["domain", "hash"], "url": "https://search.censys.io/certificates?q={query}", "auth": "free", "tags": ["ct-logs", "fingerprints"] },
+
+    { "name": "VirusTotal (file)", "category": "Malware / Hash", "indicator_types": ["hash"], "url": "https://www.virustotal.com/gui/file/{hash}", "auth": "free", "tags": ["av", "behavior"] },
+    { "name": "MalwareBazaar", "category": "Malware / Hash", "indicator_types": ["hash"], "url": "https://bazaar.abuse.ch/sample/{hash}/", "auth": "none", "tags": ["samples", "yara"] },
+    { "name": "ThreatFox", "category": "Malware / Hash", "indicator_types": ["hash", "ip", "domain"], "url": "https://threatfox.abuse.ch/browse.php?search=ioc%3A{query}", "auth": "none", "tags": ["iocs"] },
+    { "name": "Hybrid Analysis", "category": "Malware / Hash", "indicator_types": ["hash"], "url": "https://www.hybrid-analysis.com/search?query={hash}", "auth": "free", "tags": ["sandbox"] },
+    { "name": "AlienVault OTX (file)", "category": "Malware / Hash", "indicator_types": ["hash"], "url": "https://otx.alienvault.com/indicator/file/{hash}", "auth": "free", "tags": ["threat-intel"] },
+
+    { "name": "urlscan (search)", "category": "URL / Web", "indicator_types": ["url", "domain"], "url": "https://urlscan.io/search/#{query}", "auth": "none", "tags": ["scans", "screenshots"] },
+    { "name": "URLhaus", "category": "URL / Web", "indicator_types": ["url", "domain"], "url": "https://urlhaus.abuse.ch/browse.php?search={query}", "auth": "none", "tags": ["malware-urls"] },
+    { "name": "Google Safe Browsing", "category": "URL / Web", "indicator_types": ["url", "domain"], "url": "https://transparencyreport.google.com/safe-browsing/search?url={query}", "auth": "none", "tags": ["reputation"] },
+
+    { "name": "Have I Been Pwned", "category": "Email / Leaks", "indicator_types": ["email"], "url": "https://haveibeenpwned.com/", "auth": "manual", "tags": ["breaches"] },
+    { "name": "EmailRep", "category": "Email / Leaks", "indicator_types": ["email"], "url": "https://emailrep.io/{email}", "auth": "free", "tags": ["reputation"] },
+    { "name": "Epieos", "category": "Email / Leaks", "indicator_types": ["email"], "url": "https://epieos.com/?q={email}", "auth": "none", "tags": ["account-discovery"] },
+    { "name": "IntelX", "category": "Email / Leaks", "indicator_types": ["email", "domain", "username"], "url": "https://intelx.io/?s={query}", "auth": "free", "tags": ["leaks", "paste"] },
+    { "name": "DeHashed", "category": "Email / Leaks", "indicator_types": ["email", "username"], "url": "https://www.dehashed.com/search?query={query}", "auth": "login", "tags": ["credentials"] },
+
+    { "name": "WhatsMyName", "category": "Username / People", "indicator_types": ["username"], "url": "https://whatsmyname.app/", "auth": "manual", "tags": ["account-enum"] },
+    { "name": "Namechk", "category": "Username / People", "indicator_types": ["username"], "url": "https://namechk.com/", "auth": "manual", "tags": ["account-enum"] },
+    { "name": "Social Searcher", "category": "Username / People", "indicator_types": ["username"], "url": "https://www.social-searcher.com/search-users/?q={username}", "auth": "none", "tags": ["social"] },
+
+    { "name": "NVD", "category": "Vulnerability", "indicator_types": ["cve"], "url": "https://nvd.nist.gov/vuln/detail/{cve}", "auth": "none", "tags": ["cvss", "refs"] },
+    { "name": "CVE.org", "category": "Vulnerability", "indicator_types": ["cve"], "url": "https://www.cve.org/CVERecord?id={cve}", "auth": "none", "tags": ["record"] },
+    { "name": "Exploit-DB", "category": "Vulnerability", "indicator_types": ["cve"], "url": "https://www.exploit-db.com/search?cve={cve}", "auth": "none", "tags": ["exploits"] },
+    { "name": "Vulners", "category": "Vulnerability", "indicator_types": ["cve"], "url": "https://vulners.com/search?query={cve}", "auth": "free", "tags": ["intel"] },
+
+    { "name": "GitHub code search", "category": "Code / Secrets", "indicator_types": ["query"], "url": "https://github.com/search?q={query}&type=code", "auth": "login", "tags": ["leaked-code"] },
+    { "name": "grep.app", "category": "Code / Secrets", "indicator_types": ["query"], "url": "https://grep.app/search?q={query}", "auth": "none", "tags": ["code"] },
+    { "name": "GrayHatWarfare", "category": "Code / Secrets", "indicator_types": ["query"], "url": "https://buckets.grayhatwarfare.com/files?keywords={query}", "auth": "free", "tags": ["open-buckets"] },
+    { "name": "PublicWWW", "category": "Code / Secrets", "indicator_types": ["query"], "url": "https://publicwww.com/websites/%22{query}%22/", "auth": "free", "tags": ["source-search"] }
+  ]
+}

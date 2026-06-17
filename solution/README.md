@@ -21,10 +21,15 @@ first-class, *actionable* integration. Two reinforcing stories:
 solution/
 ├── Package/
 │   ├── mainTemplate.json                        # Content Hub solution: registers package + deploys content
-│   └── createUiDefinition.json                  # solution install wizard (branded)
+│   ├── createUiDefinition.json                  # solution install wizard (branded)
+│   ├── abstract-logo.svg                        # vector logo (Content Hub cert needs SVG)
+│   └── PACKAGING.md                             # how to build/validate the official package
 ├── SolutionMetadata.json · ReleaseNotes.md      # Content Hub solution descriptor + notes
-├── scripts/abstract_api.py                      # runnable API client/SDK (env-var auth) + CLI
-├── mcp/abstract_mcp_server.py (+ README)        # Abstract API as MCP tools for Claude/Copilot/agents
+├── scripts/
+│   ├── abstract_api.py                          # runnable API client/SDK (env-var auth) + CLI
+│   └── seed_sentinel.py                         # Logs-Ingestion seeder -> AbstractEventLogs_CL (demo)
+├── mcp/abstract_mcp_server.py (+ README)        # Abstract API + OSINT as MCP tools for Claude/Copilot/agents
+├── osint/ (search_engines.json, osint_pivots.py)# IOC pivots from awesome-hacker-search-engines (MCP tool + agent)
 ├── connector/abstract-connector-definition.json # Sentinel "Abstract Security" connector tile (CCF)
 ├── parsers/ASim_AbstractEvent.kql               # ASIM-style normalizer over AbstractEventLogs_CL
 ├── analytics/
@@ -36,7 +41,8 @@ solution/
 ├── workbooks/abstract-pipeline-overview.workbook.json  # volume / coverage / reduction estimate
 ├── playbooks/
 │   ├── abstract-enrich-incident.json            # incident -> Abstract search -> comment
-│   └── abstract-verdict.json                    # incident -> Abstract agentic Verdict -> comment + severity
+│   ├── abstract-verdict.json                    # incident -> Abstract agentic Verdict -> comment + severity
+│   └── abstract-tune-at-source.json             # incident closed FP -> create Abstract tuning filter (down-sample upstream)
 └── copilot/
     ├── abstract-copilot-skillset.yaml           # Copilot API plugin (search + verdict; calls Abstract)
     ├── abstract-kql-skills.yaml                 # Copilot KQL skills (query the workspace; no key)
@@ -72,6 +78,43 @@ Install via the portal (Template spec / Deploy a custom template) with the
 `solution/mcp/abstract_mcp_server.py` exposes the Abstract API as MCP tools so
 Claude / Copilot / custom agents can use the pipeline as a source alongside
 other MCP servers. See `solution/mcp/README.md` for registration.
+
+### OSINT pivots
+
+`solution/osint/` turns any IOC (IP, domain, hash, email, username, URL, ASN,
+CVE) into curated investigation deep-links — Shodan, Censys, GreyNoise,
+VirusTotal, crt.sh, AbuseIPDB, urlscan, IntelX, NVD, and more — distilled from
+[awesome-hacker-search-engines](https://github.com/edoardottt/awesome-hacker-search-engines).
+Exposed as the MCP `osint_pivots` tool and used by the Copilot triage agent to
+cite references per IOC. Pure links, no API keys. `python solution/osint/osint_pivots.py 8.8.8.8`.
+
+### Demo data (make it light up)
+
+`solution/scripts/seed_sentinel.py` pushes ACS events into `AbstractEventLogs_CL`
+through the Azure Monitor Logs Ingestion API (the DCE/DCR the destination
+template created), so the workbook, analytics rule, hunting queries, and
+connector graph populate without waiting on a live pipeline. It accepts JSON on
+stdin, so it pairs with the threat-model demo generators:
+
+```bash
+python solution/scripts/seed_sentinel.py --sample 50 --dry-run        # preview, no creds
+# live (app SP needs Monitoring Metrics Publisher on the DCR):
+export AZURE_TENANT_ID=… AZURE_CLIENT_ID=… AZURE_CLIENT_SECRET=…
+export ABSTRACT_DCE_URL=… ABSTRACT_DCR_IMMUTABLE_ID=…
+python docs/threat-model/demo/identities.py | python solution/scripts/seed_sentinel.py
+```
+
+### The full closed loop (now real)
+
+```
+incident created  ── Verdict playbook ──▶ Abstract ASTRO Verdict workflow ──▶ comment + severity
+incident closed FP ── Tune-at-source ───▶ POST /v2/rule-tuning-filters/ ─────▶ down-sample upstream
+analyst (Copilot/MCP) ── search/verdict ─▶ Abstract API ─────────────────────▶ grounded answer
+```
+
+> **Tune-at-source** uses the live `/v2/rule-tuning-filters/` endpoint (confirmed
+> against the tenant). The exact `tuning_filter_combination` body should match
+> what the Abstract UI produces; the playbook ships a sensible default.
 
 Grounded in the live tenant: **473 ACS fields** drive the parser/analytics field
 maps, and Abstract's agentic workflows **Verdict** and **IP Threat Intelligence**

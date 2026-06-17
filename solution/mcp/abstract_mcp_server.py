@@ -27,7 +27,9 @@ import sys
 
 # Reuse the canonical client from ../scripts/abstract_api.py
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "osint"))
 from abstract_api import AbstractClient, AbstractError  # noqa: E402
+import osint_pivots as osint_pivots_mod  # noqa: E402  (curated OSINT pivots, no key required)
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -94,6 +96,15 @@ def abstract_get_insight_verdict(insight_id: str) -> dict:
 def abstract_run_verdict(insight_id: str) -> dict:
     """Run Abstract's agentic Verdict workflow for an insight and wait for the result (may take minutes)."""
     return _client().run_verdict(insight_id)
+
+
+@mcp.tool()
+def osint_pivots(indicator: str, indicator_type: str = "") -> dict:
+    """Curated OSINT/hacker-search-engine pivot links for an indicator (IP, domain,
+    hash, email, username, URL, ASN, CIDR, CVE). Type is auto-detected if omitted.
+    No API keys / no outbound calls — returns deep-links to investigate. Distilled
+    from github.com/edoardottt/awesome-hacker-search-engines."""
+    return osint_pivots_mod.pivots(indicator, indicator_type or None)
 
 
 if __name__ == "__main__":

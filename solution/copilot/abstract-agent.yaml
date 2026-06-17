@@ -40,6 +40,10 @@ Agent:
        cumulative risk over 7 days.
     4. Use SearchAbstractEvents (API) for related pipeline context the SIEM may
        not hold (last 24h, same source IP / user).
+    4b. For each external IOC (IP, domain, hash, email), call osint_pivots (via
+       the Abstract MCP server) to gather curated OSINT/hacker-search-engine
+       links (Shodan, Censys, GreyNoise, VirusTotal, crt.sh, AbuseIPDB, urlscan,
+       …) and cite the most relevant ones as investigation references.
     5. Produce: verdict (MALICIOUS / SUSPICIOUS / BENIGN / FALSE_POSITIVE),
        a confidence, a 2-4 sentence rationale citing the evidence above, and
        concrete recommended actions. If the verdict is FALSE_POSITIVE, explicitly

@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.4.0 — 2026-06-17
+
+### Added
+- **OSINT pivots** (`solution/osint/`) — a curated registry distilled from
+  [awesome-hacker-search-engines](https://github.com/edoardottt/awesome-hacker-search-engines)
+  (`search_engines.json`) plus `osint_pivots.py`, which auto-detects an indicator
+  type (IP, CIDR, domain, hash, email, username, URL, ASN, CVE) and returns deep-
+  links into Shodan/Censys/GreyNoise/VirusTotal/crt.sh/AbuseIPDB/urlscan/NVD/etc.
+  Pure links — no API keys. Exposed as the MCP `osint_pivots` tool and used by the
+  Copilot triage agent to cite references per IOC.
+
+## 3.3.0 — 2026-06-17
+
+Completed the closed loop and hardened the solution for packaging.
+
+### Added
+- **Tune-at-source playbook** (`solution/playbooks/abstract-tune-at-source.json`)
+  — on an incident closed False/Benign Positive, creates an Abstract rule tuning
+  filter via `POST /v2/rule-tuning-filters/` (endpoint confirmed live) so the
+  noisy pattern is down-sampled upstream. The differentiated SOC↔pipeline loop.
+- **Logs-Ingestion seeder** (`solution/scripts/seed_sentinel.py`) — pushes ACS
+  events into `AbstractEventLogs_CL` (DCE/DCR) so the workbook/analytics/connector
+  light up; accepts the threat-model demo's JSON output. `--dry-run` needs no creds.
+- **Vector logo** (`solution/Package/abstract-logo.svg`) and **packaging guide**
+  (`solution/Package/PACKAGING.md`) for the official Microsoft Sentinel solution
+  tooling (createSolutionV4 + validation) and embedding playbooks as solution content.
+
+### Notes
+- Verified the tuning/pipeline/rules API surface against the tenant
+  (`/v2/rule-tuning-filters/` = 2, `/v2/pipelines/` = 19, `/v1/functions/` = 220,
+  `/v3/rules/` = 355).
+- The standalone `docs/threat-model/demo/` workstream remains untouched/uncommitted.
+
 ## 3.2.0 — 2026-06-17
 
 Packaged the Sentinel work as a **Content Hub solution** and broadened the
