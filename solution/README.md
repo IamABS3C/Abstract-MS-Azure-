@@ -97,12 +97,18 @@ connector graph populate without waiting on a live pipeline. It accepts JSON on
 stdin, so it pairs with the threat-model demo generators:
 
 ```bash
-python solution/scripts/seed_sentinel.py --sample 50 --dry-run        # preview, no creds
+python solution/scripts/seed_sentinel.py --from-demo --dry-run         # preview the demo campaign as ACS, no creds
 # live (app SP needs Monitoring Metrics Publisher on the DCR):
 export AZURE_TENANT_ID=… AZURE_CLIENT_ID=… AZURE_CLIENT_SECRET=…
 export ABSTRACT_DCE_URL=… ABSTRACT_DCR_IMMUTABLE_ID=…
-python docs/threat-model/demo/identities.py | python solution/scripts/seed_sentinel.py
+python solution/scripts/seed_sentinel.py --from-demo                   # seed the threat-model campaign into Sentinel
 ```
+
+`--from-demo` reads the threat-model demo's synthetic estate
+(`docs/threat-model/demo/data.py:events()` — the Qakbot campaign + ~5,000 benign
+events), maps each to the Abstract Common Schema, and seeds it — so the **same
+campaign that powers the demo** lights up the Sentinel analytics, workbook, and
+connector graph. (The demo is read, never modified.) Or pipe any ACS JSON in.
 
 ### The full closed loop (now real)
 

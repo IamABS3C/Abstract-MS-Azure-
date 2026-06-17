@@ -68,7 +68,60 @@ def to_row(item: dict) -> dict:
     }
 
 
+def _sev_to_risk(sev: str) -> float:
+    return {"critical": 95, "high": 80, "medium": 40, "low": 20, "informational": 5, "info": 5}.get((sev or "").lower(), 10)
+
+
+def _demo_to_acs(e: dict, idx: int) -> dict:
+    """Map one threat-model demo event (data.py:events() shape) to an ACS event."""
+    t = e.get("_t", "")
+    ts = e.get("ts")
+    iso = ts.strftime("%Y-%m-%dT%H:%M:%SZ") if hasattr(ts, "strftime") else _now_iso()
+    user = (e.get("user") or e.get("to") or e.get("account") or e.get("nhi") or e.get("agent") or "")
+    user = user.split(":")[-1] if user else ""
+    sev = e.get("sev") or ("high" if t in ("email", "pan_wildfire", "edr") else "info")
+    catalog = {
+        "email":       ("Email Security", "Email", "email", "deliver"),
+        "dns":         ("DNS", "DNS", "dns", "query"),
+        "pan_traffic": ("Palo Alto Networks", "Palo Alto Networks", "network", "traffic"),
+        "pan_wildfire":("Palo Alto Networks", "Palo Alto Networks", "malware", "wildfire_verdict"),
+        "edr":         ("CrowdStrike Falcon", "CrowdStrike", "process", "suspicious_exec"),
+        "okta":        ("Okta", "Okta", "authentication", "login"),
+        "cloudtrail":  ("AWS CloudTrail", "AWS", "cloud", "api_call"),
+        "nhi":         ("Non-Human Identity", "Abstract", "iam", "token_use"),
+        "agent":       ("AI Agent", "Abstract", "agent", "beacon"),
+        "benign_traffic": ("Network", "Benign", "network", "traffic"),
+        "benign_dns":  ("DNS", "Benign", "dns", "query"),
+        "benign_auth": ("Okta", "Benign", "authentication", "login"),
+    }
+    product, vendor, etype, action = catalog.get(t, ("Abstract", "Abstract", t or "event", "observe"))
+    acs = {
+        "id": f"demo-{idx:05d}", "@timestamp": iso, "type": etype, "action": action,
+        "product": product, "vendor": vendor, "severity": sev,
+        "user_name": user, "host_name": e.get("host", ""),
+        "source_ipv4": e.get("src_ip", ""),
+        "dest_ipv4": e.get("dst") if str(e.get("dst", "")).count(".") == 3 else e.get("resp", ""),
+        "risk_score": _sev_to_risk(sev),
+        "message": e.get("query") or e.get("url") or e.get("proc") or f"{t} event",
+        "tags": ["demo", "threat-model", t],
+    }
+    if e.get("sha256"):
+        acs["file"] = {"hash": {"sha256": e["sha256"]}}
+    return {k: v for k, v in acs.items() if v not in ("", None)}
+
+
+def _events_from_demo() -> list:
+    demo = os.path.join(os.path.dirname(__file__), "..", "..", "docs", "threat-model", "demo")
+    if not os.path.isdir(demo):
+        raise SystemExit("threat-model demo not found at docs/threat-model/demo — run from the repo root.")
+    sys.path.insert(0, demo)
+    import data  # the demo's synthetic estate (data.events()); imports pipeline.py from same dir
+    return [to_row(_demo_to_acs(e, i)) for i, e in enumerate(data.events())]
+
+
 def read_events(args) -> list:
+    if getattr(args, "from_demo", False):
+        return _events_from_demo()
     if args.sample:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "docs", "threat-model", "demo"))
         try:
@@ -107,6 +160,7 @@ def main():
     p = argparse.ArgumentParser(description="Seed AbstractEventLogs_CL via Logs Ingestion API")
     p.add_argument("--file", help="JSON file of events (array or one-per-line)")
     p.add_argument("--sample", type=int, default=0, help="generate N demo events instead of reading input")
+    p.add_argument("--from-demo", action="store_true", help="map the threat-model demo's synthetic estate (data.py) to ACS and seed it")
     p.add_argument("--dry-run", action="store_true", help="print rows; do not send (no creds needed)")
     args = p.parse_args()
 

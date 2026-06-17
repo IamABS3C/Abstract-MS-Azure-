@@ -10,6 +10,10 @@
   links into Shodan/Censys/GreyNoise/VirusTotal/crt.sh/AbuseIPDB/urlscan/NVD/etc.
   Pure links — no API keys. Exposed as the MCP `osint_pivots` tool and used by the
   Copilot triage agent to cite references per IOC.
+- **Demo → Sentinel bridge** — `seed_sentinel.py --from-demo` maps the threat-model
+  demo's synthetic Qakbot estate (`docs/threat-model/demo/data.py`, ~5,000 events)
+  to ACS and seeds `AbstractEventLogs_CL`, so the same campaign powers the Sentinel
+  analytics/workbook/connector. The demo is read-only; never modified.
 
 ## 3.3.0 — 2026-06-17
 
