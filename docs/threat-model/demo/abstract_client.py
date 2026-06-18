@@ -2,12 +2,17 @@
 Abstract adapter — live REST + offline simulation behind one interface.
 
 Endpoints + auth confirmed from the Abstract API reference
-(docs.abstractsecurity.app/docs/api-reference):
+(docs.abstractsecurity.app/docs/api-reference) and exercised against a live test
+tenant (see LIVE-RESULTS.md):
   • Base   https://api.abstractsecurity.app
   • Tenant header  x-as-vendor-account-id
   • streamviewer:  POST /v1/streamviewer/{search,timeline,view,field-set,translate}
                    GET  /v1/streamviewer/{views,field-sets,view/{id},field-set/{id}}
-  • rules-engine:  POST /v1/rules   GET /v1/rules   (rules generate insights)
+                   POST /v2/streamviewer/raw-search           (Elasticsearch DSL)
+  • insights:      GET/POST /v1/insights/   GET/PATCH/DELETE /v1/insights/{nanoid}
+                   POST /v1/insights/{nanoid}/comments
+                   GET/POST/DELETE /v1/insights/{nanoid}/verdict
+  • rules-engine:  GET/POST /v1/rules   GET /v3/rules/mitre   (rules generate insights)
 
 Auth scheme for a provisioned API key isn't stated in the docs, so connect()
 auto-detects (Bearer → x-api-key → raw Authorization) with a read probe.
@@ -21,6 +26,7 @@ import json
 import os
 import urllib.request
 import urllib.error
+import urllib.parse
 
 
 def _load_dotenv():
@@ -45,10 +51,13 @@ def _load_dotenv():
 _load_dotenv()
 
 ABSTRACT_API_BASE = os.environ.get("ABSTRACT_API_BASE", "https://api.abstractsecurity.app")
-ABSTRACT_ACCOUNT_ID = os.environ.get("ABSTRACT_ACCOUNT_ID", "")
+# accept either name for the tenant id (the SDK/MCP use VENDOR_ACCOUNT_ID)
+ABSTRACT_ACCOUNT_ID = (os.environ.get("ABSTRACT_ACCOUNT_ID")
+                       or os.environ.get("ABSTRACT_VENDOR_ACCOUNT_ID", ""))
 
 EP = {
     "search":         "/v1/streamviewer/search",
+    "raw_search":     "/v2/streamviewer/raw-search",
     "timeline":       "/v1/streamviewer/timeline",
     "translate":      "/v1/streamviewer/translate",
     "views":          "/v1/streamviewer/views",
@@ -56,6 +65,8 @@ EP = {
     "fieldsets":      "/v1/streamviewer/field-sets",
     "fieldset":       "/v1/streamviewer/field-set",
     "rules":          "/v1/rules",
+    "mitre":          "/v3/rules/mitre",
+    "insights":       "/v1/insights/",
 }
 
 
@@ -64,7 +75,7 @@ class AbstractClient:
         self.mode = "api" if mode in ("api", "live") else "offline"
         self.key = os.environ.get("ABSTRACT_API_KEY", "")
         self.scheme = None
-        self.sent = {"fieldsets": 0, "views": 0, "rules": 0}
+        self.sent = {"fieldsets": 0, "views": 0, "rules": 0, "insights": 0}
         if self.mode == "api" and not self.key:
             raise RuntimeError("mode=api needs ABSTRACT_API_KEY (e.g. in ~/.abstract.env)")
 
@@ -98,6 +109,13 @@ class AbstractClient:
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "error": str(e)}
 
+    # thin generic verbs (so a notebook/agent can hit any documented endpoint)
+    def get(self, path, scheme=None):          return self._req("GET", path, scheme=scheme)
+    def post(self, path, body, scheme=None):   return self._req("POST", path, body, scheme=scheme)
+    def patch(self, path, body, scheme=None):  return self._req("PATCH", path, body, scheme=scheme)
+    def put(self, path, body, scheme=None):    return self._req("PUT", path, body, scheme=scheme)
+    def delete(self, path, scheme=None):       return self._req("DELETE", path, scheme=scheme)
+
     # ── connectivity + auth auto-detect (read-only probe) ────────────────────────
     def connect(self) -> dict:
         if self.mode != "api":
@@ -112,10 +130,41 @@ class AbstractClient:
                 return {"ok": True, "scheme": scheme, "status": 403, "note": "authn ok, authz limited"}
         return {"ok": False, "error": "no auth scheme worked", "last": r}
 
-    # ── reads ────────────────────────────────────────────────────────────────
-    def list_views(self):     return self._req("GET", EP["views"] + "?page_size=500")
-    def list_fieldsets(self): return self._req("GET", EP["fieldsets"] + "?page_size=500")
-    def list_rules(self):     return self._req("GET", EP["rules"])
+    def whoami(self) -> dict:
+        """Best-effort identity probe (endpoint varies by deployment)."""
+        for path in ("/v1/users/me", "/v1/me", "/v1/auth/me"):
+            r = self._req("GET", path)
+            if r.get("ok"):
+                return r
+        return {"ok": False, "note": "no /me endpoint; auth verified via connect()"}
+
+    # ── streamviewer: search / query / timeline / translate ──────────────────────
+    def search(self, condition: dict = None, query_string: str = "", size: int = 50,
+               start: str = "2026-05-16T00:00:00Z", end: str = "2026-06-16T23:59:59Z") -> dict:
+        body = {"start_time": start, "end_time": end, "size": size,
+                "vendor_account_id": ABSTRACT_ACCOUNT_ID}
+        if condition:
+            body["condition"] = condition
+        if query_string:
+            body["query_string"] = query_string
+        return self._req("POST", EP["search"], body)
+
+    def raw_search(self, query: dict, aggs: dict = None, size: int = 10,
+                   start: str = "2026-05-16T00:00:00Z", end: str = "2026-06-16T23:59:59Z",
+                   sort: list = None) -> dict:
+        """Elasticsearch DSL search — what the views-beta UI calls under the hood."""
+        body = {"start_time": start, "end_time": end, "query": query, "size": size}
+        if aggs:
+            body["aggs"] = aggs
+        if sort:
+            body["sort"] = sort
+        return self._req("POST", EP["raw_search"], body)
+
+    def translate(self, natural_language: str) -> dict:
+        """NL → Abstract ConditionGroup (does not execute). The API field is `query`."""
+        return self._req("POST", EP["translate"], {"query": natural_language,
+                                                    "vendor_account_id": ABSTRACT_ACCOUNT_ID})
+
     def timeline(self, query_string="", start="2026-05-16T00:00:00Z",
                  end="2026-06-16T23:59:59Z", chunks=6):
         body = {"start_time": start, "end_time": end,
@@ -124,31 +173,67 @@ class AbstractClient:
             body["query_string"] = query_string
         return self._req("POST", EP["timeline"], body)
 
-    # ── deletes (for idempotent demo runs / cleanup) ────────────────────────────
-    def delete_view(self, vid):     return self._req("DELETE", EP["view"] + "/" + vid)
-    def delete_fieldset(self, fid): return self._req("DELETE", EP["fieldset"] + "/" + fid)
-
-    # ── writes ───────────────────────────────────────────────────────────────
-    def create_fieldset(self, payload: dict) -> dict:
-        self.sent["fieldsets"] += 1
-        if self.mode == "offline":
-            print("[offline] field-set:", payload.get("name")); return {"ok": True, "simulated": True}
-        return self._req("POST", EP["fieldset"], payload)
-
+    # ── views ────────────────────────────────────────────────────────────────
+    def list_views(self):           return self._req("GET", EP["views"] + "?page_size=500")
+    def get_view(self, vid):        return self._req("GET", EP["view"] + "/" + vid)
     def create_view(self, payload: dict) -> dict:
         self.sent["views"] += 1
         if self.mode == "offline":
             print("[offline] view:", payload.get("name")); return {"ok": True, "simulated": True}
         return self._req("POST", EP["view"], payload)
+    def update_view(self, vid, payload):  return self._req("PATCH", EP["view"] + "/" + vid, payload)
+    def delete_view(self, vid):     return self._req("DELETE", EP["view"] + "/" + vid)
 
+    # ── field sets ─────────────────────────────────────────────────────────────
+    def list_fieldsets(self):       return self._req("GET", EP["fieldsets"] + "?page_size=500")
+    def get_fieldset(self, fid):    return self._req("GET", EP["fieldset"] + "/" + fid)
+    def create_fieldset(self, payload: dict) -> dict:
+        self.sent["fieldsets"] += 1
+        if self.mode == "offline":
+            print("[offline] field-set:", payload.get("name")); return {"ok": True, "simulated": True}
+        return self._req("POST", EP["fieldset"], payload)
+    def update_fieldset(self, fid, payload): return self._req("PATCH", EP["fieldset"] + "/" + fid, payload)
+    def delete_fieldset(self, fid): return self._req("DELETE", EP["fieldset"] + "/" + fid)
+
+    # ── rules + MITRE ──────────────────────────────────────────────────────────
+    def list_rules(self):           return self._req("GET", EP["rules"])
+    def get_rule(self, rid):        return self._req("GET", EP["rules"] + "/" + str(rid))
     def create_rule(self, payload: dict) -> dict:
         self.sent["rules"] += 1
         if self.mode == "offline":
             print("[offline] rule:", payload.get("name")); return {"ok": True, "simulated": True}
         return self._req("POST", EP["rules"], payload)
+    def update_rule(self, rid, payload): return self._req("PATCH", EP["rules"] + "/" + str(rid), payload)
+    def mitre(self):                return self._req("GET", EP["mitre"])
+
+    # ── insights (alerts / cases) ────────────────────────────────────────────────
+    def list_insights(self, page_size: int = 50, **filters) -> dict:
+        qs = {"page_size": page_size}
+        qs.update({k: v for k, v in filters.items() if v is not None})
+        return self._req("GET", EP["insights"] + "?" + urllib.parse.urlencode(qs))
+
+    def get_insight(self, nanoid):  return self._req("GET", EP["insights"] + nanoid)
+    def create_insight(self, payload: dict) -> dict:
+        self.sent["insights"] += 1
+        if self.mode == "offline":
+            print("[offline] insight:", payload.get("title")); return {"ok": True, "simulated": True}
+        return self._req("POST", EP["insights"], payload)
+    def update_insight(self, nanoid, payload): return self._req("PATCH", EP["insights"] + nanoid, payload)
+    def delete_insight(self, nanoid):          return self._req("DELETE", EP["insights"] + nanoid)
+    def add_insight_comment(self, nanoid, text): return self._req(
+        "POST", EP["insights"] + nanoid + "/comments", {"comment": text})
+    def get_insight_verdict(self, nanoid):     return self._req("GET", EP["insights"] + nanoid + "/verdict")
+    def set_insight_verdict(self, nanoid, verdict, **extra):
+        return self._req("POST", EP["insights"] + nanoid + "/verdict", {"verdict": verdict, **extra})
+    def insight_findings(self, nanoid):        return self._req("GET", EP["insights"] + nanoid + "/findings")
+    def insight_resources(self, nanoid):       return self._req("GET", EP["insights"] + nanoid + "/resources")
 
 
 if __name__ == "__main__":
     import sys
     c = AbstractClient("api" if "--api" in sys.argv else "offline")
     print("connect:", json.dumps(c.connect()))
+    if "--api" in sys.argv:
+        print("views:", len((c.list_views().get("body", {}) or {}).get("views", [])))
+        print("insights total:",
+              (c.list_insights(page_size=1).get("body", {}) or {}).get("metadata", {}).get("total_count"))
