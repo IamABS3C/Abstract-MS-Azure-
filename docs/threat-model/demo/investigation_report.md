@@ -53,7 +53,7 @@ A malware verdict corroborated by endpoint execution and C2 beaconing, with an i
 
 ## OSINT enrichment
 
-- **ip** `91.219.236.12` → Maltego, SpiderFoot, Criminal IP, GreyNoise, Shodan / Censys, VirusTotal, AbuseIPDB, AlienVault OTX
+- **ip** `185.220.101.45` → Maltego, SpiderFoot, Criminal IP, GreyNoise, Shodan / Censys, VirusTotal, AbuseIPDB, AlienVault OTX
 - **domain** `cdn.evil-delivery.com` → Maltego, SpiderFoot, Shodan / Censys, VirusTotal, AlienVault OTX, MISP / OpenCTI, Recorded Future, urlscan.io
 - **hash** `dca86121cc7427e375fd24fe5871d727a4604532c4f3a567b3c956a3b6b6e0c4` → SpiderFoot, VirusTotal, AlienVault OTX, MISP / OpenCTI, Recorded Future
 

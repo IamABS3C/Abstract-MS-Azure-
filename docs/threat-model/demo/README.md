@@ -17,8 +17,26 @@ cd docs/threat-model/demo
 python3 run_demo.py          # narrated CLI run (Python 3.9+, stdlib only)
 ```
 
-For the analyst/JupyterHub experience, open [soc_notebook.ipynb](soc_notebook.ipynb) (needs
-`jupyter`; `pip install jupyter matplotlib`). It reuses the exact engine the CLI verifies.
+For the full analyst experience, open [soc_notebook.ipynb](soc_notebook.ipynb) — a 40-cell
+**AI-SOC workspace** that connects to both the Abstract **REST API** and the Abstract **MCP
+server**, runs a threat-hunting catalog, does entity-360 investigations, authenticated OSINT
+enrichment, continuous scoring, reports, and write-back. It reuses the exact engine the CLI
+verifies. One-time setup (isolated, reproducible):
+
+```bash
+cd docs/threat-model/demo
+python3 -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python -m ipykernel install --user --name abstract-soc --display-name "Abstract AI-SOC"
+jupyter lab soc_notebook.ipynb                          # pick the "Abstract AI-SOC" kernel
+# regenerate the notebook from source / re-validate it runs end-to-end:
+python build_notebook.py
+jupyter nbconvert --to notebook --execute --inplace \
+    --ExecutePreprocessor.kernel_name=abstract-soc soc_notebook.ipynb
+```
+
+The notebook runs **offline** out of the box; add `~/.abstract.env` (Abstract key) and OSINT
+key env vars (`VT_API_KEY`, `SHODAN_API_KEY`, `ABUSEIPDB_API_KEY`, …) to light up live paths.
 
 **Live mode (writes to a real tenant):** put a write-scoped key in `~/.abstract.env`
 (see `.env.example`), then:
@@ -57,8 +75,13 @@ plus a 5,000-event benign floor. Representative output:
 | [pipeline.py](pipeline.py) | normalize · graph · detections · replay · continuous scoring · sub-agents · write-back | README §1–6, §8 |
 | [data.py](data.py) | synthetic estate (campaign + benign floor + NHI + agent) | [samples.md](../samples.md) |
 | [run_demo.py](run_demo.py) | narrated CLI run (verifies the engine) | §10 build sequence |
-| [soc_notebook.ipynb](soc_notebook.ipynb) | JupyterHub AI-SOC workspace + write-back + what-if | §8 agentic |
-| [abstract_client.py](abstract_client.py) | live REST adapter (auth auto-detect, reads, creates, deletes) | §9 routing |
+| [soc_notebook.ipynb](soc_notebook.ipynb) | 40-cell AI-SOC workspace — REST + MCP connect, hunting, entity-360, OSINT, reports, write-back | §8 agentic |
+| [build_notebook.py](build_notebook.py) | generator for the notebook (source of truth; keeps it maintainable + provably real) | — |
+| [requirements.txt](requirements.txt) | notebook runtime deps (jupyter, matplotlib, networkx, pandas, **mcp**) | — |
+| [abstract_client.py](abstract_client.py) | live REST adapter — full surface: search/raw-search/translate, views, field-sets, rules, MITRE, **insights + verdicts + comments** | §9 routing |
+| [mcp_client.py](mcp_client.py) | connects the notebook to the Abstract **MCP server** (stdio/bundled or remote URL); list + call tools | §8, §9 |
+| [enrichment.py](enrichment.py) | **authenticated OSINT** adapters (VirusTotal · Shodan · GreyNoise · AbuseIPDB · OTX · urlscan · Censys · HIBP) — env-keyed, never logged | §8 |
+| [hunts.py](hunts.py) | reusable **threat-hunting catalog** (9 hunts) over the normalized stream + entity graph | §4 |
 | [live_writeback.py](live_writeback.py) | minimal **real** loop: create field-set + view, verify, clean | §5 loop |
 | [scenarios.py](scenarios.py) | the catalog: 9 entity-model field sets + 32 use-case scenarios | §1, §4 |
 | [build_demo.py](build_demo.py) | **elaborate** live build: 9 field sets + 32 views + **32 real rules** + suppressions + analytics | all |
@@ -78,7 +101,7 @@ plus a 5,000-event benign floor. Representative output:
 blast-radius rings, MITRE heat strip, attack timeline, risk + identity analytics, OSINT panel —
 zero installs, opens in any browser). `python3 report.py` → analyst incident report. The
 [soc_notebook.ipynb](soc_notebook.ipynb) is the interactive hunter experience
-(`pip install matplotlib networkx numpy`).
+(`pip install -r requirements.txt` — see the setup block above).
 
 ## The closed loop — JupyterHub + Abstract API/MCP + triggers + write-back
 

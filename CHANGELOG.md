@@ -1,5 +1,48 @@
 # Changelog
 
+## 3.5.0 — 2026-06-17
+
+Rebuilt the threat-model demo's **AI-SOC notebook** into a versatile analyst
+workspace and made it reproducibly runnable + live-tested.
+
+### Added
+- **40-cell `soc_notebook.ipynb`** (generated from `build_notebook.py`) covering
+  every Abstract use case end-to-end: REST + MCP connect, live tenant explorer,
+  entity graph, continuous-risk trajectories + prediction, live MITRE coverage,
+  attack timeline, detection coverage, a threat-hunting library, entity-360
+  investigation, blast radius, identity/NHI/agent taxonomy, OSINT enrichment,
+  efficiency model, what-if, multi-format reports, and write-back.
+- **`mcp_client.py`** — connects the notebook to the Abstract **MCP server**
+  (bundled stdio server, or a remote `ABSTRACT_MCP_URL`); lists + calls tools,
+  loop-safe for notebooks. Verified end-to-end (`abstract_verify`, `osint_pivots`).
+- **`enrichment.py`** — authenticated OSINT adapters (VirusTotal · Shodan ·
+  GreyNoise · AbuseIPDB · OTX · urlscan · Censys · HIBP), env-keyed, never logged;
+  keyless 24-engine pivot deep-links always available.
+- **`hunts.py`** — reusable threat-hunting catalog (9 hunts) over the normalized
+  event stream + entity graph; each maps to an Abstract rule/view.
+- **`requirements.txt`** + an isolated `.venv` + an `abstract-soc` Jupyter kernel
+  so the notebook installs and runs reproducibly.
+
+### Changed
+- **`abstract_client.py`** expanded to the full authenticated API surface —
+  search / raw-search / translate, views, field-sets, rules, MITRE, and
+  **insights** (list/get/create/update/delete, comments, verdicts).
+- The MITRE cell now aggregates the tenant's real per-technique coverage into
+  per-tactic totals (live: 662/683 techniques across 14 tactics on the test tenant).
+
+### Fixed
+- `translate` used `query_string`; the API expects `query` (was 422).
+- `viz._mpl()` forced the Agg backend, suppressing inline charts in notebooks —
+  now it respects an active `%matplotlib inline` backend (8 charts render).
+- `greynoise_community` handles the now-key-required community endpoint
+  (uses `GREYNOISE_API_KEY`, clear hint when keyless) instead of a raw 404.
+
+### Verified
+- Notebook executes end-to-end with **zero cell errors** both **offline**
+  (synthetic estate) and **live** against the test tenant; all objects created
+  during live testing were deleted (tenant left clean). Committed notebook
+  contains only synthetic data — no key, tenant PII, or local paths.
+
 ## 3.4.0 — 2026-06-17
 
 ### Added

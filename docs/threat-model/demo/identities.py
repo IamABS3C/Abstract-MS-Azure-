@@ -152,18 +152,35 @@ def pivot_urls(value: str, kind: str) -> dict:
 
 
 def greynoise_community(ip: str) -> dict:
-    """REAL, unauthenticated GreyNoise community lookup."""
+    """REAL GreyNoise community lookup. The community endpoint now needs a *free*
+    API key — set GREYNOISE_API_KEY and it authenticates; without one it returns a
+    clear hint instead of a raw 404 (anonymous access was deprecated)."""
+    import os
     import urllib.request
+    import urllib.error
     import json as _json
+    key = os.environ.get("GREYNOISE_API_KEY")
+    headers = {"Accept": "application/json"}
+    if key:
+        headers["key"] = key
     try:
-        req = urllib.request.Request(f"https://api.greynoise.io/v3/community/{ip}",
-                                     headers={"Accept": "application/json"})
+        req = urllib.request.Request(f"https://api.greynoise.io/v3/community/{ip}", headers=headers)
         with urllib.request.urlopen(req, timeout=10) as r:
             d = _json.loads(r.read())
         return {"classification": d.get("classification"), "name": d.get("name"),
                 "noise": d.get("noise"), "riot": d.get("riot"),
                 "last_seen": d.get("last_seen"), "link": d.get("link"),
-                "message": d.get("message")}
+                "message": d.get("message"), "authenticated": bool(key)}
+    except urllib.error.HTTPError as e:  # noqa: PERF203
+        if e.code == 404 and not key:
+            return {"note": "GreyNoise community now requires a free API key — set GREYNOISE_API_KEY",
+                    "noise": None, "authenticated": False}
+        try:  # 404 with a key usually means 'IP not observed' and carries a JSON body
+            body = _json.loads(e.read())
+            return {"classification": body.get("classification"), "noise": body.get("noise"),
+                    "message": body.get("message"), "authenticated": bool(key)}
+        except Exception:  # noqa: BLE001
+            return {"error": f"HTTP {e.code}", "authenticated": bool(key)}
     except Exception as e:  # noqa: BLE001
         return {"error": str(e)[:120]}
 

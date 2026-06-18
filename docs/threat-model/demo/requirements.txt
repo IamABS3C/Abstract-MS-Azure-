@@ -1,0 +1,28 @@
+# Abstract AI-SOC notebook — analyst workspace dependencies.
+#
+# The engine itself (pipeline.py, identities.py, abstract_client.py, hunts.py,
+# enrichment.py, report.py) is pure stdlib and needs NONE of these — it runs
+# anywhere with Python 3.9+. These power the interactive notebook: charts,
+# graphs, tables, and the live Abstract MCP connection.
+#
+#   python3 -m venv .venv
+#   source .venv/bin/activate        # Windows: .venv\Scripts\activate
+#   pip install -r requirements.txt
+#   python -m ipykernel install --user --name abstract-soc --display-name "Abstract AI-SOC"
+#   jupyter lab soc_notebook.ipynb
+
+# notebook runtime
+jupyterlab>=4.0
+ipykernel>=6.29
+nbformat>=5.9
+nbconvert>=7.10
+
+# visualization + tabular analysis
+matplotlib>=3.7
+networkx>=3.1
+numpy>=1.24
+pandas>=2.0
+
+# Model Context Protocol — connect the notebook to the Abstract MCP server
+# (bundled at solution/mcp/abstract_mcp_server.py) and call its tools.
+mcp>=1.2
