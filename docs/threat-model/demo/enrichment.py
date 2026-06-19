@@ -201,6 +201,103 @@ def _hibp(value, kind):
             "names": [b.get("Name") for b in (r.get("data") or [])][:8]}
 
 
+# ── free / free-tier adapters (Slice 1 fabric) ───────────────────────────────────
+def _hibp_passwords(value, kind):
+    """HIBP Pwned Passwords k-anonymity range API. Sends ONLY the SHA-1 prefix —
+    the password itself is never transmitted."""
+    if kind != "password":
+        return {"skipped": "HIBP Pwned Passwords is password-only"}
+    import hashlib
+    h = hashlib.sha1(value.encode("utf-8")).hexdigest().upper()
+    prefix, suffix = h[:5], h[5:]
+    r = _get(f"https://api.pwnedpasswords.com/range/{prefix}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    data = r.get("data") or ""
+    for line in (data.splitlines() if isinstance(data, str) else []):
+        suf, _, cnt = line.partition(":")
+        if suf.strip().upper() == suffix:
+            return {"pwned_count": int((cnt.strip() or "0"))}
+    return {"pwned_count": 0}
+
+
+def _hudsonrock(value, kind):
+    """Hudson Rock Cavalier — free infostealer-log exposure check (email/domain/username)."""
+    if kind not in ("email", "domain", "username"):
+        return {"skipped": "Hudson Rock takes email/domain/username"}
+    if kind == "domain":
+        url = ("https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-domain?"
+               + urllib.parse.urlencode({"domain": value}))
+    else:
+        url = ("https://cavalier.hudsonrock.com/api/json/v2/osint-tools/search-by-login?"
+               + urllib.parse.urlencode({"login": value}))
+    r = _get(url)
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    if not isinstance(d, dict):
+        return {"error": "unexpected response"}
+    hits = (d.get("total") or len(d.get("stealers", []) or [])
+            or (d.get("total_corporate_services", 0) or 0) + (d.get("total_user_services", 0) or 0))
+    return {"infostealer_hits": hits, "message": d.get("message")}
+
+
+def _intelx(value, kind):
+    key = os.environ.get("INTELX_API_KEY")
+    if not key:
+        return {"skipped": "no INTELX_API_KEY"}
+    if kind not in ("email", "domain"):
+        return {"skipped": "IntelX search takes email/domain"}
+    r = _get("https://2.intelx.io/intelligent/search?"
+             + urllib.parse.urlencode({"term": value, "maxresults": 10, "media": 0}),
+             {"x-key": key, "Accept": "application/json"})
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    return {"search_id": d.get("id"), "status": d.get("status")}
+
+
+def _cisa_kev(value, kind):
+    if kind != "cve":
+        return {"skipped": "CISA KEV is CVE-only"}
+    r = _get("https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+             timeout=15)
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    for v in (d.get("vulnerabilities") or []):
+        if str(v.get("cveID", "")).upper() == value.upper():
+            return {"known_exploited": True, "vendor": v.get("vendorProject"),
+                    "product": v.get("product"), "dateAdded": v.get("dateAdded"),
+                    "dueDate": v.get("dueDate")}
+    return {"known_exploited": False}
+
+
+def _nvd(value, kind):
+    if kind != "cve":
+        return {"skipped": "NVD lookup is CVE-only"}
+    r = _get("https://services.nvd.nist.gov/rest/json/cves/2.0?"
+             + urllib.parse.urlencode({"cveId": value}), {"Accept": "application/json"})
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    vulns = ((r.get("data") or {}).get("vulnerabilities") or [])
+    if not vulns:
+        return {"found": False}
+    cve = vulns[0].get("cve") or {}
+    metrics = cve.get("metrics") or {}
+    cvss = None
+    for mk in ("cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+        if metrics.get(mk):
+            cvss = ((metrics[mk][0] or {}).get("cvssData") or {}).get("baseScore")
+            break
+    desc = ""
+    for dd in (cve.get("descriptions") or []):
+        if dd.get("lang") == "en":
+            desc = (dd.get("value") or "")[:200]
+            break
+    return {"cvss": cvss, "description": desc}
+
+
 # name → (categories, supported kinds, env var(s), adapter)
 ENRICHERS = {
     "VirusTotal": ("multi-rep", ["ip", "domain", "hash", "url"], ["VT_API_KEY"], _virustotal),
@@ -211,6 +308,23 @@ ENRICHERS = {
     "urlscan.io": ("url-recon", ["domain", "url", "ip"], ["URLSCAN_API_KEY"], _urlscan),
     "Censys":     ("attack-surface", ["ip"], ["CENSYS_API_ID", "CENSYS_API_SECRET"], _censys),
     "Have I Been Pwned": ("breach", ["email"], ["HIBP_API_KEY"], _hibp),
+    # free / free-tier (keyless adapters auto-enable: all([]) is True)
+    "HIBP Passwords": ("breach", ["password"], [], _hibp_passwords),
+    "Hudson Rock": ("infostealer", ["email", "domain", "username"], [], _hudsonrock),
+    "Intelligence X": ("leak-search", ["email", "domain"], ["INTELX_API_KEY"], _intelx),
+    "CISA KEV": ("vuln-exploited", ["cve"], [], _cisa_kev),
+    "NVD": ("vuln", ["cve"], [], _nvd),
+}
+
+# Slice-3 connectors — visible in the GUI as planned/needs-key, never run live yet.
+# name → (category, kinds, note)
+STUBS = {
+    "Microsoft Sentinel": ("siem", ["ip", "host", "account"], "Slice 3 — needs workspace creds"),
+    "Splunk": ("siem", ["ip", "host", "account"], "Slice 3 — needs HEC/search creds"),
+    "Palo Alto WildFire": ("malware", ["hash", "url", "domain"], "Slice 3 — needs WILDFIRE_API_KEY"),
+    "JA3/JA4 fingerprints": ("network-fp", ["session", "ip"], "Slice 3 — TLS fingerprint lookup"),
+    "Dark-web / forums / HUMINT": ("osint-humint", ["email", "username", "domain"],
+                                   "Slice 3 — gated by ToS / keys"),
 }
 
 
@@ -247,6 +361,36 @@ def enrich(indicator: str, kind: str = None, only=None, timeout: int = DEFAULT_T
     return results
 
 
+def _reshape(e: dict) -> dict:
+    """Flatten enrich()'s tool results into deduped provenance records:
+    {value, kind, records:[{source,type,value}], by_source, sources, pivots}."""
+    records, by_source = [], {}
+    for name, info in (e.get("tools") or {}).items():
+        res = info.get("result")
+        if not isinstance(res, dict) or "skipped" in res or "error" in res:
+            continue
+        recs = [{"source": name, "type": k, "value": v} for k, v in res.items() if v is not None]
+        if recs:
+            by_source[name] = recs
+            records.extend(recs)
+    seen, deduped = set(), []
+    for r in records:
+        k = (r["source"], r["type"], str(r["value"]))
+        if k in seen:
+            continue
+        seen.add(k)
+        deduped.append(r)
+    return {"value": e.get("indicator"), "kind": e.get("kind"), "records": deduped,
+            "by_source": by_source, "sources": list(by_source), "pivots": e.get("pivots", [])}
+
+
+def enrich_entity(value: str, kind: str = None, timeout: int = DEFAULT_TIMEOUT) -> dict:
+    """Fan out across every enabled adapter that supports `kind`, dedup/merge into
+    provenance records. Failures are isolated per adapter (see enrich())."""
+    kind = kind or detect_kind(value)
+    return _reshape(enrich(value, kind, timeout=timeout))
+
+
 def selftest() -> dict:
     assert detect_kind("8.8.8.8") == "ip"
     assert detect_kind("evil.com") == "domain"
@@ -256,8 +400,17 @@ def selftest() -> dict:
     assert detect_kind("10.0.0.0/8") == "cidr"
     e = enrich("185.220.101.45", "ip")           # offline: adapters skip, pivots present
     assert e["kind"] == "ip" and e["pivots"]
-    return {"adapters": len(ENRICHERS), "available_now": sum(available().values()),
-            "tools_for_ip": len(e["tools"]), "ip_pivots": len(e["pivots"])}
+    # fabric: free adapters registered + reshaping (all network-free)
+    assert {"HIBP Passwords", "Hudson Rock", "CISA KEV", "NVD"} <= set(ENRICHERS)
+    assert "Intelligence X" in ENRICHERS and ENRICHERS["Intelligence X"][2] == ["INTELX_API_KEY"]
+    assert STUBS
+    ee = enrich_entity("AS13335", "asn")          # no adapter supports asn → no network call
+    assert set(ee) >= {"value", "kind", "records", "by_source", "sources"} and ee["records"] == []
+    sample = {"indicator": "x", "kind": "ip",
+              "tools": {"T": {"category": "c", "result": {"a": 1, "b": None}}}, "pivots": []}
+    assert _reshape(sample)["records"] == [{"source": "T", "type": "a", "value": 1}]
+    return {"ok": True, "adapters": len(ENRICHERS), "available_now": sum(available().values()),
+            "stubs": len(STUBS), "tools_for_ip": len(e["tools"]), "ip_pivots": len(e["pivots"])}
 
 
 if __name__ == "__main__":
