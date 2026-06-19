@@ -23,6 +23,13 @@ networkx>=3.1
 numpy>=1.24
 pandas>=2.0
 
+# interactive (browser-native) visuals — JS bundled inline so the notebook works offline
+plotly>=5.20
+pyvis>=0.3.2
+
+# in-notebook interactive control panel (GUI cockpit: connect / authorize / dev console)
+ipywidgets>=8.1
+
 # Model Context Protocol — connect the notebook to the Abstract MCP server
 # (bundled at solution/mcp/abstract_mcp_server.py) and call its tools.
 mcp>=1.2
