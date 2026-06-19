@@ -108,5 +108,26 @@ def events() -> list:
                "agent": "agent-soc-autobot", "src_ip": "10.20.0.9",
                "dst": "185.220.101.45", "sev": "high"})
 
+    # ── IDENTITY-INTELLIGENCE signals: re-exposure, session hijack, MFA bombing, reuse ──
+    CORP_IP = "52.20.10.5"
+    # legit baseline login from the corp egress IP BEFORE the ATO; jsmith reuses a
+    # breach-known password (lights up password-reuse + makes the C2 login a new-IP hijack)
+    ev.append({"_t": "okta", "ts": at(minutes=-45),
+               "account": "okta:jsmith@acme.com", "user": "jsmith@acme.com",
+               "src_ip": CORP_IP, "sev": "informational", "password_reused": True})
+    # MFA bombing: a burst of push prompts to jsmith's real device just before the ATO
+    for k in range(4):
+        ev.append({"_t": "okta", "ts": at(minutes=-12 + k), "event": "mfa_challenge",
+                   "mfa_prompt": True, "account": "okta:jsmith@acme.com",
+                   "user": "jsmith@acme.com", "src_ip": CORP_IP, "sev": "medium"})
+    # IDP / immutable-backup restore — tenant identity state is cleaned + recovered...
+    ev.append({"_t": "okta", "ts": at(minutes=38), "idp_restore": True,
+               "account": "okta:jsmith@acme.com", "user": "jsmith@acme.com",
+               "src_ip": CORP_IP, "sev": "informational"})
+    # ...yet jsmith is RE-EXPOSED from the C2 IP AFTER the restore (creds still leaked)
+    ev.append({"_t": "okta", "ts": at(minutes=52),
+               "account": "okta:jsmith@acme.com", "user": "jsmith@acme.com",
+               "src_ip": "91.219.236.12", "sev": "high", "exposed": True})
+
     ev.sort(key=lambda e: e["ts"])
     return ev
