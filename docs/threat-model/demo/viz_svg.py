@@ -11,11 +11,7 @@ from __future__ import annotations
 import html
 import math
 
-PINK, TEAL, BG, PANEL, INK, MUT = "#f8226a", "#01e69d", "#060608", "#101016", "#e9e9f0", "#8a8a99"
-TYPE_COLOR = {
-    "identity": TEAL, "account": "#36c5f0", "host": "#b388ff", "nhi": "#ffb547",
-    "agent": PINK, "ip": "#ff6b6b", "domain": "#ff9f43", "url": "#feca57", "hash": "#9b9b9b",
-}
+from brand import PINK, TEAL, BG, PANEL, INK, MUT, TYPE_COLOR  # official palette
 
 
 def _esc(s): return html.escape(str(s))
