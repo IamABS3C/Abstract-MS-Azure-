@@ -945,9 +945,48 @@ if __name__ == "__main__":
 
 - [ ] **Step 3: Commit** — `git add docs/threat-model/demo/mitre_layer.py && git commit -m "Add mitre_layer ATT&CK Navigator export + matrix html"`
 
+### Task 5.4: `viz_interactive` — diverse diagram suite (way more than bubbles)
+
+**Files:** Modify `docs/threat-model/demo/viz_interactive.py`
+
+**Interfaces (each returns a self-contained `<div>` via `_fig_html`; degrade to a `<div>` notice if plotly absent):**
+- `attack_flow_sankey(state)` — Sankey of the kill-chain flow (source → tactic → entity-kind → outcome) weighted by event counts.
+- `association_matrix(state)` — entity×entity adjacency heatmap (who-touched-whom), brand colorscale.
+- `entity_event_timeline(state, entity=None)` — Plotly timeline/Gantt of events per entity over time.
+- `mitre_matrix(state)` — full interactive ATT&CK matrix heatmap (tactic columns × technique cells), coverage-scored — richer than the strip.
+- `risk_radar(state, entity)` — scatterpolar of an entity's risk dimensions (exposure / hijack / hygiene / privilege / blast-radius).
+- `exposure_sunburst(state)` — sunburst: entity-kind → entity → exposure-source.
+- `tactic_treemap(state)` — treemap: tactic → technique → finding count.
+- `temporal_heatmap(state)` — activity heatmap (time-bucket × source).
+
+- [ ] **Step 1:** Implement the eight functions with `plotly.graph_objects`/`plotly.express`, `template="plotly_dark"`, `paper_bgcolor=brand.BG`, brand colors; each guarded by `_plotly_ok()`.
+- [ ] **Step 2:** Extend `selftest()` — for each fn assert `"<" in fn(st)` (pass a real entity key for radar from `list(st.scores)[0]`).
+- [ ] **Step 3:** Run `python viz_interactive.py` → `{'ok': True, ...}`.
+- [ ] **Step 4:** Commit — `git commit -m "Add Sankey/matrix/timeline/MITRE-matrix/radar/sunburst/treemap/heatmap visuals"`
+
+### Task 5.5: `viz_interactive` — expressive network + per-entity detail card
+
+**Files:** Modify `docs/threat-model/demo/viz_interactive.py`
+
+**Interfaces:**
+- `correlation_graph(state, *, focus=None, layout="force", height="640px")` — upgrade: **shape per kind** (host=box, nhi=diamond, agent=triangle, device=square, session=hexagon, account=dot, VIP=star, ip/domain/hash=icon), **edge relationship labels** (authenticated-from / executed / beaconed-to / owns / assumed-role from graph edge metadata), **layout modes** `force|hierarchical|radial|clustered` (pyvis options), **full-field hover tooltip** (every raw field of the focal entity), click-to-select wired in the console.
+- `entity_detail_html(state, entity) -> str` — a full branded card: ALL raw fields for that entity, risk breakdown (base + identity bumps), identity signals, enrichment summary slot, related-entities list with pivot affordances, and an annotation slot.
+
+- [ ] **Step 1:** Implement layout/shape/edge-label upgrades + `entity_detail_html`; keep the SVG fallback when pyvis is absent.
+- [ ] **Step 2:** Extend `selftest()` — assert `correlation_graph(st, layout="hierarchical")` returns markup and `entity_detail_html(st, list(st.scores)[0])` contains the entity id.
+- [ ] **Step 3:** Run `python viz_interactive.py` → `{'ok': True, ...}`.
+- [ ] **Step 4:** Commit — `git commit -m "Add expressive network (shapes/edge-labels/layouts) + per-entity detail card"`
+
 ---
 
 ## Phase 6 — Operator console (the GUI)
+
+> **Expanded interaction scope (per user):** the Graph tab gets a **view-type selector**
+> (Network · Sankey · Association matrix · Timeline · MITRE matrix · Sunburst · Treemap ·
+> Temporal heatmap · Risk radar) and a **layout switcher**; a **filters** row (entity-type
+> multiselect · risk slider · time window); **drill-down** (search or click → `entity_detail_html`
+> in a detail pane with pivot buttons that re-focus the graph + pull enrichment + identity intel);
+> and **annotations** (per-entity notes kept on the Console, surfaced in the report).
 
 ### Task 6.1: `console.py` — render builders (logic, GUI-free, fully testable)
 
