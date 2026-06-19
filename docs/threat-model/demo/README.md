@@ -1,5 +1,21 @@
 # Runnable demo — shift-left model end-to-end
 
+## Quick start (3 commands)
+
+```bash
+# 1. one-time: create the env (needs Miniforge — https://github.com/conda-forge/miniforge)
+conda env create -f docs/threat-model/demo/environment.yml
+# 2. launch (registers the kernel + opens JupyterLab; handles the trailing-space repo path)
+./docs/threat-model/demo/run.sh
+# 3. in JupyterLab, open soc_notebook.ipynb and pick the "Abstract AI-SOC" kernel
+```
+
+Runs fully **offline** out of the box. Add `~/.abstract.env` (Abstract key) + OSINT keys to
+light up live paths. Already on a `.venv`? `pip install -r docs/threat-model/demo/requirements.txt`
+still works. `./docs/threat-model/demo/run.sh --check` validates the env without launching.
+
+---
+
 A dependency-free simulation of the model in [../README.md](../README.md): it ingests a mixed
 estate, normalizes to a common shape, builds an entity graph across **user / account / host /
 NHI / agent** identities, runs in-stream detections, replays history, scores entities
