@@ -28,11 +28,12 @@ def code(src):
     CELLS.append(new_code_cell(src.strip("\n")))
 
 
-LOGO = "https://docs.abstractsecurity.app/img/logos/logo-dark.svg"
+from brand import logo_svg
+_LOGO = logo_svg("white")  # inline official SVG → renders offline, on-brand
 
 # ─────────────────────────────────────────────────────────────────────────────
 md(f"""
-<img src='{LOGO}' height='44'>
+<div style="height:46px">{_LOGO}</div>
 
 # Abstract AI-SOC Notebook
 
@@ -117,6 +118,37 @@ try:
     print("Abstract REST:", conn, "| tenant:", ABSTRACT_ACCOUNT_ID or "(unset)")
 except Exception as e:
     print("offline — no Abstract key set (", str(e)[:80], ")")
+""")
+
+# 2.5 · Visual Investigation Console ──────────────────────────────────────────────
+md("""
+## ⚡ Visual Investigation Console
+
+The full operator console in one widget — **live-Abstract-driven** when a key is set,
+offline-modeled otherwise. Tabs:
+
+- **Overview** — KPIs + live/offline badge
+- **Graph** — switch between *network · attack-flow Sankey · association matrix · entity
+  timeline · re-exposure timeline · MITRE matrix · exposure sunburst · findings treemap ·
+  temporal heatmap · risk radar*, with **force / hierarchical / radial / clustered** layouts
+- **Identity** — continuous re-exposure (incl. *survives IDP / immutable-backup restore*),
+  session hijacking, MFA bombing, password reuse, VIP-at-risk, predicted next targets
+- **Investigate** — search any entity/IOC → per-entity **drill-down** (all fields), enrichment
+  across the free fabric (HIBP-passwords · Hudson Rock infostealer · IntelX · GreyNoise ·
+  CISA KEV · NVD) + keyless pivots, plus **annotations**
+- **MITRE** — ATT&CK coverage matrix
+- **Actions** — **dry-run → confirm → apply** write-back to the tenant
+""")
+code("""
+from live_data import build_state
+from console import Console
+
+# offline synthetic estate by default; pass the connected client for LIVE Abstract data:
+state = build_state(client) if (client is not None and LIVE) else build_state()
+console = Console(state,
+                 vips={"jsmith@acme.com", "ceo@acme.example", "cfo@acme.example"},
+                 connection=(client if LIVE else None))
+console.show()
 """)
 
 # 3 · MCP connect ────────────────────────────────────────────────────────────────
@@ -373,11 +405,11 @@ print(f'HYPOTHESIS: if {ip} were C2 -> {len(hyp)} entities implicated')
 md("## 17 · Generate the incident report (Markdown + branded HTML)")
 code("""
 import report
-norm2, g2, findings2, inv2, scores2, metrics2 = report.build()
-md_text = report.markdown(findings2, inv2, scores2, metrics2)
+report_state = report.build()                       # offline synthetic; report.build_state(client) for live
+md_text = report.markdown(report_state)
 open("investigation_report.md", "w").write(md_text)
-open("investigation_report.html", "w").write(report.html_report(md_text, g2, scores2, inv2))
-print(md_text[:900], "\\n...\\nwrote investigation_report.md + investigation_report.html")
+open("investigation_report.html", "w").write(report.html_report(report_state))
+print(md_text[:900], "\\n...\\nwrote investigation_report.md + branded investigation_report.html (self-contained)")
 """)
 
 # 18 · Write-back ─────────────────────────────────────────────────────────────────
@@ -431,7 +463,7 @@ playbook, or a scheduled job — the notebook is just the analyst-facing surface
 
 # ─────────────────────────────────────────────────────────────────────────────
 nb = new_notebook(cells=CELLS, metadata={
-    "kernelspec": {"name": "python3", "display_name": "Python 3 (ipykernel)", "language": "python"},
+    "kernelspec": {"name": "abstract-soc", "display_name": "Abstract AI-SOC", "language": "python"},
     "language_info": {"name": "python"},
 })
 
