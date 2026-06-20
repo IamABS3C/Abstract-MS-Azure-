@@ -298,6 +298,184 @@ def _nvd(value, kind):
     return {"cvss": cvss, "description": desc}
 
 
+def _post(url, data=None, headers=None, timeout=DEFAULT_TIMEOUT):
+    """POST helper (form bytes or pre-encoded JSON bytes)."""
+    body = data if isinstance(data, (bytes, type(None))) else urllib.parse.urlencode(data).encode()
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers=headers or {"Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            txt = r.read().decode()
+            return {"ok": True, "status": r.status,
+                    "data": json.loads(txt) if txt.strip().startswith(("{", "[")) else txt}
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "status": e.code, "error": e.read().decode()[:300]}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:200]}
+
+
+# ── more free / free-tier feeds: gov · vuln · exposure · malware · predictive ──────
+def _epss(value, kind):
+    """FIRST EPSS — probability a CVE will be exploited in the wild (predictive)."""
+    if kind != "cve":
+        return {"skipped": "EPSS is CVE-only"}
+    r = _get(f"https://api.first.org/data/v1/epss?cve={urllib.parse.quote(value)}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    rows = ((r.get("data") or {}).get("data") or [])
+    if not rows:
+        return {"found": False}
+    d = rows[0]
+    return {"epss": round(float(d.get("epss", 0) or 0), 5),
+            "percentile": round(float(d.get("percentile", 0) or 0), 5)}
+
+
+def _internetdb(value, kind):
+    """Shodan InternetDB — keyless ports / CVEs / CPEs / hostnames for an IP."""
+    if kind != "ip":
+        return {"skipped": "InternetDB is IP-only"}
+    r = _get(f"https://internetdb.shodan.io/{value}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    return {"ports": d.get("ports"), "vulns": d.get("vulns"),
+            "cpes": d.get("cpes"), "hostnames": d.get("hostnames"), "tags": d.get("tags")}
+
+
+def _crtsh(value, kind):
+    if kind != "domain":
+        return {"skipped": "crt.sh is domain-only"}
+    r = _get(f"https://crt.sh/?q={urllib.parse.quote(value)}&output=json")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    rows = r.get("data") or []
+    names = sorted({n.strip() for row in rows for n in str(row.get("name_value", "")).split("\n") if n.strip()})
+    return {"certs": len(rows), "subdomains": names[:25]}
+
+
+def _rdap(value, kind):
+    if kind not in ("ip", "domain"):
+        return {"skipped": "RDAP takes ip/domain"}
+    path = "ip" if kind == "ip" else "domain"
+    r = _get(f"https://rdap.org/{path}/{urllib.parse.quote(value)}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    org = ""
+    for e in (d.get("entities") or []):
+        for v in ((e.get("vcardArray") or [None, []])[1] or []):
+            if v and v[0] == "fn":
+                org = v[3]
+                break
+        if org:
+            break
+    return {"handle": d.get("handle"), "name": d.get("name") or d.get("ldhName"),
+            "org": org, "country": d.get("country")}
+
+
+def _ipwhois(value, kind):
+    if kind != "ip":
+        return {"skipped": "ipwho.is is IP-only"}
+    r = _get(f"https://ipwho.is/{value}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    conn = d.get("connection") or {}
+    return {"country": d.get("country"), "city": d.get("city"),
+            "asn": conn.get("asn"), "org": conn.get("org") or conn.get("isp")}
+
+
+def _leakcheck_public(value, kind):
+    if kind != "email":
+        return {"skipped": "LeakCheck public is email-only"}
+    r = _get(f"https://leakcheck.io/api/public?check={urllib.parse.quote(value)}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    return {"found": d.get("found"), "breach_sources": len(d.get("sources") or []),
+            "fields": d.get("fields")}
+
+
+def _ransomware_live(value, kind):
+    if kind != "domain":
+        return {"skipped": "ransomware.live is domain-only"}
+    r = _get(f"https://api.ransomware.live/v2/searchvictims/{urllib.parse.quote(value)}")
+    if not r.get("ok"):
+        return {"found": False, "note": r.get("status")}
+    d = r.get("data")
+    rows = d if isinstance(d, list) else (d.get("victims") if isinstance(d, dict) else [])
+    rows = rows or []
+    return {"victims_found": len(rows),
+            "groups": sorted({(v.get("group_name") or v.get("group")) for v in rows
+                              if isinstance(v, dict)} - {None})[:5]}
+
+
+def _urlhaus(value, kind):
+    if kind not in ("url", "domain", "ip", "host"):
+        return {"skipped": "URLhaus takes url/domain/ip"}
+    if kind == "url":
+        r = _post("https://urlhaus-api.abuse.ch/v1/url/", {"url": value})
+    else:
+        r = _post("https://urlhaus-api.abuse.ch/v1/host/", {"host": value})
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    return {"status": d.get("query_status"), "threat": d.get("threat"),
+            "url_count": d.get("url_count"),
+            "urls": [u.get("url") for u in (d.get("urls") or [])[:3]]}
+
+
+def _malwarebazaar(value, kind):
+    if kind != "hash":
+        return {"skipped": "MalwareBazaar is hash-only"}
+    hdr = {"Accept": "application/json"}
+    key = os.environ.get("MALWAREBAZAAR_API_KEY") or os.environ.get("ABUSE_CH_API_KEY")
+    if key:
+        hdr["Auth-Key"] = key
+    r = _post("https://mb-api.abuse.ch/api/v1/", {"query": "get_info", "hash": value}, headers=hdr)
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    if d.get("query_status") != "ok":
+        return {"found": False, "status": d.get("query_status")}
+    item = (d.get("data") or [{}])[0]
+    return {"file_type": item.get("file_type"), "signature": item.get("signature"),
+            "tags": item.get("tags")}
+
+
+def _threatfox(value, kind):
+    key = os.environ.get("THREATFOX_API_KEY") or os.environ.get("ABUSE_CH_API_KEY")
+    if not key:
+        return {"skipped": "no THREATFOX_API_KEY (free from abuse.ch)"}
+    if kind not in ("ip", "domain", "url", "hash"):
+        return {"skipped": "ThreatFox takes ip/domain/url/hash"}
+    body = json.dumps({"query": "search_ioc", "search_term": value}).encode()
+    r = _post("https://threatfox-api.abuse.ch/api/v1/", data=body,
+              headers={"Auth-Key": key, "Content-Type": "application/json", "Accept": "application/json"})
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    rows = d.get("data") if isinstance(d.get("data"), list) else []
+    return {"status": d.get("query_status"), "iocs": len(rows),
+            "malware": sorted({x.get("malware_printable") for x in rows
+                               if isinstance(x, dict)} - {None})[:5]}
+
+
+def _pulsedive(value, kind):
+    key = os.environ.get("PULSEDIVE_API_KEY")
+    if not key:
+        return {"skipped": "no PULSEDIVE_API_KEY (free signup)"}
+    if kind not in ("ip", "domain", "url"):
+        return {"skipped": "Pulsedive takes ip/domain/url"}
+    r = _get(f"https://pulsedive.com/api/explore.php?q={urllib.parse.quote(value)}"
+             f"&limit=1&pretty=0&key={key}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    res = ((r.get("data") or {}).get("results") or [])
+    d = res[0] if res else {}
+    return {"risk": d.get("risk"), "threats": d.get("threats")}
+
+
 # name → (categories, supported kinds, env var(s), adapter)
 ENRICHERS = {
     "VirusTotal": ("multi-rep", ["ip", "domain", "hash", "url"], ["VT_API_KEY"], _virustotal),
@@ -314,6 +492,18 @@ ENRICHERS = {
     "Intelligence X": ("leak-search", ["email", "domain"], ["INTELX_API_KEY"], _intelx),
     "CISA KEV": ("vuln-exploited", ["cve"], [], _cisa_kev),
     "NVD": ("vuln", ["cve"], [], _nvd),
+    # gov / vuln / exposure / malware / predictive (keyless unless noted)
+    "EPSS": ("exploit-prediction", ["cve"], [], _epss),
+    "Shodan InternetDB": ("attack-surface", ["ip"], [], _internetdb),
+    "crt.sh": ("cert-transparency", ["domain"], [], _crtsh),
+    "RDAP": ("registration", ["ip", "domain"], [], _rdap),
+    "ipwho.is": ("geo-asn", ["ip"], [], _ipwhois),
+    "LeakCheck (public)": ("breach", ["email"], [], _leakcheck_public),
+    "Ransomware.live": ("ransomware", ["domain"], [], _ransomware_live),
+    "URLhaus": ("malware-url", ["url", "domain", "ip"], [], _urlhaus),
+    "MalwareBazaar": ("malware", ["hash"], [], _malwarebazaar),
+    "ThreatFox": ("intel-feed", ["ip", "domain", "url", "hash"], ["THREATFOX_API_KEY"], _threatfox),
+    "Pulsedive": ("multi-rep", ["ip", "domain", "url"], ["PULSEDIVE_API_KEY"], _pulsedive),
 }
 
 # Slice-3 connectors — visible in the GUI as planned/needs-key, never run live yet.
@@ -402,6 +592,9 @@ def selftest() -> dict:
     assert e["kind"] == "ip" and e["pivots"]
     # fabric: free adapters registered + reshaping (all network-free)
     assert {"HIBP Passwords", "Hudson Rock", "CISA KEV", "NVD"} <= set(ENRICHERS)
+    assert {"EPSS", "Shodan InternetDB", "crt.sh", "RDAP", "URLhaus", "MalwareBazaar",
+            "Ransomware.live", "ipwho.is", "LeakCheck (public)"} <= set(ENRICHERS)
+    assert ENRICHERS["EPSS"][0] == "exploit-prediction"  # predictive feed wired
     assert "Intelligence X" in ENRICHERS and ENRICHERS["Intelligence X"][2] == ["INTELX_API_KEY"]
     assert STUBS
     ee = enrich_entity("AS13335", "asn")          # no adapter supports asn → no network call
