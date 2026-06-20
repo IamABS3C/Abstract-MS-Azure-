@@ -46,8 +46,15 @@ def _plotly_ok() -> bool:
         return False
 
 
+# When True, panels omit their inline Plotly bundle — the host (e.g. report.py) includes
+# plotlyjs_script() ONCE instead of embedding ~3.5MB per panel.
+_NO_INLINE = False
+
+
 def _fig_html(fig, include_js: bool = True) -> str:
     import plotly.io as pio
+    if _NO_INLINE:
+        include_js = False
     return pio.to_html(fig, include_plotlyjs=("inline" if include_js else False),
                        full_html=False, config={"displaylogo": False, "responsive": True})
 
@@ -57,8 +64,8 @@ def plotlyjs_script() -> str:
     every panel with include_js=False to avoid embedding it many times."""
     if not _plotly_ok():
         return ""
-    import plotly.io as pio
-    return "<script>" + pio.get_plotlyjs() + "</script>"
+    from plotly.offline import get_plotlyjs
+    return "<script>" + get_plotlyjs() + "</script>"
 
 
 # ── graph helpers ──────────────────────────────────────────────────────────────
