@@ -14,6 +14,32 @@ Runs fully **offline** out of the box. Add `~/.abstract.env` (Abstract key) + OS
 light up live paths. Already on a `.venv`? `pip install -r docs/threat-model/demo/requirements.txt`
 still works. `./docs/threat-model/demo/run.sh --check` validates the env without launching.
 
+### The Investigation Console
+
+The notebook opens on a single **operator console** (`console.Console`) — a tabbed,
+interactive dashboard driven by *live* Abstract data when a key is set, offline-modeled
+otherwise:
+
+- **Graph** tab switches between **network · attack-flow Sankey · association matrix ·
+  entity timeline · re-exposure timeline · MITRE matrix · exposure sunburst · findings
+  treemap · temporal heatmap · risk radar** (Plotly + pyvis, JS bundled inline → works
+  offline), with **force / hierarchical / radial / clustered** layouts.
+- **Identity** tab: continuous re-exposure (incl. *survives IDP / immutable-backup
+  restore*), session hijacking, MFA bombing, password reuse, VIP-at-risk, predicted targets.
+- **Investigate** tab: search any entity/IOC → per-entity drill-down (all fields) +
+  enrichment fabric (HIBP-passwords · Hudson Rock infostealer · IntelX · GreyNoise · CISA
+  KEV · NVD + keyless pivots) + annotations.
+- **Actions** tab: **dry-run → confirm → apply** write-back to the tenant.
+
+Export a standalone branded report and an ATT&CK Navigator layer:
+
+```bash
+python3 report.py                       # self-contained branded investigation_report.html
+python3 report.py --writeback           # DRY-RUN: preview the exact view payload + diff
+python3 report.py --writeback --apply    # actually POST to the tenant
+python3 -c "import mitre_layer, live_data; mitre_layer.write_layer(live_data.build_state())"
+```
+
 ---
 
 A dependency-free simulation of the model in [../README.md](../README.md): it ingests a mixed
