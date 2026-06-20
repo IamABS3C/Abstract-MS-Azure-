@@ -24,8 +24,13 @@ def md(src):
     CELLS.append(new_markdown_cell(src.strip("\n")))
 
 
-def code(src):
-    CELLS.append(new_code_cell(src.strip("\n")))
+def code(src, hide=True):
+    c = new_code_cell(src.strip("\n"))
+    if hide:
+        # Dashboard mode: collapse the input by default (JupyterLab honors source_hidden).
+        # The output stays visible; click the collapsed input bar to review/edit the code.
+        c.metadata["jupyter"] = {"source_hidden": True}
+    CELLS.append(c)
 
 
 from brand import logo_svg
@@ -54,6 +59,13 @@ A single, branded notebook that exercises **every Abstract use case** end-to-end
 > Runs **offline** out of the box (synthetic Qakbot-style campaign). Add an Abstract key
 > (`~/.abstract.env`) and OSINT keys (env vars) to light up the live paths. The engine is
 > pure-stdlib; the notebook adds matplotlib / networkx / pandas (see `requirements.txt`).
+""")
+
+md("""
+> **Dashboard mode.** Code inputs are **collapsed by default** — this reads as a dashboard,
+> not a script. Click any collapsed input bar (or use _View ▸ Collapse/Expand_) to review or
+> edit a cell. **Run ▸ Run All Cells** once to populate it, then drive the interactive console.
+> For a pure, code-free dashboard: `voila soc_notebook.ipynb`.
 """)
 
 # 0 · Setup ────────────────────────────────────────────────────────────────────

@@ -1,9 +1,15 @@
-"""Operator console — the in-notebook GUI. Split into pure HTML/preview builders
-(fully testable headless) and an ipywidgets shell (import-guarded so this module
-imports under bare Python). The shell offers a tabbed workspace with a graph
-view-type selector + layout switcher + filters, entity search/drill-down, per-entity
-detail with pivots, annotations, and a dry-run → confirm → apply write-back."""
+"""Operator console — the in-notebook GUI / living dashboard. Split into pure
+HTML/preview builders (fully testable headless) and an ipywidgets shell (import-guarded
+so this module imports under bare Python).
+
+The shell is a tabbed workspace:
+  Overview · Graph · Identity · Investigate · Hunt · Pipeline · MITRE · Enrichment ·
+  Authoring · Settings · Actions
+with a build progress bar, view-type + layout selectors, entity search/drill-down,
+annotations, an integrations/config panel, and dry-run → confirm → apply authoring of
+Abstract objects (views/fieldsets/insights live; models/schemas/parsers scaffolded)."""
 from __future__ import annotations
+import os
 import html
 import brand
 
@@ -21,6 +27,11 @@ VIEW_TYPES = [
     ("Risk radar (focus)", "risk_radar", True),
 ]
 LAYOUTS = ["force", "hierarchical", "radial", "clustered"]
+
+# Authoring templates — object kinds the console can dry-run / create. live_capable maps
+# to a real abstract_client method; the rest are scaffolded (Slice 2 / API pending).
+AUTHORING_KINDS = ["Saved view", "Field set", "Insight",
+                   "Identity model", "Schema / field-map", "Parser", "Suppression"]
 
 
 # ── pure builders (no ipywidgets, no network) ─────────────────────────────────────
@@ -51,8 +62,8 @@ def identity_html(state, vips=None) -> str:
     s = II.summary(state, vips or set())
     rex = "".join(
         f'<li>{html.escape(r.entity)} — <b>{r.count}×</b> exposure'
-        f'{" · <b style=\"color:"+brand.AMBER+"\">survives restore</b>" if r.survives_restore else ""}</li>'
-        for r in s["re_exposure"][:10])
+        + (f' · <b style="color:{brand.AMBER}">survives restore</b>' if r.survives_restore else '')
+        + '</li>' for r in s["re_exposure"][:10])
     sig = "".join(
         f'<li>{html.escape(x.entity)} — {html.escape(x.kind)} '
         f'<b style="color:{brand.PINK}">({x.score})</b> · {html.escape(x.detail)}</li>'
@@ -86,17 +97,144 @@ def enrichment_html(result: dict) -> str:
             f'<div style="font-size:12px">{pivots}</div></div>')
 
 
+def pipeline_html(state) -> str:
+    """Pipeline analysis: source breakdown, OCSF classes, severity mix, efficiency."""
+    from collections import Counter
+    by_source = Counter(ev.source for ev in state.norm)
+    by_ocsf = Counter(getattr(ev, "ocsf", "?") for ev in state.norm)
+    by_sev = Counter(ev.severity for ev in state.norm)
+    m = state.metrics or {}
+
+    def rows(counter, color):
+        mx = max(counter.values()) if counter else 1
+        return "".join(
+            f'<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px">'
+            f'<span style="width:170px;color:{brand.INK}">{html.escape(str(k))}</span>'
+            f'<span style="flex:1;background:#16161e;border-radius:5px;height:12px">'
+            f'<span style="display:block;height:100%;width:{int(100*v/mx)}%;background:{color}"></span></span>'
+            f'<span style="width:54px;text-align:right;color:{brand.MUT}">{v:,}</span></div>'
+            for k, v in counter.most_common(12))
+    eff = (f'SIEM volume cut <b style="color:{brand.TEAL}">{m.get("reduction_pct","—")}%</b> · '
+           f'fatigue cut <b style="color:{brand.PINK}">{m.get("fatigue_reduction_pct","—")}%</b> · '
+           f'{m.get("total_events","—"):,} events → {m.get("forwarded_to_siem","—")} forwarded · '
+           f'{m.get("incidents","—")} incident(s)') if m else "no metrics"
+    return (f'<div style="font-family:{brand.FONT_STACK};color:{brand.INK}">'
+            f'<h3 style="color:{brand.TEAL}">Pipeline efficiency</h3><p>{eff}</p>'
+            f'<h3 style="color:{brand.TEAL}">Events by source</h3>{rows(by_source, brand.BLUE)}'
+            f'<h3 style="color:{brand.TEAL}">Events by OCSF class</h3>{rows(by_ocsf, brand.TEAL)}'
+            f'<h3 style="color:{brand.TEAL}">Severity mix</h3>{rows(by_sev, brand.PINK)}</div>')
+
+
+def hunt_html(state) -> str:
+    """Run the threat-hunting catalog over the normalized stream + graph."""
+    import hunts
+    ctx = hunts.make_context(state.norm, state.graph, state.iocs, state.scores)
+    results = hunts.run_all(ctx)
+    cat = {c["key"]: c for c in hunts.catalog()}
+    blocks = []
+    for key, rows in results.items():
+        c = cat.get(key, {})
+        items = "".join(
+            f'<li>{html.escape(str(r.get("entity","")))} · '
+            f'<span style="color:{brand.AMBER}">{html.escape(str(r.get("severity","")))}</span> · '
+            f'{html.escape(str(r.get("technique","")))} — {html.escape(str(r.get("why","")))}</li>'
+            for r in rows[:8])
+        blocks.append(
+            f'<div style="margin:8px 0"><b style="color:{brand.PINK}">{html.escape(c.get("title", key))}</b> '
+            f'<span style="color:{brand.MUT};font-size:11px">{html.escape(c.get("tactic",""))} · '
+            f'{html.escape(c.get("technique",""))} · {len(rows)} hits</span>'
+            f'<ul style="font-size:12px;margin:4px 0">{items or "<li>no hits</li>"}</ul></div>')
+    return (f'<div style="font-family:{brand.FONT_STACK};color:{brand.INK}">'
+            f'<h3 style="color:{brand.TEAL}">Threat-hunting catalog ({len(results)} hunts)</h3>'
+            + "".join(blocks) + '</div>')
+
+
+def settings_html(state) -> str:
+    """Integrations / config status — adapters, stubs, MCP, Abstract connection."""
+    import enrichment as EN
+    avail = EN.available()
+    adlist = "".join(
+        f'<li>{html.escape(n)} — '
+        + (f'<b style="color:{brand.TEAL}">configured</b>' if ok else
+           f'<span style="color:{brand.MUT}">needs key</span>') + '</li>'
+        for n, ok in avail.items())
+    stubs = "".join(
+        f'<li>{html.escape(n)} — <span style="color:{brand.AMBER}">{html.escape(note)}</span></li>'
+        for n, (_c, _k, note) in EN.STUBS.items())
+    mcp_url = os.environ.get("ABSTRACT_MCP_URL", "(bundled stdio server)")
+    base = os.environ.get("ABSTRACT_API_BASE", "https://api.abstractsecurity.app")
+    keyset = "set" if os.environ.get("ABSTRACT_API_KEY") else "not set"
+    return (f'<div style="font-family:{brand.FONT_STACK};color:{brand.INK}">'
+            f'<h3 style="color:{brand.TEAL}">Abstract connection</h3>'
+            f'<p>{_badge(state)} · API base <code>{html.escape(base)}</code> · '
+            f'API key <b>{keyset}</b> · MCP <code>{html.escape(mcp_url)}</code></p>'
+            f'<h3 style="color:{brand.TEAL}">Enrichment adapters</h3><ul style="font-size:12px">{adlist}</ul>'
+            f'<h3 style="color:{brand.TEAL}">Slice-3 connectors (planned)</h3>'
+            f'<ul style="font-size:12px">{stubs}</ul></div>')
+
+
+def authoring_preview(kind: str, state=None) -> dict:
+    """Dry-run payload + diff for an Abstract object. live_capable kinds map to a real
+    abstract_client method; the rest are scaffolded previews (Slice 2 / API pending)."""
+    name = "[ABS-DEMO] console authored"
+    if kind == "Saved view":
+        payload = {"name": name + " — view",
+                   "query": [{"id": "q1", "depth": 0, "field": "severity", "index": 0,
+                              "value": "critical", "parentId": None, "fieldType": "String",
+                              "field_operation": "EQUALS", "subFieldOperation": ""}],
+                   "fields": ["type", "@timestamp", "severity", "user_name", "source_address", "message"],
+                   "order_by": "@timestamp", "order_type": "DESC"}
+        return {"kind": kind, "method": "create_view", "live_capable": True, "payload": payload,
+                "diff": f"CREATE view '{payload['name']}' (severity == critical, +{len(payload['fields'])} fields)"}
+    if kind == "Field set":
+        payload = {"name": name + " — fieldset",
+                   "fields": ["type", "@timestamp", "severity", "user_name", "source_address",
+                              "file.hash.sha256", "threat.technique_id", "message"],
+                   "tags": ["abs-demo", "console"]}
+        return {"kind": kind, "method": "create_fieldset", "live_capable": True, "payload": payload,
+                "diff": f"CREATE field-set '{payload['name']}' (+{len(payload['fields'])} fields)"}
+    if kind == "Insight":
+        payload = {"title": name + " — insight", "status": "open", "severity": "high",
+                   "summary": "Identity re-exposure survives IDP restore; credential still leaked.",
+                   "categories": ["detection"],
+                   "mitre_attack_techniques": [{"id": "T1078", "name": "Valid Accounts", "sub_id": ""}]}
+        return {"kind": kind, "method": "create_insight", "live_capable": True, "payload": payload,
+                "diff": f"CREATE insight '{payload['title']}' (severity high, T1078)"}
+    if kind == "Identity model":
+        payload = {"name": name + " — identity-model",
+                   "entity_kinds": ["human", "service-principal", "managed-identity", "nhi", "agent", "session"],
+                   "risk_weights": {"re_exposure": 0.3, "session_hijack": 0.25, "mfa_bombing": 0.15,
+                                    "password_reuse": 0.15, "persistent_hygiene": 0.15},
+                   "vip_tags": ["ceo", "cfo", "admin"]}
+        return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
+                "diff": "DEFINE identity model (entity kinds + risk weights) — Slice 2 / model API"}
+    if kind == "Schema / field-map":
+        payload = {"name": name + " — schema", "ocsf_class": "Authentication",
+                   "map": {"src_ip": "source_address", "account": "user_name",
+                           "user": "actor.user.name", "sev": "severity"}}
+        return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
+                "diff": "DEFINE schema/field-map (source → OCSF) — Slice 2 / schema API"}
+    if kind == "Parser":
+        payload = {"name": name + " — parser", "source": "okta",
+                   "extract": {"account": "$.actor.alternateId", "src_ip": "$.client.ipAddress",
+                               "event": "$.eventType"}}
+        return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
+                "diff": "DEFINE parser (okta → normalized fields) — Slice 2 / parser API"}
+    # Suppression
+    payload = {"name": name + " — suppression",
+               "match": {"field": "source_address", "operation": "EQUALS", "value": "52.20.10.5"},
+               "reason": "known corporate egress"}
+    return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
+            "diff": "DEFINE suppression (corp egress IP) — Slice 2 / suppression API"}
+
+
 def writeback_preview(state, name="[ABS-DEMO] Investigation — console") -> dict:
-    """Dry-run ONLY: build the exact saved-view payload + a human diff. No network."""
-    payload = {"name": name,
-               "query": [{"id": "q1", "depth": 0, "field": "severity", "index": 0,
-                          "value": "critical", "parentId": None, "fieldType": "String",
-                          "field_operation": "EQUALS", "subFieldOperation": ""}],
-               "fields": ["type", "@timestamp", "severity", "user_name", "source_address", "message"],
-               "order_by": "@timestamp", "order_type": "DESC"}
-    diff = (f"CREATE view '{name}'  (+{len(payload['fields'])} fields, 1 query clause; "
-            f"severity == critical)")
-    return {"action": "create_view", "payload": payload, "diff": diff, "applied": False}
+    """Back-compat alias used by report.py: the Saved-view authoring preview."""
+    wb = authoring_preview("Saved view", state)
+    wb["payload"]["name"] = name
+    wb["action"] = "create_view"
+    wb["applied"] = False
+    return wb
 
 
 def selftest():
@@ -105,13 +243,22 @@ def selftest():
     st.vips = {"jsmith@acme.com"}
     assert "Investigation overview" in overview_html(st)
     assert "re-exposure" in identity_html(st, st.vips).lower()
+    assert "Pipeline efficiency" in pipeline_html(st)
+    assert "Threat-hunting catalog" in hunt_html(st)
+    assert "Enrichment adapters" in settings_html(st)
     assert enrichment_html({"value": "1.1.1.1", "kind": "ip", "sources": ["t"],
                             "records": [{"source": "t", "type": "x", "value": "1"}], "pivots": []})
+    for k in AUTHORING_KINDS:
+        a = authoring_preview(k, st)
+        assert "payload" in a and "diff" in a and isinstance(a["live_capable"], bool)
+    assert authoring_preview("Saved view", st)["live_capable"] is True
+    assert authoring_preview("Parser", st)["live_capable"] is False
     wb = writeback_preview(st)
     assert wb["applied"] is False and wb["action"] == "create_view"
     c = Console(st, vips=st.vips)
     assert c.state is not None and c.connection is None
-    return {"ok": True, "views": len(VIEW_TYPES), "layouts": len(LAYOUTS)}
+    return {"ok": True, "views": len(VIEW_TYPES), "layouts": len(LAYOUTS),
+            "authoring_kinds": len(AUTHORING_KINDS)}
 
 
 # ── ipywidgets shell (import-guarded) ─────────────────────────────────────────────
@@ -122,7 +269,7 @@ def _widgets():
 
 
 class Console:
-    """Tabbed operator console. Headless-constructible; `.show()` builds the widgets.
+    """Tabbed operator dashboard. Headless-constructible; `.show()` builds the widgets.
     `.attach(connection)` enables live write-back (still dry-run → confirm → apply)."""
 
     def __init__(self, state, vips=None, connection=None):
@@ -157,9 +304,16 @@ class Console:
         st = self.state
         focus = {"key": None}
 
-        # ── Graph tab: view selector + layout + filters ──────────────────────────
-        view_dd = w.Dropdown(options=[lbl for lbl, _, _ in VIEW_TYPES],
-                             value="Network graph", description="View:")
+        progress = w.IntProgress(value=0, min=0, max=11, description="Building…",
+                                 bar_style="info", style={"bar_color": brand.PINK})
+
+        def tick(label):
+            progress.value += 1
+            progress.description = label
+
+        # ── Graph tab: view selector + layout + filter ───────────────────────────
+        view_dd = w.Dropdown(options=[lbl for lbl, _, _ in VIEW_TYPES], value="Network graph",
+                             description="View:")
         layout_dd = w.Dropdown(options=LAYOUTS, value="force", description="Layout:")
         risk_min = w.IntSlider(value=0, min=0, max=100, step=5, description="Min risk:")
         graph_out = w.Output()
@@ -171,8 +325,9 @@ class Console:
         view_dd.observe(draw_graph, "value")
         layout_dd.observe(draw_graph, "value")
         graph_tab = w.VBox([w.HBox([view_dd, layout_dd, risk_min]), graph_out])
+        tick("Graph")
 
-        # ── search / drill-down / enrichment ─────────────────────────────────────
+        # ── Investigate: search / drill-down / enrichment / annotations ──────────
         search = w.Text(placeholder="entity / IP / email / CVE …", description="Find:",
                         continuous_update=False)
         detail_out = w.Output()
@@ -183,23 +338,21 @@ class Console:
             if not val:
                 return
             kind = EN.detect_kind(val)
-            key = val if ":" in val else f"identity:{val}" if "@" in val else None
+            key = val if ":" in val else (f"identity:{val}" if "@" in val else None)
             focus["key"] = key or focus["key"]
             detail_out.clear_output(wait=True)
             with detail_out:
                 if focus["key"]:
                     display(HTML(VI.entity_detail_html(st, focus["key"])))
                 else:
-                    display(HTML(f"<i>looked up <b>{val}</b> ({kind})</i>"))
+                    display(HTML(f"<i>looked up <b>{html.escape(val)}</b> ({kind})</i>"))
             enrich_out.clear_output(wait=True)
             with enrich_out:
                 display(HTML(enrichment_html(EN.enrich_entity(val, kind))))
             draw_graph()
-        search.observe(lambda ch: do_search(), "value")   # fires on Enter (continuous_update=False)
+        search.observe(lambda ch: do_search(), "value")
         search_btn = w.Button(description="Lookup + pivot", button_style="info")
         search_btn.on_click(do_search)
-
-        # annotations
         annot = w.Textarea(placeholder="analyst note for the focused entity…", description="Note:")
         annot_btn = w.Button(description="Save note")
         annot_log = w.Output()
@@ -215,29 +368,110 @@ class Console:
         annot_btn.on_click(save_note)
         invest_tab = w.VBox([w.HBox([search, search_btn]), detail_out, enrich_out,
                              w.HBox([annot, annot_btn]), annot_log])
+        tick("Investigate")
 
-        # ── Actions tab: dry-run → confirm → apply ───────────────────────────────
+        # ── Settings / Integrations: set key + reconnect ─────────────────────────
+        set_status = w.HTML(settings_html(st))
+        key_in = w.Password(placeholder="ABSTRACT_API_KEY (session only)", description="API key:")
+        base_in = w.Text(value=os.environ.get("ABSTRACT_API_BASE", "https://api.abstractsecurity.app"),
+                         description="API base:")
+        acct_in = w.Text(value=os.environ.get("ABSTRACT_ACCOUNT_ID", ""), description="Tenant:")
+        connect_btn = w.Button(description="Apply & reconnect", button_style="success")
+        connect_out = w.Output()
+
+        def do_connect(*_):
+            connect_out.clear_output(wait=True)
+            with connect_out:
+                if key_in.value:
+                    os.environ["ABSTRACT_API_KEY"] = key_in.value      # session only; never printed
+                if base_in.value:
+                    os.environ["ABSTRACT_API_BASE"] = base_in.value
+                if acct_in.value:
+                    os.environ["ABSTRACT_ACCOUNT_ID"] = acct_in.value
+                try:
+                    from abstract_client import AbstractClient
+                    c = AbstractClient("api")
+                    conn = c.connect()
+                    if conn.get("ok"):
+                        self.connection = c
+                        print("connected:", {k: v for k, v in conn.items() if k != "key"})
+                    else:
+                        print("connect failed:", conn)
+                except Exception as e:   # noqa: BLE001
+                    print("offline / error:", str(e)[:120])
+                set_status.value = settings_html(st)
+        connect_btn.on_click(do_connect)
+        settings_tab = w.VBox([set_status, w.HTML("<hr>"), key_in, base_in, acct_in,
+                               connect_btn, connect_out])
+        tick("Settings")
+
+        # ── Authoring: dry-run → confirm → apply (multi object kind) ─────────────
+        kind_dd = w.Dropdown(options=AUTHORING_KINDS, value="Saved view", description="Object:")
+        a_dry = w.Button(description="Dry-run", button_style="info")
+        a_confirm = w.Checkbox(value=False, description="I confirm this live mutation")
+        a_apply = w.Button(description="Apply to tenant", button_style="danger", disabled=True)
+        a_out = w.Output()
+        a_state = {"prev": None}
+
+        def refresh_apply():
+            prev = a_state["prev"]
+            a_apply.disabled = not (prev and prev.get("live_capable") and self.connection
+                                    and a_confirm.value)
+
+        def on_dry(*_):
+            a_out.clear_output(wait=True)
+            prev = authoring_preview(kind_dd.value, st)
+            a_state["prev"] = prev
+            with a_out:
+                print(prev["diff"])
+                print(prev["payload"])
+                if not prev["live_capable"]:
+                    print("\n(scaffolded — this object type lands in Slice 2 / API pending; dry-run only)")
+                elif not self.connection:
+                    print("\n(no live connection — attach in Settings to enable apply)")
+            refresh_apply()
+        a_confirm.observe(lambda ch: refresh_apply(), "value")
+        kind_dd.observe(lambda ch: refresh_apply(), "value")
+
+        def on_apply(*_):
+            with a_out:
+                prev = a_state["prev"]
+                if not (prev and prev.get("live_capable") and self.connection):
+                    print("apply unavailable for this object / no connection.")
+                    return
+                res = getattr(self.connection, prev["method"])(prev["payload"])
+                print("applied →", prev["method"], "id:", (res.get("body") or {}).get("id"),
+                      "status:", res.get("status"))
+        a_dry.on_click(on_dry)
+        a_apply.on_click(on_apply)
+        authoring_tab = w.VBox([
+            w.HTML(f'<div style="color:{brand.MUT};font-family:{brand.FONT_STACK}">Create/update '
+                   f'Abstract objects. Views · field-sets · insights apply live; identity models · '
+                   f'schemas · parsers · suppressions are scaffolded (Slice 2). Always dry-run first.</div>'),
+            w.HBox([kind_dd, a_dry]), a_confirm, a_apply, a_out])
+        tick("Authoring")
+
+        # ── Actions: investigation write-back ────────────────────────────────────
         dry = w.Button(description="Dry-run write-back", button_style="info")
         confirm = w.Checkbox(value=False, description="I confirm this live mutation")
         apply = w.Button(description="Apply to tenant", button_style="danger", disabled=True)
         act_out = w.Output()
 
-        def refresh_apply():
+        def refresh_wb():
             apply.disabled = not (self.connection and confirm.value)
 
-        def on_dry(*_):
+        def on_wb_dry(*_):
             act_out.clear_output(wait=True)
             with act_out:
                 wb = writeback_preview(st)
                 print(wb["diff"])
                 print(wb["payload"])
                 if not self.connection:
-                    print("\n(no live connection attached — dry-run only. "
-                          "Console(state, connection=client) to enable apply.)")
-            refresh_apply()
-        confirm.observe(lambda ch: refresh_apply(), "value")
+                    print("\n(no live connection — attach in Settings; dry-run only)")
+            refresh_wb()
+        confirm.observe(lambda ch: refresh_wb(), "value")
 
-        def on_apply(*_):
+        def on_wb_apply(*_):
             with act_out:
                 if not self.connection:
                     print("No connection attached.")
@@ -245,27 +479,35 @@ class Console:
                 wb = writeback_preview(st)
                 res = self.connection.create_view(wb["payload"])
                 print("applied → view id:", (res.get("body") or {}).get("id"), "status:", res.get("status"))
-        dry.on_click(on_dry)
-        apply.on_click(on_apply)
-        actions_tab = w.VBox([w.HTML(f'<div style="color:{brand.MUT}">Write the investigation back '
-                                     f'to Abstract as a saved view. Dry-run first; apply only after '
-                                     f'an explicit confirm.</div>'), dry, confirm, apply, act_out])
+        dry.on_click(on_wb_dry)
+        apply.on_click(on_wb_apply)
+        actions_tab = w.VBox([w.HTML(f'<div style="color:{brand.MUT}">Write this investigation back '
+                                     f'as a saved view. Dry-run first; apply only after confirm.</div>'),
+                              dry, confirm, apply, act_out])
+        tick("Actions")
 
-        # ── assemble tabs ────────────────────────────────────────────────────────
-        ana = w.HTML(f'<pre style="color:{brand.INK}">{html.escape(str(st.analytics))}</pre>')
-        insights_html = w.HTML(f'<pre style="color:{brand.INK}">{len(st.insights)} insights · '
-                               f'{len(st.detections)} detections (live)</pre>')
-        tabs = w.Tab(children=[
-            w.HTML(overview_html(st)), graph_tab, insights_html, ana,
-            w.HTML(identity_html(st, self.vips)), invest_tab,
-            w.HTML(ML.matrix_html(st)), actions_tab])
-        for i, t in enumerate(["Overview", "Graph", "Insights/Detections", "Analytics",
-                               "Identity", "Investigate", "MITRE", "Actions"]):
+        # ── static tabs ──────────────────────────────────────────────────────────
+        overview_tab = w.HTML(overview_html(st)); tick("Overview")
+        identity_tab = w.HTML(identity_html(st, self.vips)); tick("Identity")
+        hunt_tab = w.HTML(hunt_html(st)); tick("Hunt")
+        pipeline_tab = w.HTML(pipeline_html(st)); tick("Pipeline")
+        mitre_tab = w.HTML(ML.matrix_html(st)); tick("MITRE")
+
+        tabs = w.Tab(children=[overview_tab, graph_tab, identity_tab, invest_tab, hunt_tab,
+                               pipeline_tab, mitre_tab, authoring_tab, settings_tab, actions_tab])
+        for i, t in enumerate(["Overview", "Graph", "Identity", "Investigate", "Hunt",
+                               "Pipeline", "MITRE", "Authoring", "Settings", "Actions"]):
             tabs.set_title(i, t)
         draw_graph()
+        progress.value = progress.max
+        progress.description = "Ready"
+        progress.bar_style = "success"
         header = w.HTML(f'<h2 style="color:{brand.PINK};font-family:{brand.FONT_STACK};margin:0">'
-                        f'Abstract AI-SOC Investigation Console</h2>')
-        return w.VBox([header, tabs])
+                        f'Abstract AI-SOC Investigation Console</h2>'
+                        f'<div style="color:{brand.MUT};font-family:{brand.FONT_STACK};font-size:12px">'
+                        f'living dashboard · {len(VIEW_TYPES)} views · {len(LAYOUTS)} layouts · '
+                        f'dry-run-first authoring</div>')
+        return w.VBox([header, progress, tabs])
 
 
 def launch(connection=None, vips=None):

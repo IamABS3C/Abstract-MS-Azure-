@@ -27,6 +27,9 @@ pandas>=2.0
 plotly>=5.20
 pyvis>=0.3.2
 
+# optional: pure code-free dashboard mode  ->  voila soc_notebook.ipynb
+voila>=0.5
+
 # in-notebook interactive control panel (GUI cockpit: connect / authorize / dev console)
 ipywidgets>=8.1
 
