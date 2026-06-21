@@ -14,6 +14,7 @@ import html
 import brand
 import abstract_authoring as AA
 import integrations as IN
+import ai_agents as AI
 
 # Graph-tab view registry: label → (viz_interactive fn name, needs_focus)
 VIEW_TYPES = [
@@ -190,10 +191,11 @@ def authoring_preview(kind: str, state=None) -> dict:
     return AA.build(kind, state=state)
 
 
-def models_html(state) -> str:
-    """Identity-risk model + predictive analytics + threat model, for the Models tab."""
+def models_html(state, weights=None) -> str:
+    """Identity-risk model + predictive analytics + threat model, for the Models tab.
+    `weights` (optional) re-scores the model with custom, user-tuned factor weights."""
     import entity_model as EM
-    m = EM.build_entity_model(state, vips=getattr(state, "vips", set()))
+    m = EM.build_entity_model(state, weights=weights, vips=getattr(state, "vips", set()))
     risks = EM.identity_risk(m, top=10)
     pred = EM.predict(state, m)
     tm = EM.threat_model(state)
@@ -298,7 +300,7 @@ class Console:
         st = self.state
         focus = {"key": None}
 
-        progress = w.IntProgress(value=0, min=0, max=11, description="Building…",
+        progress = w.IntProgress(value=0, min=0, max=12, description="Building…",
                                  bar_style="info", style={"bar_color": brand.PINK})
 
         def tick(label):
@@ -517,23 +519,73 @@ class Console:
                               dry, confirm, apply, act_out])
         tick("Actions")
 
-        # ── Models / Predict: identity-risk model + threat model + review/optimize ─
+        # ── Models / Predict: identity-risk model + tunable weights + review/optimize ─
+        import entity_model as EM
+        weight_sliders = {k: w.FloatSlider(value=v, min=0.0, max=1.0, step=0.01, description=k,
+                                           continuous_update=False, readout_format=".2f")
+                          for k, v in EM.DEFAULT_WEIGHTS.items()}
+        models_out = w.Output()
+
+        def render_models(weights=None):
+            models_out.clear_output(wait=True)
+            with models_out:
+                display(HTML(models_html(st, weights=weights)))
+
+        def on_rescore(*_):
+            tot = sum(s.value for s in weight_sliders.values()) or 1.0
+            render_models({k: s.value / tot for k, s in weight_sliders.items()})   # normalized
+        rescore_btn = w.Button(description="Re-score with these weights", button_style="warning")
+        rescore_btn.on_click(on_rescore)
+
         review_btn = w.Button(description="Review & optimize posture", button_style="info")
         review_out = w.Output()
 
         def on_review(*_):
-            import entity_model as EM
             review_out.clear_output(wait=True)
             with review_out:
                 rev = AA.review(self.connection, state=st)
                 print("posture review" + (" (LIVE)" if rev.get("live") else " (modeled)") + ":")
                 for r in rev.get("recommendations", []):
                     print("  •", r)
-                m = EM.build_entity_model(st, vips=self.vips)
-                opt = EM.optimize(m, st)
+                opt = EM.optimize(EM.build_entity_model(st, vips=self.vips), st)
                 print("\ndata-driven optimized weights:", opt["weights"])
+                for k, sl in weight_sliders.items():     # reflect into the sliders
+                    if k in opt["weights"]:
+                        sl.value = opt["weights"][k]
         review_btn.on_click(on_review)
-        models_tab = w.VBox([w.HTML(models_html(st)), review_btn, review_out]); tick("Models")
+        render_models()
+        models_tab = w.VBox([models_out,
+                             w.HTML(f"<b style='color:{brand.INK};font-family:{brand.FONT_STACK}'>"
+                                    f"Customize weights / calculations</b>"),
+                             w.VBox(list(weight_sliders.values())),
+                             w.HBox([rescore_btn, review_btn]), review_out]); tick("Models")
+
+        # ── AI Assist: summarize / triage via Claude · OpenAI · Gemini · Azure · Bedrock ─
+        ai_provider = w.Dropdown(options=["(auto)"] + [p.name for p in AI.PROVIDERS],
+                                 value="(auto)", description="Provider:")
+        ai_sum = w.Button(description="Summarize investigation", button_style="info")
+        ai_tri = w.Button(description="Triage", button_style="warning")
+        ai_out = w.Output()
+        ai_status = w.HTML(
+            f"<div style='font-family:{brand.FONT_STACK};color:{brand.MUT};font-size:12px'>"
+            + " · ".join((f"{n}: <b style='color:{brand.TEAL}'>on</b>" if ok else f"{n}: off")
+                         for n, ok in AI.available().items())
+            + " — add a provider key in Settings; offline uses a local synthesis.</div>")
+
+        def run_ai(fn):
+            prov = None if ai_provider.value == "(auto)" else ai_provider.value
+            ai_out.clear_output(wait=True)
+            with ai_out:
+                print("running…")
+            res = fn(st, provider=prov)
+            ai_out.clear_output(wait=True)
+            with ai_out:
+                print(f"[{res['provider']}]"
+                      + (f"  (error: {res['error']})" if res.get("error") else "") + "\n")
+                print(res["text"])
+        ai_sum.on_click(lambda *_: run_ai(AI.summarize_investigation))
+        ai_tri.on_click(lambda *_: run_ai(AI.triage))
+        ai_tab = w.VBox([ai_status, w.HBox([ai_provider, ai_sum, ai_tri]), ai_out]); tick("AI")
 
         # ── static tabs ──────────────────────────────────────────────────────────
         overview_tab = w.HTML(overview_html(st)); tick("Overview")
@@ -543,10 +595,11 @@ class Console:
         mitre_tab = w.HTML(ML.matrix_html(st)); tick("MITRE")
 
         tabs = w.Tab(children=[overview_tab, graph_tab, identity_tab, invest_tab, hunt_tab,
-                               pipeline_tab, models_tab, mitre_tab, authoring_tab,
+                               pipeline_tab, models_tab, ai_tab, mitre_tab, authoring_tab,
                                settings_tab, actions_tab])
         for i, t in enumerate(["Overview", "Graph", "Identity", "Investigate", "Hunt",
-                               "Pipeline", "Models", "MITRE", "Authoring", "Settings", "Actions"]):
+                               "Pipeline", "Models", "AI Assist", "MITRE", "Authoring",
+                               "Settings", "Actions"]):
             tabs.set_title(i, t)
         draw_graph()
         progress.value = progress.max
