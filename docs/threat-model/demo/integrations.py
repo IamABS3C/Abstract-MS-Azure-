@@ -226,11 +226,11 @@ def get(name: str):
     return None
 
 
-def lookup_all(value: str, kind: str = "") -> dict:
-    """Run an entity/IOC lookup across every CONFIGURED siem/mcp integration."""
+def lookup_all(value: str, kind: str = "", kinds=("siem", "mcp")) -> dict:
+    """Run an entity/IOC lookup across every CONFIGURED integration of the given kinds."""
     out = {}
     for i in REGISTRY:
-        if i.kind in ("siem", "mcp") and i.configured():
+        if i.kind in kinds and i.configured():
             try:
                 out[i.name] = i.lookup(value, kind)
             except Exception as e:  # noqa: BLE001

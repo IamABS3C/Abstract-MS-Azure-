@@ -13,6 +13,7 @@ import os
 import html
 import brand
 import abstract_authoring as AA
+import integrations as IN
 
 # Graph-tab view registry: label → (viz_interactive fn name, needs_focus)
 VIEW_TYPES = [
@@ -165,12 +166,20 @@ def settings_html(state) -> str:
     mcp_url = os.environ.get("ABSTRACT_MCP_URL", "(bundled stdio server)")
     base = os.environ.get("ABSTRACT_API_BASE", "https://api.abstractsecurity.app")
     keyset = "set" if os.environ.get("ABSTRACT_API_KEY") else "not set"
+    integ = "".join(
+        f'<li>{html.escape(s["name"])} <span style="color:{brand.MUT}">[{s["kind"]}]</span> — '
+        + (f'<b style="color:{brand.TEAL}">configured</b>' if s["configured"] else
+           f'<span style="color:{brand.AMBER}">add {", ".join(s["needs"]) or "endpoint"}</span>')
+        + (f' · <code>{html.escape(str(s.get("endpoint")))}</code>' if s.get("endpoint") else '')
+        + '</li>' for s in IN.registry_status())
     return (f'<div style="font-family:{brand.FONT_STACK};color:{brand.INK}">'
             f'<h3 style="color:{brand.TEAL}">Abstract connection</h3>'
             f'<p>{_badge(state)} · API base <code>{html.escape(base)}</code> · '
             f'API key <b>{keyset}</b> · MCP <code>{html.escape(mcp_url)}</code></p>'
+            f'<h3 style="color:{brand.TEAL}">Integrations (add creds to enable)</h3>'
+            f'<ul style="font-size:12px">{integ}</ul>'
             f'<h3 style="color:{brand.TEAL}">Enrichment adapters</h3><ul style="font-size:12px">{adlist}</ul>'
-            f'<h3 style="color:{brand.TEAL}">Slice-3 connectors (planned)</h3>'
+            f'<h3 style="color:{brand.TEAL}">Non-API pivots</h3>'
             f'<ul style="font-size:12px">{stubs}</ul></div>')
 
 
@@ -334,6 +343,13 @@ class Console:
             enrich_out.clear_output(wait=True)
             with enrich_out:
                 display(HTML(enrichment_html(EN.enrich_entity(val, kind))))
+                la = IN.lookup_all(val, kind, kinds=("siem",))   # configured SIEMs only
+                if la:
+                    rows = "".join(f"<li><b>{html.escape(n)}</b>: {html.escape(str(r))[:160]}</li>"
+                                   for n, r in la.items())
+                    display(HTML(f"<div style='font-family:{brand.FONT_STACK};color:{brand.INK}'>"
+                                 f"<h4 style='color:{brand.TEAL}'>SIEM pivots (Sentinel · Splunk · Elastic)</h4>"
+                                 f"<ul style='font-size:12px'>{rows}</ul></div>"))
             draw_graph()
         search.observe(lambda ch: do_search(), "value")
         search_btn = w.Button(description="Lookup + pivot", button_style="info")
@@ -386,8 +402,39 @@ class Console:
                     print("offline / error:", str(e)[:120])
                 set_status.value = settings_html(st)
         connect_btn.on_click(do_connect)
-        settings_tab = w.VBox([set_status, w.HTML("<hr>"), key_in, base_in, acct_in,
-                               connect_btn, connect_out])
+
+        # generic in-session credential setter for ANY integration / enrichment key
+        env_opts = sorted({e for s in IN.registry_status() for e in s["needs"]} | {
+            "ABSTRACT_VENDOR_ACCOUNT_ID", "VT_API_KEY", "SHODAN_API_KEY", "ABUSEIPDB_API_KEY",
+            "GREYNOISE_API_KEY", "INTELX_API_KEY", "THREATFOX_API_KEY", "PULSEDIVE_API_KEY",
+            "WILDFIRE_API_KEY", "SENTINEL_WORKSPACE_ID", "SENTINEL_TOKEN", "SENTINEL_MCP_URL",
+            "SECURITY_COPILOT_MCP_URL", "SPLUNK_URL", "SPLUNK_TOKEN", "ELASTIC_URL", "ELASTIC_API_KEY"})
+        env_name = w.Combobox(placeholder="ENV_VAR", options=env_opts, description="Set var:",
+                              ensure_option=False)
+        env_val = w.Password(placeholder="value (session only)")
+        env_btn = w.Button(description="Set credential", button_style="success")
+        env_out = w.Output()
+
+        def set_env(*_):
+            env_out.clear_output(wait=True)
+            with env_out:
+                name = (env_name.value or "").strip()
+                if name:
+                    os.environ[name] = env_val.value          # session only; value never printed
+                    env_val.value = ""
+                    print(f"set {name} (this session)")
+                    set_status.value = settings_html(st)
+                else:
+                    print("pick or type an env var name")
+        env_btn.on_click(set_env)
+
+        settings_tab = w.VBox([
+            set_status, w.HTML("<hr>"),
+            w.HTML(f"<b style='color:{brand.INK};font-family:{brand.FONT_STACK}'>Abstract</b>"),
+            key_in, base_in, acct_in, connect_btn, connect_out, w.HTML("<hr>"),
+            w.HTML(f"<b style='color:{brand.INK};font-family:{brand.FONT_STACK}'>Any integration / "
+                   f"enrichment key (Sentinel · Splunk · Elastic · MCP · OSINT)</b>"),
+            w.HBox([env_name, env_val, env_btn]), env_out])
         tick("Settings")
 
         # ── Authoring: dry-run → confirm → apply (multi object kind) ─────────────

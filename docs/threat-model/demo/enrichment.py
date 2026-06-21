@@ -476,6 +476,24 @@ def _pulsedive(value, kind):
     return {"risk": d.get("risk"), "threats": d.get("threats")}
 
 
+def _wildfire(value, kind):
+    """Palo Alto WildFire file verdict (XML API) — key-gated."""
+    key = os.environ.get("WILDFIRE_API_KEY")
+    if not key:
+        return {"skipped": "no WILDFIRE_API_KEY"}
+    if kind != "hash":
+        return {"skipped": "WildFire verdict is hash-only"}
+    r = _post("https://wildfire.paloaltonetworks.com/publicapi/get/verdict",
+              {"apikey": key, "hash": value}, headers={"Accept": "*/*"})
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    txt = r.get("data") if isinstance(r.get("data"), str) else json.dumps(r.get("data"))
+    m = re.search(r"<verdict>(-?\d+)</verdict>", txt or "")
+    codes = {"0": "benign", "1": "malware", "2": "grayware",
+             "-100": "pending", "-101": "error", "-102": "not found"}
+    return {"verdict": codes.get(m.group(1) if m else None, "unknown")}
+
+
 # name → (categories, supported kinds, env var(s), adapter)
 ENRICHERS = {
     "VirusTotal": ("multi-rep", ["ip", "domain", "hash", "url"], ["VT_API_KEY"], _virustotal),
@@ -504,17 +522,16 @@ ENRICHERS = {
     "MalwareBazaar": ("malware", ["hash"], [], _malwarebazaar),
     "ThreatFox": ("intel-feed", ["ip", "domain", "url", "hash"], ["THREATFOX_API_KEY"], _threatfox),
     "Pulsedive": ("multi-rep", ["ip", "domain", "url"], ["PULSEDIVE_API_KEY"], _pulsedive),
+    "Palo Alto WildFire": ("malware", ["hash"], ["WILDFIRE_API_KEY"], _wildfire),
 }
 
-# Slice-3 connectors — visible in the GUI as planned/needs-key, never run live yet.
+# Non-API pivots — surfaced as keyless deep-links / local compute (no scraping).
+# SIEM/MCP lookups (Sentinel · Splunk · Elastic · MCP) live in integrations.py.
 # name → (category, kinds, note)
 STUBS = {
-    "Microsoft Sentinel": ("siem", ["ip", "host", "account"], "Slice 3 — needs workspace creds"),
-    "Splunk": ("siem", ["ip", "host", "account"], "Slice 3 — needs HEC/search creds"),
-    "Palo Alto WildFire": ("malware", ["hash", "url", "domain"], "Slice 3 — needs WILDFIRE_API_KEY"),
-    "JA3/JA4 fingerprints": ("network-fp", ["session", "ip"], "Slice 3 — TLS fingerprint lookup"),
+    "JA3/JA4 fingerprints": ("network-fp", ["session", "ip"], "TLS fingerprint pivot (local compute)"),
     "Dark-web / forums / HUMINT": ("osint-humint", ["email", "username", "domain"],
-                                   "Slice 3 — gated by ToS / keys"),
+                                   "keyless pivot deep-links; scraping gated by ToS"),
 }
 
 
