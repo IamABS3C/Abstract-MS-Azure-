@@ -152,15 +152,17 @@ offline-modeled otherwise. Tabs:
 - **Actions** — **dry-run → confirm → apply** write-back to the tenant
 """)
 code("""
+from console import setup_wizard, Console
 from live_data import build_state
-from console import Console
 
-# offline synthetic estate by default; pass the connected client for LIVE Abstract data:
-state = build_state(client) if (client is not None and LIVE) else build_state()
-console = Console(state,
-                 vips={"jsmith@acme.com", "ceo@acme.example", "cfo@acme.example"},
-                 connection=(client if LIVE else None))
-console.show()
+# Guided setup: pick offline/live, test the connection, set optional SIEM/AI keys, launch.
+# Runs independently of the demo data — connect a tenant and it builds State from LIVE events.
+setup_wizard()
+
+# Direct route (skip the wizard):
+#   Console(build_state(client if LIVE else None),
+#           vips={"jsmith@acme.com", "ceo@acme.example", "cfo@acme.example"},
+#           connection=(client if LIVE else None)).show()
 """)
 
 # 3 · MCP connect ────────────────────────────────────────────────────────────────

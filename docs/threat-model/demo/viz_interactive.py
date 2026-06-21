@@ -14,6 +14,19 @@ import brand
 _SHAPE = {"host": "box", "nhi": "diamond", "agent": "triangle", "device": "square",
           "session": "hexagon", "account": "dot", "identity": "dot",
           "ip": "triangleDown", "domain": "square", "url": "square", "hash": "dot"}
+# appealing icon glyph per kind — prepended to node labels + shown in the legend.
+_GLYPH = {"identity": "👤", "account": "🔑", "host": "💻", "nhi": "⚙️", "agent": "🤖",
+          "device": "📱", "session": "🍪", "ip": "🌐", "domain": "🔗", "url": "📄", "hash": "#️⃣"}
+
+
+def graph_legend_html() -> str:
+    """Stencil legend mapping each glyph → entity kind + brand color."""
+    items = "".join(
+        f"<span style='margin:0 12px 4px 0;white-space:nowrap'>{g} "
+        f"<span style='color:{brand.TYPE_COLOR.get(k, brand.MUT)}'>{k}</span></span>"
+        for k, g in _GLYPH.items())
+    return (f"<div style='font-family:{brand.FONT_STACK};color:{brand.INK};font-size:12px;"
+            f"padding:6px 0;line-height:1.9'>★ VIP &nbsp; {items}</div>")
 
 # Offline fallback coverage so the MITRE visual renders something honest (labeled modeled)
 # when no live /v3/rules/mitre data is present.
@@ -141,7 +154,8 @@ def correlation_graph(state, *, focus=None, layout="force", height="640px") -> s
             rec = idx.get(k, {})
             risk = rec.get("risk", scores.get(k, {}).get("final", 0))
             shape = "star" if any(v in k for v in vips) else _SHAPE.get(t, "dot")
-            kw = dict(label=ident[:22], shape=shape, color=brand.TYPE_COLOR.get(t, brand.MUT),
+            label = f"{_GLYPH.get(t, '')} {ident[:20]}".strip()
+            kw = dict(label=label, shape=shape, color=brand.TYPE_COLOR.get(t, brand.MUT),
                       value=10 + risk, title=_tooltip(k, rec), group=t,
                       borderWidth=4 if (focus and k == focus) else 1)
             if layout == "radial":

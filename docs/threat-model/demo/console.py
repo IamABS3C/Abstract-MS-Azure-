@@ -320,18 +320,61 @@ class Console:
                 display(HTML(self._render_view(view_dd.value, layout_dd.value, focus["key"])))
         view_dd.observe(draw_graph, "value")
         layout_dd.observe(draw_graph, "value")
-        graph_tab = w.VBox([w.HBox([view_dd, layout_dd, risk_min]), graph_out])
+        graph_tab = w.VBox([w.HBox([view_dd, layout_dd, risk_min]),
+                            w.HTML(VI.graph_legend_html()), graph_out])
         tick("Graph")
 
         # ── Investigate: search / drill-down / enrichment / annotations ──────────
-        search = w.Text(placeholder="entity / IP / email / CVE …", description="Find:",
-                        continuous_update=False)
+        search = w.Text(placeholder="entity / IP / email / CVE  ·  kind:account  risk>70  field:91.219",
+                        description="Find:", continuous_update=False)
         detail_out = w.Output()
         enrich_out = w.Output()
+
+        import re as _re
+
+        def _entity_filter(q):
+            idx = VI._entity_index(st)
+            km = _re.search(r"kind:(\w+)", q)
+            gt = _re.search(r"risk>(\d+)", q)
+            lt = _re.search(r"risk<(\d+)", q)
+            fm = _re.search(r"field:(\S+)", q)
+            text = _re.sub(r"(kind:\w+|risk[<>]\d+|field:\S+)", "", q).strip().lower()
+            out = []
+            for k, rec in idx.items():
+                if km and km.group(1) not in (rec.get("kind", ""), k.split(":", 1)[0]):
+                    continue
+                if gt and rec.get("risk", 0) <= int(gt.group(1)):
+                    continue
+                if lt and rec.get("risk", 0) >= int(lt.group(1)):
+                    continue
+                if fm and not any(fm.group(1).lower() in f"{fk}={fv}".lower()
+                                  for fk, fv in rec.get("fields", {}).items()):
+                    continue
+                if text and text not in k.lower():
+                    continue
+                out.append((k, rec))
+            return sorted(out, key=lambda kr: -kr[1].get("risk", 0))[:25]
 
         def do_search(*_):
             val = search.value.strip()
             if not val:
+                return
+            if any(t in val for t in ("kind:", "risk>", "risk<", "field:")):   # advanced filter
+                matches = _entity_filter(val)
+                detail_out.clear_output(wait=True)
+                with detail_out:
+                    rows = "".join(
+                        f"<li>{html.escape(k)} — risk <b>{rec.get('risk', 0)}</b> "
+                        f"({html.escape(rec.get('kind', ''))})</li>" for k, rec in matches)
+                    display(HTML(f"<div style='font-family:{brand.FONT_STACK};color:{brand.INK}'>"
+                                 f"<h4 style='color:{brand.TEAL}'>{len(matches)} matches "
+                                 f"<span style='color:{brand.MUT};font-size:11px'>"
+                                 f"(kind: · risk&gt;N · field:x)</span></h4>"
+                                 f"<ul style='font-size:12px'>{rows or '<li>none</li>'}</ul></div>"))
+                enrich_out.clear_output()
+                if matches:
+                    focus["key"] = matches[0][0]
+                    draw_graph()
                 return
             kind = EN.detect_kind(val)
             key = val if ":" in val else (f"identity:{val}" if "@" in val else None)
@@ -605,11 +648,24 @@ class Console:
         progress.value = progress.max
         progress.description = "Ready"
         progress.bar_style = "success"
-        header = w.HTML(f'<h2 style="color:{brand.PINK};font-family:{brand.FONT_STACK};margin:0">'
-                        f'Abstract AI-SOC Investigation Console</h2>'
-                        f'<div style="color:{brand.MUT};font-family:{brand.FONT_STACK};font-size:12px">'
-                        f'living dashboard · {len(VIEW_TYPES)} views · {len(LAYOUTS)} layouts · '
-                        f'dry-run-first authoring</div>')
+        src_chip = ("LIVE tenant" if st.live else
+                    ("DEMO estate" if st.source == "synthetic" else "EMPTY — connect in Settings"))
+        src_col = brand.TEAL if st.live else (brand.AMBER if st.source == "synthetic" else brand.MUT)
+        n_integ = sum(1 for s in IN.registry_status() if s["configured"])
+        n_ai = sum(AI.available().values())
+        chips = "".join(
+            f"<span style='background:{c};color:{brand.BG};padding:2px 9px;border-radius:6px;"
+            f"font-weight:700;font-size:11px;margin-right:6px'>{t}</span>" for t, c in
+            [(src_chip, src_col), (f"{n_integ} integrations live", brand.BLUE),
+             (f"{n_ai} AI providers", brand.PINK_MID),
+             (f"{len(VIEW_TYPES)} views × {len(LAYOUTS)} layouts", brand.TEAL)])
+        header = w.HTML(
+            f"<div style='display:flex;align-items:center;gap:14px;border-bottom:2px solid "
+            f"{brand.PINK};padding-bottom:10px;margin-bottom:4px'>"
+            f"<div style='height:38px'>{brand.logo_svg('white')}</div>"
+            f"<div><div style='color:{brand.PINK};font-family:{brand.FONT_STACK};font-size:20px;"
+            f"font-weight:800'>AI-SOC Investigation Console</div>"
+            f"<div style='margin-top:4px'>{chips}</div></div></div>")
         return w.VBox([header, progress, tabs])
 
 
@@ -617,6 +673,98 @@ def launch(connection=None, vips=None):
     """Convenience: build state (live if a connected client is passed) and show the console."""
     from live_data import build_state
     return Console(build_state(connection), vips=vips, connection=connection).show()
+
+
+def setup_wizard(vips=None):
+    """Guided, interactive entry point — choose offline/live, test the connection, set optional
+    integration/AI keys, then launch the console. No code required."""
+    import os as _os
+    w, HTML, display = _widgets()
+    box = {"connection": None}
+    title = w.HTML(
+        f"<div style='border-bottom:2px solid {brand.PINK};padding-bottom:8px;margin-bottom:6px'>"
+        f"<div style='height:36px'>{brand.logo_svg('white')}</div>"
+        f"<div style='color:{brand.PINK};font-family:{brand.FONT_STACK};font-size:20px;"
+        f"font-weight:800'>AI-SOC Console — guided setup</div>"
+        f"<div style='color:{brand.MUT};font-family:{brand.FONT_STACK};font-size:12px'>"
+        f"Runs offline out of the box · add an Abstract key (or MCP) to go live · "
+        f"add SIEM / AI keys to light up integrations.</div></div>")
+    mode = w.ToggleButtons(options=[("Offline / demo", "demo"), ("Live Abstract tenant", "live")],
+                           value="demo", description="Mode:")
+    key_in = w.Password(placeholder="ABSTRACT_API_KEY", description="API key:")
+    acct_in = w.Text(placeholder="vendor account id (X-AS-Vendor-Account-ID)", description="Tenant:")
+    base_in = w.Text(value=_os.environ.get("ABSTRACT_API_BASE", "https://api.abstractsecurity.app"),
+                     description="API base:")
+    test_btn = w.Button(description="Test connection", button_style="info")
+    status = w.HTML("")
+    live_box = w.VBox([key_in, acct_in, base_in, test_btn, status])
+
+    def on_mode(_=None):
+        live_box.layout.display = "" if mode.value == "live" else "none"
+    mode.observe(lambda ch: on_mode(), "value")
+    on_mode()
+
+    def on_test(*_):
+        for var, wid in (("ABSTRACT_API_KEY", key_in), ("ABSTRACT_ACCOUNT_ID", acct_in),
+                         ("ABSTRACT_API_BASE", base_in)):
+            if wid.value:
+                _os.environ[var] = wid.value
+        try:
+            from abstract_client import AbstractClient
+            c = AbstractClient("api")
+            conn = c.connect()
+            if conn.get("ok"):
+                box["connection"] = c
+                status.value = (f"<span style='color:{brand.TEAL};font-family:{brand.FONT_STACK}'>"
+                                f"✓ connected ({conn.get('scheme')})</span>")
+            else:
+                status.value = (f"<span style='color:{brand.AMBER};font-family:{brand.FONT_STACK}'>"
+                                f"connect failed: {html.escape(str(conn))[:160]}</span>")
+        except Exception as e:   # noqa: BLE001
+            status.value = (f"<span style='color:{brand.AMBER};font-family:{brand.FONT_STACK}'>"
+                            f"offline / error: {html.escape(str(e)[:120])}</span>")
+    test_btn.on_click(on_test)
+
+    env_opts = sorted({e for s in IN.registry_status() for e in s["needs"]}
+                      | {pe for p in AI.PROVIDERS for pe in p.env}
+                      | {"SENTINEL_WORKSPACE_ID", "SENTINEL_TOKEN", "SENTINEL_MCP_URL",
+                         "SPLUNK_URL", "SPLUNK_TOKEN", "ELASTIC_URL", "ELASTIC_API_KEY",
+                         "VT_API_KEY", "SHODAN_API_KEY", "THREATFOX_API_KEY", "WILDFIRE_API_KEY"})
+    env_name = w.Combobox(placeholder="ENV_VAR (e.g. SENTINEL_TOKEN, ANTHROPIC_API_KEY)",
+                          options=env_opts, ensure_option=False, description="Set key:")
+    env_val = w.Password(placeholder="value (session only)")
+    env_btn = w.Button(description="Set")
+    env_out = w.Output()
+
+    def set_env(*_):
+        env_out.clear_output(wait=True)
+        with env_out:
+            if (env_name.value or "").strip():
+                _os.environ[env_name.value.strip()] = env_val.value
+                env_val.value = ""
+                print(f"set {env_name.value.strip()} (this session)")
+    env_btn.on_click(set_env)
+
+    launch_btn = w.Button(description="🚀  Launch console", button_style="success")
+    out = w.Output()
+
+    def on_launch(*_):
+        out.clear_output(wait=True)
+        with out:
+            from live_data import build_state
+            conn = box["connection"] if mode.value == "live" else None
+            st = build_state(conn)
+            display(Console(st, vips=vips or {"jsmith@acme.com", "ceo@acme.example",
+                                              "cfo@acme.example"}, connection=conn).show())
+    launch_btn.on_click(on_launch)
+
+    def hdr(t):
+        return w.HTML(f"<b style='color:{brand.TEAL};font-family:{brand.FONT_STACK}'>{t}</b>")
+    return w.VBox([title, hdr("1 · Connect"), mode, live_box,
+                   hdr("2 · Optional integrations / AI keys "
+                       "(Sentinel · Splunk · Elastic · Claude · OpenAI · Gemini · …)"),
+                   w.HBox([env_name, env_val, env_btn]), env_out,
+                   hdr("3 · Launch"), launch_btn, out])
 
 
 if __name__ == "__main__":
