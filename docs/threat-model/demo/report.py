@@ -116,55 +116,144 @@ def _md_to_html(md_text: str) -> str:
 
 
 def html_report(state) -> str:
-    md = markdown(state)
-    body = _md_to_html(md)
+    import entity_model as EM
+    from datetime import datetime
+    body = _md_to_html(markdown(state))
 
     # interactive visuals: include Plotly's JS ONCE (not per panel)
     VI._NO_INLINE = True
-    panels = [("Continuous entity risk", VI.risk_panel(state)),
-              ("Identity re-exposure timeline", VI.exposure_timeline(state)),
-              ("Attack-flow", VI.attack_flow_sankey(state)),
-              ("MITRE ATT&CK coverage", ML.matrix_html(state))]
+    panels = [("Continuous entity risk", "Risk", VI.risk_panel(state)),
+              ("Identity re-exposure timeline", "Exposure", VI.exposure_timeline(state)),
+              ("Attack-flow", "Flow", VI.attack_flow_sankey(state)),
+              ("MITRE ATT&CK coverage", "Framework", ML.matrix_html(state))]
     VI._NO_INLINE = False
     plotly_js = VI.plotlyjs_script()
 
-    # pyvis graph is a full HTML doc → isolate it in an iframe srcdoc
-    graph_doc = VI.correlation_graph(state)
-    graph_iframe = (f'<iframe srcdoc="{html.escape(graph_doc)}" '
-                    f'style="width:100%;height:660px;border:0;border-radius:14px"></iframe>')
+    graph_doc = VI.correlation_graph(state)        # full HTML doc → isolate in an iframe srcdoc
+    graph_iframe = (f'<iframe srcdoc="{html.escape(graph_doc)}" loading="lazy" '
+                    f'style="width:100%;height:660px;border:0;border-radius:12px;'
+                    f'background:{brand.BG}"></iframe>')
     blast = VI.blast_radius(state)
+    legend = VI.graph_legend_html()
     logo = brand.logo_svg("white")
-    panel_html = "".join(
-        f'<div class="viz"><h3>{html.escape(title)}</h3>{frag}</div>' for title, frag in panels)
-    badge = ("LIVE tenant" if state.live else "OFFLINE — modeled data")
+
+    model = EM.build_entity_model(state, vips={"jsmith@acme.com", "ceo@acme.example", "cfo@acme.example"})
+    ev = EM.evaluate(model)
+    m = state.metrics or {}
+    lead = (state.inv or {}).get("lead_finding")
+    kpis = [("entities modeled", ev["entities"]), ("high-risk", ev["high_risk"]),
+            ("survives restore", ev["survives_restore"]), ("VIP at risk", ev["vip_at_risk"]),
+            ("SIEM volume cut", f"{m.get('reduction_pct', '—')}%"), ("findings", len(state.findings))]
+    kpi_html = "".join(f'<div class="kpi"><div class="kpi-n">{v}</div>'
+                       f'<div class="kpi-l">{html.escape(str(k))}</div></div>' for k, v in kpis)
+
+    def panel(title, eyebrow, frag, *, wide=False, delay=0.0):
+        cls = "panel reveal scroll" + (" wide" if wide else "")
+        return (f'<section class="{cls}" style="animation-delay:{delay:.2f}s">'
+                f'<div class="eyebrow">{html.escape(eyebrow)}</div>'
+                f'<h3>{html.escape(title)}</h3>{frag}</section>')
+
+    main_html = (panel("Entity correlation graph", "Relationships · Correlation",
+                       f'<div class="legend">{legend}</div>{graph_iframe}', wide=True, delay=.12)
+                 + panel("Patient zero → replay", "Blast radius", blast, delay=.18)
+                 + "".join(panel(t, e, f, delay=.22 + i * .04) for i, (t, e, f) in enumerate(panels)))
+
+    live = state.live
+    status = "LIVE TENANT" if live else ("DEMO ESTATE" if state.source == "synthetic" else "OFFLINE")
+    gen = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Investigation Report — Abstract</title>
 {plotly_js}
 <style>
-:root{{--pink:{brand.PINK};--teal:{brand.TEAL};--bg:{brand.BG};--panel:{brand.PANEL};--ink:{brand.INK};--mut:{brand.MUT}}}
-*{{box-sizing:border-box}}
-body{{background:var(--bg);color:var(--ink);font-family:{brand.FONT_STACK};
-max-width:1180px;margin:0 auto;padding:30px;line-height:1.6}}
-.logo{{height:34px;margin-bottom:8px}} .logo svg{{height:34px;width:auto}}
-.badge{{background:var(--teal);color:var(--bg);padding:2px 9px;border-radius:6px;font-weight:700;font-size:12px}}
-h1{{color:var(--pink);font-size:26px}}
-h2{{color:var(--teal);font-size:14px;text-transform:uppercase;letter-spacing:1.3px;margin-top:26px}}
-h3{{color:var(--ink);font-size:14px;margin:0 0 8px}}
-code{{font-family:{brand.MONO_STACK};background:#16161e;padding:1px 5px;border-radius:4px;font-size:12px;color:#cfcfe0}}
-li{{margin:3px 0}} b{{color:#fff}}
-.viz{{background:var(--panel);border:1px solid #1d1d27;border-radius:14px;padding:16px;margin:16px 0;overflow-x:auto}}
-.grid{{display:grid;grid-template-columns:1fr;gap:4px}}
-@media print{{body{{max-width:none}} .viz{{break-inside:avoid}}}}
+:root{{--pink:{brand.PINK};--pink-mid:{brand.PINK_MID};--teal:{brand.TEAL};--amber:{brand.AMBER};
+--blue:{brand.BLUE};--bg:{brand.BG};--panel:{brand.PANEL};--ink:{brand.INK};--mut:{brand.MUT};--line:#1d1d27;
+--display:"Barlow Semi Condensed","Barlow Condensed",{brand.FONT_STACK};--body:{brand.FONT_STACK};--mono:{brand.MONO_STACK}}}
+*{{box-sizing:border-box}} html{{scroll-behavior:smooth}}
+body{{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;
+line-height:1.65;-webkit-font-smoothing:antialiased;position:relative;min-height:100vh}}
+.bg{{position:fixed;inset:0;z-index:-3;pointer-events:none}}
+.bg-mesh{{background:radial-gradient(60vw 60vw at 8% -10%,rgba(255,33,107,.16),transparent 60%),
+radial-gradient(55vw 55vw at 105% 8%,rgba(1,230,157,.12),transparent 55%),
+radial-gradient(70vw 50vw at 50% 120%,rgba(46,155,240,.08),transparent 60%)}}
+.bg-grid{{z-index:-2;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:46px 46px;
+-webkit-mask-image:radial-gradient(circle at 50% 25%,#000,transparent 85%);
+mask-image:radial-gradient(circle at 50% 25%,#000,transparent 85%)}}
+.bg-grain{{z-index:-1;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}}
+.wrap{{max-width:1180px;margin:0 auto;padding:0 28px 64px}}
+header.top{{position:relative;z-index:5;display:flex;align-items:center;gap:18px;padding:18px 28px;
+background:linear-gradient(180deg,rgba(255,33,107,.06),transparent);border-bottom:1px solid var(--line)}}
+header.top .logo svg{{height:30px;width:auto;display:block}}
+.title-block .kicker{{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--teal);text-transform:uppercase}}
+.title-block h1{{font-family:var(--display);font-weight:800;font-size:30px;line-height:1;margin:2px 0 0;
+text-transform:uppercase;letter-spacing:.5px;color:#fff}}
+.spacer{{flex:1}}
+.pill{{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:5px 11px;
+border-radius:999px;border:1px solid;display:inline-flex;align-items:center;gap:7px}}
+.pill.live{{color:var(--teal);border-color:rgba(1,230,157,.4);background:rgba(1,230,157,.07)}}
+.pill.off{{color:var(--amber);border-color:rgba(245,198,30,.4);background:rgba(245,198,30,.07)}}
+.pill .dot{{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 2.4s infinite}}
+.gen{{font-family:var(--mono);font-size:11px;color:var(--mut)}}
+@keyframes pulse{{0%{{box-shadow:0 0 0 0 rgba(1,230,157,.5)}}70%{{box-shadow:0 0 0 7px rgba(1,230,157,0)}}100%{{box-shadow:0 0 0 0 rgba(1,230,157,0)}}}}
+.hero{{padding:42px 0 6px}}
+.hero .lead{{font-family:var(--display);font-weight:700;font-size:clamp(28px,4.6vw,48px);line-height:1.02;
+letter-spacing:.4px;margin:0;max-width:20ch;text-transform:uppercase}}
+.hero .lead em{{font-style:normal;color:var(--pink)}}
+.hero .sub{{color:var(--mut);max-width:64ch;margin:14px 0 0}}
+.kpis{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:30px 0 8px}}
+.kpi{{position:relative;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+border:1px solid var(--line);border-radius:14px;padding:18px;overflow:hidden}}
+.kpi::before{{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--pink),var(--teal))}}
+.kpi-n{{font-family:var(--display);font-weight:800;font-size:38px;line-height:1;color:#fff;text-shadow:0 0 22px rgba(255,33,107,.25)}}
+.kpi-l{{font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--mut);margin-top:8px}}
+main{{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}}
+.panel{{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;position:relative;
+box-shadow:0 18px 50px -30px rgba(0,0,0,.9)}}
+.panel.wide{{grid-column:1/-1}} .panel.scroll{{overflow-x:auto}}
+.eyebrow{{font-family:var(--mono);font-size:10px;letter-spacing:2.4px;color:var(--teal);text-transform:uppercase}}
+.panel h3{{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:.4px;margin:4px 0 12px;color:#fff;text-transform:uppercase}}
+.legend{{margin-bottom:8px}}
+.narrative{{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 32px 30px}}
+.narrative h1{{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.5px;font-size:26px;
+color:var(--pink);border-bottom:1px solid var(--line);padding-bottom:10px}}
+.narrative h2{{font-family:var(--mono);color:var(--teal);font-size:12px;text-transform:uppercase;letter-spacing:2.2px;
+margin:30px 0 8px;padding-left:12px;border-left:3px solid var(--pink)}}
+.narrative code{{font-family:var(--mono);background:#16161e;padding:1px 6px;border-radius:5px;font-size:12.5px;color:#d7d7e6}}
+.narrative b{{color:#fff}} .narrative li{{margin:4px 0}}
+.reveal{{opacity:0;transform:translateY(14px);animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}}
+@keyframes rise{{to{{opacity:1;transform:none}}}}
+footer{{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--mut);font-family:var(--mono);font-size:11px;letter-spacing:.6px}}
+footer b{{color:var(--ink)}}
+@media (max-width:820px){{main{{grid-template-columns:1fr}}}}
+@media (prefers-reduced-motion:reduce){{.reveal{{animation:none;opacity:1;transform:none}}.pill .dot{{animation:none}}}}
+@media print{{.bg{{display:none}}header.top{{position:static}}body{{background:#fff;color:#111}}
+.panel,.narrative,.kpi{{break-inside:avoid;box-shadow:none}}.reveal{{animation:none;opacity:1;transform:none}}}}
 </style></head>
 <body>
-<div class="logo">{logo}</div>
-<span class="badge">{badge}</span>
-<div class="viz"><h3>Entity correlation graph</h3>{graph_iframe}</div>
-<div class="viz"><h3>Blast radius</h3>{blast}</div>
-{panel_html}
-<div class="report-body">{body}</div>
+<div class="bg bg-mesh"></div><div class="bg bg-grid"></div><div class="bg bg-grain"></div>
+<header class="top">
+  <div class="logo">{logo}</div>
+  <div class="title-block"><div class="kicker">Abstract · AI-SOC</div><h1>Investigation Report</h1></div>
+  <div class="spacer"></div>
+  <span class="pill {'live' if live else 'off'}"><span class="dot"></span>{status}</span>
+  <span class="gen">generated {gen}</span>
+</header>
+<div class="wrap">
+  <section class="hero reveal">
+    <div class="lead">Identity-centric intrusion — <em>convicted, correlated, contained.</em></div>
+    <p class="sub">{html.escape(lead.title) if lead else 'Investigation'} — malware verdict corroborated by
+    endpoint &amp; C2, with account takeover and identity re-exposure that survives IDP / immutable-backup
+    restore. Live interactive graph, blast radius, predictive risk and ATT&amp;CK coverage below.</p>
+  </section>
+  <section class="kpis reveal" style="animation-delay:.06s">{kpi_html}</section>
+  <main>{main_html}
+    <section class="narrative reveal" style="animation-delay:.42s">{body}</section>
+  </main>
+  <footer>ABSTRACT SECURITY · AI-SOC INVESTIGATION CONSOLE · self-contained / offline ·
+  <b>{status}</b> · modeled-vs-live boundary per DEMO-CATALOG.md</footer>
+</div>
 </body></html>"""
 
 
