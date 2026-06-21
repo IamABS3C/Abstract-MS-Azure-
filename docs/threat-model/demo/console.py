@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import html
 import brand
+import abstract_authoring as AA
 
 # Graph-tab view registry: label → (viz_interactive fn name, needs_focus)
 VIEW_TYPES = [
@@ -28,10 +29,10 @@ VIEW_TYPES = [
 ]
 LAYOUTS = ["force", "hierarchical", "radial", "clustered"]
 
-# Authoring templates — object kinds the console can dry-run / create. live_capable maps
-# to a real abstract_client method; the rest are scaffolded (Slice 2 / API pending).
-AUTHORING_KINDS = ["Saved view", "Field set", "Insight",
-                   "Identity model", "Schema / field-map", "Parser", "Suppression"]
+# Authoring object kinds — sourced from abstract_authoring so the GUI stays in sync with
+# what the live API actually supports (view/fieldset/rule/suppression/insight/schema/
+# identity-model are live; parser exports a JSON artifact).
+AUTHORING_KINDS = list(AA.LABEL_TO_KIND)
 
 
 # ── pure builders (no ipywidgets, no network) ─────────────────────────────────────
@@ -174,58 +175,41 @@ def settings_html(state) -> str:
 
 
 def authoring_preview(kind: str, state=None) -> dict:
-    """Dry-run payload + diff for an Abstract object. live_capable kinds map to a real
-    abstract_client method; the rest are scaffolded previews (Slice 2 / API pending)."""
-    name = "[ABS-DEMO] console authored"
-    if kind == "Saved view":
-        payload = {"name": name + " — view",
-                   "query": [{"id": "q1", "depth": 0, "field": "severity", "index": 0,
-                              "value": "critical", "parentId": None, "fieldType": "String",
-                              "field_operation": "EQUALS", "subFieldOperation": ""}],
-                   "fields": ["type", "@timestamp", "severity", "user_name", "source_address", "message"],
-                   "order_by": "@timestamp", "order_type": "DESC"}
-        return {"kind": kind, "method": "create_view", "live_capable": True, "payload": payload,
-                "diff": f"CREATE view '{payload['name']}' (severity == critical, +{len(payload['fields'])} fields)"}
-    if kind == "Field set":
-        payload = {"name": name + " — fieldset",
-                   "fields": ["type", "@timestamp", "severity", "user_name", "source_address",
-                              "file.hash.sha256", "threat.technique_id", "message"],
-                   "tags": ["abs-demo", "console"]}
-        return {"kind": kind, "method": "create_fieldset", "live_capable": True, "payload": payload,
-                "diff": f"CREATE field-set '{payload['name']}' (+{len(payload['fields'])} fields)"}
-    if kind == "Insight":
-        payload = {"title": name + " — insight", "status": "open", "severity": "high",
-                   "summary": "Identity re-exposure survives IDP restore; credential still leaked.",
-                   "categories": ["detection"],
-                   "mitre_attack_techniques": [{"id": "T1078", "name": "Valid Accounts", "sub_id": ""}]}
-        return {"kind": kind, "method": "create_insight", "live_capable": True, "payload": payload,
-                "diff": f"CREATE insight '{payload['title']}' (severity high, T1078)"}
-    if kind == "Identity model":
-        payload = {"name": name + " — identity-model",
-                   "entity_kinds": ["human", "service-principal", "managed-identity", "nhi", "agent", "session"],
-                   "risk_weights": {"re_exposure": 0.3, "session_hijack": 0.25, "mfa_bombing": 0.15,
-                                    "password_reuse": 0.15, "persistent_hygiene": 0.15},
-                   "vip_tags": ["ceo", "cfo", "admin"]}
-        return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
-                "diff": "DEFINE identity model (entity kinds + risk weights) — Slice 2 / model API"}
-    if kind == "Schema / field-map":
-        payload = {"name": name + " — schema", "ocsf_class": "Authentication",
-                   "map": {"src_ip": "source_address", "account": "user_name",
-                           "user": "actor.user.name", "sev": "severity"}}
-        return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
-                "diff": "DEFINE schema/field-map (source → OCSF) — Slice 2 / schema API"}
-    if kind == "Parser":
-        payload = {"name": name + " — parser", "source": "okta",
-                   "extract": {"account": "$.actor.alternateId", "src_ip": "$.client.ipAddress",
-                               "event": "$.eventType"}}
-        return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
-                "diff": "DEFINE parser (okta → normalized fields) — Slice 2 / parser API"}
-    # Suppression
-    payload = {"name": name + " — suppression",
-               "match": {"field": "source_address", "operation": "EQUALS", "value": "52.20.10.5"},
-               "reason": "known corporate egress"}
-    return {"kind": kind, "method": None, "live_capable": False, "payload": payload,
-            "diff": "DEFINE suppression (corp egress IP) — Slice 2 / suppression API"}
+    """Dry-run payload + diff for an Abstract object — delegates to abstract_authoring so
+    views/fieldsets/rules/suppressions/insights/schemas/identity-models produce real live
+    payloads (parser exports a JSON artifact)."""
+    return AA.build(kind, state=state)
+
+
+def models_html(state) -> str:
+    """Identity-risk model + predictive analytics + threat model, for the Models tab."""
+    import entity_model as EM
+    m = EM.build_entity_model(state, vips=getattr(state, "vips", set()))
+    risks = EM.identity_risk(m, top=10)
+    pred = EM.predict(state, m)
+    tm = EM.threat_model(state)
+    ev = EM.evaluate(m)
+    rrows = "".join(
+        f"<li>{html.escape(r['entity'])} — <b style='color:{brand.PINK}'>{r['score']}</b> "
+        f"({html.escape(r['kind'])}"
+        + (" · <b>VIP</b>" if r["vip"] else "")
+        + (f" · <b style='color:{brand.AMBER}'>survives restore</b>" if r["survives_restore"] else "")
+        + f") · <span style='color:{brand.MUT}'>{html.escape(', '.join(r['drivers']))}</span></li>"
+        for r in risks)
+    chain = " &rarr; ".join(
+        f"{html.escape(s['stage'])} <span style='color:{brand.MUT}'>({s['events']})</span>"
+        for s in tm["kill_chain"])
+    esc = ", ".join(html.escape(e.split(":", 1)[-1]) for e in pred["escalation_watch"]) or "—"
+    sit = pred["situational"]
+    return (f"<div style='font-family:{brand.FONT_STACK};color:{brand.INK}'>"
+            f"<h3 style='color:{brand.TEAL}'>Identity-risk model (weighted · explainable)</h3>"
+            f"<p style='color:{brand.MUT}'>entities {ev['entities']} · high-risk {ev['high_risk']} · "
+            f"VIP at risk {ev['vip_at_risk']} · survives restore {ev['survives_restore']} · "
+            f"signal coverage {ev['signal_coverage_pct']}%</p><ul>{rrows}</ul>"
+            f"<h3 style='color:{brand.TEAL}'>Predictive — escalation watch</h3><p>{esc}</p>"
+            f"<p style='color:{brand.MUT}'>{html.escape(pred['rationale'])}</p>"
+            f"<h3 style='color:{brand.TEAL}'>Threat model — kill chain "
+            f"({sit['principals']} principals)</h3><p>{chain}</p></div>")
 
 
 def writeback_preview(state, name="[ABS-DEMO] Investigation — console") -> dict:
@@ -246,6 +230,7 @@ def selftest():
     assert "Pipeline efficiency" in pipeline_html(st)
     assert "Threat-hunting catalog" in hunt_html(st)
     assert "Enrichment adapters" in settings_html(st)
+    assert "Identity-risk model" in models_html(st)
     assert enrichment_html({"value": "1.1.1.1", "kind": "ip", "sources": ["t"],
                             "records": [{"source": "t", "type": "x", "value": "1"}], "pivots": []})
     for k in AUTHORING_KINDS:
@@ -439,9 +424,8 @@ class Console:
                 if not (prev and prev.get("live_capable") and self.connection):
                     print("apply unavailable for this object / no connection.")
                     return
-                res = getattr(self.connection, prev["method"])(prev["payload"])
-                print("applied →", prev["method"], "id:", (res.get("body") or {}).get("id"),
-                      "status:", res.get("status"))
+                res = AA.apply(self.connection, prev)   # validates rules, routes per kind
+                print("applied →", prev["kind"], ":", res)
         a_dry.on_click(on_dry)
         a_apply.on_click(on_apply)
         authoring_tab = w.VBox([
@@ -486,6 +470,24 @@ class Console:
                               dry, confirm, apply, act_out])
         tick("Actions")
 
+        # ── Models / Predict: identity-risk model + threat model + review/optimize ─
+        review_btn = w.Button(description="Review & optimize posture", button_style="info")
+        review_out = w.Output()
+
+        def on_review(*_):
+            import entity_model as EM
+            review_out.clear_output(wait=True)
+            with review_out:
+                rev = AA.review(self.connection, state=st)
+                print("posture review" + (" (LIVE)" if rev.get("live") else " (modeled)") + ":")
+                for r in rev.get("recommendations", []):
+                    print("  •", r)
+                m = EM.build_entity_model(st, vips=self.vips)
+                opt = EM.optimize(m, st)
+                print("\ndata-driven optimized weights:", opt["weights"])
+        review_btn.on_click(on_review)
+        models_tab = w.VBox([w.HTML(models_html(st)), review_btn, review_out]); tick("Models")
+
         # ── static tabs ──────────────────────────────────────────────────────────
         overview_tab = w.HTML(overview_html(st)); tick("Overview")
         identity_tab = w.HTML(identity_html(st, self.vips)); tick("Identity")
@@ -494,9 +496,10 @@ class Console:
         mitre_tab = w.HTML(ML.matrix_html(st)); tick("MITRE")
 
         tabs = w.Tab(children=[overview_tab, graph_tab, identity_tab, invest_tab, hunt_tab,
-                               pipeline_tab, mitre_tab, authoring_tab, settings_tab, actions_tab])
+                               pipeline_tab, models_tab, mitre_tab, authoring_tab,
+                               settings_tab, actions_tab])
         for i, t in enumerate(["Overview", "Graph", "Identity", "Investigate", "Hunt",
-                               "Pipeline", "MITRE", "Authoring", "Settings", "Actions"]):
+                               "Pipeline", "Models", "MITRE", "Authoring", "Settings", "Actions"]):
             tabs.set_title(i, t)
         draw_graph()
         progress.value = progress.max
