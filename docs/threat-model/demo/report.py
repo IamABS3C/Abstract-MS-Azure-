@@ -185,6 +185,10 @@ mask-image:radial-gradient(circle at 50% 25%,#000,transparent 85%)}}
 .wrap{{max-width:1180px;margin:0 auto;padding:0 28px 64px}}
 header.top{{position:relative;z-index:5;display:flex;align-items:center;gap:18px;padding:18px 28px;
 background:linear-gradient(180deg,rgba(255,33,107,.06),transparent);border-bottom:1px solid var(--line)}}
+header.top::after{{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+background:linear-gradient(90deg,var(--pink),var(--teal),var(--blue),var(--pink));
+background-size:300% 100%;animation:slide 9s linear infinite}}
+@keyframes slide{{to{{background-position:300% 0}}}}
 header.top .logo svg{{height:30px;width:auto;display:block}}
 .title-block .kicker{{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--teal);text-transform:uppercase}}
 .title-block h1{{font-family:var(--display);font-weight:800;font-size:30px;line-height:1;margin:2px 0 0;
@@ -203,19 +207,29 @@ letter-spacing:.4px;margin:0;max-width:20ch;text-transform:uppercase}}
 .hero .lead em{{font-style:normal;color:var(--pink)}}
 .hero .sub{{color:var(--mut);max-width:64ch;margin:14px 0 0}}
 .kpis{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:30px 0 8px}}
-.kpi{{position:relative;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
-border:1px solid var(--line);border-radius:14px;padding:18px;overflow:hidden}}
+.kpi{{position:relative;background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.012));
+backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:18px;overflow:hidden;
+box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}}
 .kpi::before{{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--pink),var(--teal))}}
 .kpi-n{{font-family:var(--display);font-weight:800;font-size:38px;line-height:1;color:#fff;text-shadow:0 0 22px rgba(255,33,107,.25)}}
 .kpi-l{{font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--mut);margin-top:8px}}
 main{{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}}
-.panel{{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;position:relative;
-box-shadow:0 18px 50px -30px rgba(0,0,0,.9)}}
+.panel{{background:linear-gradient(165deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:18px;position:relative;
+box-shadow:0 24px 60px -34px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.06)}}
 .panel.wide{{grid-column:1/-1}} .panel.scroll{{overflow-x:auto}}
+.panel.wide::before{{content:"";position:absolute;inset:-1px;border-radius:16px;padding:1px;z-index:-1;
+background:linear-gradient(120deg,rgba(255,33,107,.5),rgba(1,230,157,.4),transparent 60%);
+-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+-webkit-mask-composite:xor;mask-composite:exclude}}
 .eyebrow{{font-family:var(--mono);font-size:10px;letter-spacing:2.4px;color:var(--teal);text-transform:uppercase}}
 .panel h3{{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:.4px;margin:4px 0 12px;color:#fff;text-transform:uppercase}}
 .legend{{margin-bottom:8px}}
-.narrative{{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 32px 30px}}
+.narrative{{grid-column:1/-1;background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.01));
+backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.09);
+border-radius:16px;padding:14px 32px 30px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}}
 .narrative h1{{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.5px;font-size:26px;
 color:var(--pink);border-bottom:1px solid var(--line);padding-bottom:10px}}
 .narrative h2{{font-family:var(--mono);color:var(--teal);font-size:12px;text-transform:uppercase;letter-spacing:2.2px;
@@ -228,8 +242,9 @@ footer{{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:
 footer b{{color:var(--ink)}}
 @media (max-width:820px){{main{{grid-template-columns:1fr}}}}
 @media (prefers-reduced-motion:reduce){{.reveal{{animation:none;opacity:1;transform:none}}.pill .dot{{animation:none}}}}
-@media print{{.bg{{display:none}}header.top{{position:static}}body{{background:#fff;color:#111}}
-.panel,.narrative,.kpi{{break-inside:avoid;box-shadow:none}}.reveal{{animation:none;opacity:1;transform:none}}}}
+@media print{{.bg{{display:none}}header.top::after{{animation:none}}body{{background:#fff;color:#111}}
+.panel,.narrative,.kpi{{break-inside:avoid;box-shadow:none;background:#fff;border-color:#ddd;
+backdrop-filter:none;-webkit-backdrop-filter:none}}.reveal{{animation:none;opacity:1;transform:none}}}}
 </style></head>
 <body>
 <div class="bg bg-mesh"></div><div class="bg bg-grid"></div><div class="bg bg-grain"></div>

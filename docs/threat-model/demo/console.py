@@ -100,6 +100,40 @@ def enrichment_html(result: dict) -> str:
             f'<div style="font-size:12px">{pivots}</div></div>')
 
 
+_CATLBL = {"search": "🔎 Search engines", "threat_actor": "🎭 Threat-actor DBs",
+           "ransomware_infostealer": "🧬 Ransomware / infostealer", "intel": "🛰 IOC intel",
+           "code_social": "💬 Code & social", "news_advisory": "📰 News & advisories",
+           "darkweb_index": "🌒 Dark-web indexes"}
+
+
+def external_html(entity) -> str:
+    """Categorized external-search / corroboration deep-links for a selected entity — glass chips."""
+    import osint_pivots as OP
+    piv = OP.entity_pivots(entity)
+    blocks = []
+    for cat, items in piv.items():
+        chips = "".join(
+            f"<a href='{html.escape(it['url'])}' target='_blank' style='display:inline-block;"
+            f"margin:3px 6px 3px 0;padding:3px 10px;border-radius:999px;"
+            f"background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);"
+            f"color:{brand.BLUE};font-size:11px;text-decoration:none'>{html.escape(it['name'])}</a>"
+            for it in items)
+        blocks.append(
+            f"<div style='margin:7px 0'><div style='font-family:{brand.MONO_STACK};font-size:10px;"
+            f"letter-spacing:1.5px;color:{brand.TEAL};text-transform:uppercase;margin-bottom:3px'>"
+            f"{_CATLBL.get(cat, cat)}</div>{chips}</div>")
+    return (f"<div style='font-family:{brand.FONT_STACK};color:{brand.INK}'>"
+            f"<h4 style='color:{brand.PINK};margin:4px 0'>External search &amp; corroboration — "
+            f"{html.escape(str(entity))}</h4>{''.join(blocks)}</div>")
+
+
+def compare_html(state, a, b) -> str:
+    """Side-by-side per-entity detail for two selected entities."""
+    import viz_interactive as VI
+    return (f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px'>"
+            f"{VI.entity_detail_html(state, a)}{VI.entity_detail_html(state, b)}</div>")
+
+
 def pipeline_html(state) -> str:
     """Pipeline analysis: source breakdown, OCSF classes, severity mix, efficiency."""
     from collections import Counter
@@ -242,6 +276,8 @@ def selftest():
     assert "Threat-hunting catalog" in hunt_html(st)
     assert "Enrichment adapters" in settings_html(st)
     assert "Identity-risk model" in models_html(st)
+    assert "External search" in external_html("account:okta:jsmith@acme.com")
+    assert "grid-template-columns" in compare_html(st, "account:okta:jsmith@acme.com", "host:ACME-LT-4471")
     assert enrichment_html({"value": "1.1.1.1", "kind": "ip", "sources": ["t"],
                             "records": [{"source": "t", "type": "x", "value": "1"}], "pivots": []})
     for k in AUTHORING_KINDS:
@@ -355,6 +391,37 @@ class Console:
                 out.append((k, rec))
             return sorted(out, key=lambda kr: -kr[1].get("risk", 0))[:25]
 
+        external_out = w.Output()
+        compare_out = w.Output()
+        cmp = {"items": []}
+        _idx0 = VI._entity_index(st)
+        ent_options = [("— select an entity —", "")] + [
+            (f"{k.split(':', 1)[-1][:30]}  ·  risk {rec.get('risk', 0)}  [{rec.get('kind', '')}]", k)
+            for k, rec in sorted(_idx0.items(), key=lambda kr: -kr[1].get("risk", 0))[:60]]
+        ent_sel = w.Dropdown(options=ent_options, value="", description="Entity:",
+                             layout=w.Layout(width="520px"))
+
+        def _val(key):
+            return key.split(":", 1)[-1] if isinstance(key, str) and ":" in key else (key or "")
+
+        def render_focus():
+            key = focus["key"]
+            detail_out.clear_output(wait=True)
+            external_out.clear_output(wait=True)
+            if not key:
+                return
+            with detail_out:
+                display(HTML(VI.entity_detail_html(st, key)))
+            with external_out:
+                display(HTML(external_html(key)))
+            draw_graph()
+
+        def select_entity(key):
+            if key:
+                focus["key"] = key
+                render_focus()
+        ent_sel.observe(lambda ch: select_entity(ent_sel.value), "value")
+
         def do_search(*_):
             val = search.value.strip()
             if not val:
@@ -371,20 +438,12 @@ class Console:
                                  f"<span style='color:{brand.MUT};font-size:11px'>"
                                  f"(kind: · risk&gt;N · field:x)</span></h4>"
                                  f"<ul style='font-size:12px'>{rows or '<li>none</li>'}</ul></div>"))
-                enrich_out.clear_output()
                 if matches:
-                    focus["key"] = matches[0][0]
-                    draw_graph()
+                    select_entity(matches[0][0])
                 return
             kind = EN.detect_kind(val)
-            key = val if ":" in val else (f"identity:{val}" if "@" in val else None)
-            focus["key"] = key or focus["key"]
-            detail_out.clear_output(wait=True)
-            with detail_out:
-                if focus["key"]:
-                    display(HTML(VI.entity_detail_html(st, focus["key"])))
-                else:
-                    display(HTML(f"<i>looked up <b>{html.escape(val)}</b> ({kind})</i>"))
+            focus["key"] = val if ":" in val else (f"identity:{val}" if "@" in val else focus["key"])
+            render_focus()
             enrich_out.clear_output(wait=True)
             with enrich_out:
                 display(HTML(enrichment_html(EN.enrich_entity(val, kind))))
@@ -393,12 +452,60 @@ class Console:
                     rows = "".join(f"<li><b>{html.escape(n)}</b>: {html.escape(str(r))[:160]}</li>"
                                    for n, r in la.items())
                     display(HTML(f"<div style='font-family:{brand.FONT_STACK};color:{brand.INK}'>"
-                                 f"<h4 style='color:{brand.TEAL}'>SIEM pivots (Sentinel · Splunk · Elastic)</h4>"
+                                 f"<h4 style='color:{brand.TEAL}'>SIEM pivots</h4>"
                                  f"<ul style='font-size:12px'>{rows}</ul></div>"))
-            draw_graph()
         search.observe(lambda ch: do_search(), "value")
         search_btn = w.Button(description="Lookup + pivot", button_style="info")
         search_btn.on_click(do_search)
+
+        # actions on the selected entity: enrich · cross-ref SIEM · author · compare
+        act_enrich = w.Button(description="🌐 Enrich")
+        act_xref = w.Button(description="🛰 Cross-ref SIEM/MCP")
+        act_author = w.Button(description="📝 Author insight")
+        act_cmp = w.Button(description="⚖️ Add to compare")
+
+        def on_enrich(*_):
+            v = _val(focus["key"])
+            enrich_out.clear_output(wait=True)
+            with enrich_out:
+                display(HTML(enrichment_html(EN.enrich_entity(v, EN.detect_kind(v)))) if v
+                        else HTML("<i>select an entity first</i>"))
+
+        def on_xref(*_):
+            v = _val(focus["key"])
+            enrich_out.clear_output(wait=True)
+            with enrich_out:
+                la = IN.lookup_all(v, EN.detect_kind(v), kinds=("siem", "mcp")) if v else {}
+                rows = "".join(f"<li><b>{html.escape(n)}</b>: {html.escape(str(r))[:200]}</li>"
+                               for n, r in la.items()) or "<li>no configured SIEM/MCP (Settings)</li>"
+                display(HTML(f"<div style='font-family:{brand.FONT_STACK};color:{brand.INK}'>"
+                             f"<h4 style='color:{brand.TEAL}'>Cross-reference</h4>"
+                             f"<ul style='font-size:12px'>{rows}</ul></div>"))
+
+        def on_author(*_):
+            enrich_out.clear_output(wait=True)
+            with enrich_out:
+                a = AA.build("Insight", state=st)
+                a["payload"]["title"] = f"[ABS-DEMO] {focus.get('key') or 'investigation'}"
+                print("DRY-RUN", a["diff"])
+                print(a["payload"])
+                print("\n(apply from the Authoring tab with a live connection)")
+
+        def on_cmp(*_):
+            if focus["key"] and focus["key"] not in cmp["items"]:
+                cmp["items"] = (cmp["items"] + [focus["key"]])[-2:]
+            compare_out.clear_output(wait=True)
+            with compare_out:
+                if len(cmp["items"]) == 2:
+                    display(HTML(compare_html(st, *cmp["items"])))
+                else:
+                    print("compare: pick a second entity, then 'Add to compare' "
+                          f"(have: {[k.split(':', 1)[-1] for k in cmp['items']]})")
+        act_enrich.on_click(on_enrich)
+        act_xref.on_click(on_xref)
+        act_author.on_click(on_author)
+        act_cmp.on_click(on_cmp)
+
         annot = w.Textarea(placeholder="analyst note for the focused entity…", description="Note:")
         annot_btn = w.Button(description="Save note")
         annot_log = w.Output()
@@ -412,7 +519,9 @@ class Console:
                 display(HTML("<br>".join(f"<b>{html.escape(kk)}</b>: {html.escape('; '.join(vv))}"
                                          for kk, vv in self.annotations.items())))
         annot_btn.on_click(save_note)
-        invest_tab = w.VBox([w.HBox([search, search_btn]), detail_out, enrich_out,
+        invest_tab = w.VBox([w.HBox([ent_sel]), w.HBox([search, search_btn]),
+                             w.HBox([act_enrich, act_xref, act_author, act_cmp]),
+                             detail_out, enrich_out, external_out, compare_out,
                              w.HBox([annot, annot_btn]), annot_log])
         tick("Investigate")
 
