@@ -15,6 +15,7 @@ mitre, live, source) is what every dashboard module consumes — so the engine b
 swapped without touching the UI."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -218,8 +219,46 @@ def _portable_metrics(norm, findings):
             "fatigue_reduction_pct": 0, "mttd_siem_sec": 1200, "mttd_stream_sec": 1}
 
 
+_IPRE = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
+_DOMRE = re.compile(r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", re.I)
+_HASHRE = re.compile(r"\b[a-fA-F0-9]{32,64}\b")
+_EMAILRE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", re.I)
+
+
+def _norm_from_insights(insights, start_idx=0):
+    """Build real Norm events from live insights — subject (created_by) entity + any
+    IP/domain/hash/email indicators extracted from the title/summary — so the live graph,
+    scoring, and identity-intel run on REAL tenant alerts even when raw event-search is
+    gated/disabled on the tenant."""
+    out = []
+    for j, ins in enumerate(insights):
+        if not isinstance(ins, dict):
+            continue
+        text = " ".join(str(ins.get(k, "")) for k in ("title", "summary", "description", "name"))
+        raw = {"_t": "insight", "ts": ins.get("created_at"),
+               "severity": str(ins.get("severity", "high")).lower(),
+               "title": ins.get("title"), "nanoid": ins.get("nanoid"), "status": ins.get("status")}
+        if ins.get("created_by_entity_id"):
+            raw["account"] = f"{ins.get('created_by_entity_type', 'entity')}:{ins['created_by_entity_id']}"
+        ips = _IPRE.findall(text)
+        emails = _EMAILRE.findall(text)
+        hashes = _HASHRE.findall(text)
+        doms = [d for d in _DOMRE.findall(text) if d not in ips and "@" not in d]
+        if ips:
+            raw["source_address"] = ips[0]
+        if emails:
+            raw["user_name"] = emails[0]
+        if hashes:
+            raw["file.hash.sha256"] = hashes[0]
+        if doms:
+            raw["domain"] = doms[0]
+        out.append(normalize_live(start_idx + j, raw))
+    return out
+
+
 def _build_from_events(raw_events, insights, detections, mitre, analytics):
     norm = [normalize_live(i, r) for i, r in enumerate(raw_events) if isinstance(r, dict)]
+    norm += _norm_from_insights(insights, start_idx=len(norm))   # real entities from live insights
     g = Graph()
     for ev in norm:
         g.add(ev)
@@ -231,19 +270,15 @@ def _build_from_events(raw_events, insights, detections, mitre, analytics):
                  detections=detections, mitre=mitre, analytics=analytics)
 
 
-# ── live pull ──────────────────────────────────────────────────────────────────────
+# ── live pull (raw event-search needs a typed condition; gated on this tenant → best-effort) ──
 def _pull_events(c, size=300):
-    for call in (lambda: c.search(query_string="*", size=size),
-                 lambda: c.raw_search({"match_all": {}}, size=size)):
-        body = _body(_safe(call, {}))
-        evs = _as_list(body, "events", "results", "data", "records")
-        if not evs:
-            hits = ((body or {}).get("hits") or {}).get("hits") if isinstance(body, dict) else None
-            if isinstance(hits, list):
-                evs = [h.get("_source", h) for h in hits]
-        if evs:
-            return evs
-    return []
+    body = _body(_safe(lambda: c.search(size=size), {}))
+    evs = _as_list(body, "events", "results", "data", "records")
+    if not evs and isinstance(body, dict):
+        hits = (body.get("hits") or {}).get("hits")
+        if isinstance(hits, list):
+            evs = [h.get("_source", h) for h in hits]
+    return evs
 
 
 def _live_state(connection, window_days):
@@ -251,20 +286,18 @@ def _live_state(connection, window_days):
     insights = _dedup(_as_list(_body(_safe(lambda: c.list_insights(page_size=500), {})),
                                "insights", "data", "results"),
                       lambda r: (r.get("id") or r.get("nanoid") or id(r)) if isinstance(r, dict) else id(r))
-    detections = _dedup(_as_list(_body(_safe(lambda: c.list_rules(), {})), "rules", "data"),
+    ins_total = (_body(_safe(lambda: c.list_insights(page_size=1), {})).get("metadata") or {}).get("total_count")
+    detections = _dedup(_as_list(_body(_safe(lambda: c.list_rules(), {})), "rules", "items", "data"),
                         lambda r: (r.get("id") or r.get("nanoid") or id(r)) if isinstance(r, dict) else id(r))
     mitre_body = _body(_safe(lambda: c.mitre(), {}))
     mitre = (mitre_body.get("tactics") if isinstance(mitre_body, dict)
              else mitre_body if isinstance(mitre_body, list) else [])
     analytics = {"views": len(_as_list(_body(_safe(lambda: c.list_views(), {})), "views", "data")),
                  "fieldsets": len(_as_list(_body(_safe(lambda: c.list_fieldsets(), {})),
-                                           "fieldsets", "field_sets", "data"))}
+                                           "fieldsets", "field_sets", "data")),
+                 "rules": len(detections), "insights_total": ins_total}
     raw_events = _safe(lambda: _pull_events(c), [])
-    st = _build_from_events(raw_events, insights, detections, mitre, analytics)
-    if not st.norm and not st.insights:
-        # connected but nothing returned (perms/empty window) → still a valid live State
-        st.source = "live"
-    return st
+    return _build_from_events(raw_events, insights, detections, mitre, analytics)
 
 
 # ── synthetic demo (optional) + empty fallback ───────────────────────────────────
@@ -340,7 +373,8 @@ def selftest():
     lv = build_state(_Fake())
     assert lv.live and lv.source == "live"
     assert len(lv.graph.nodes) > 0
-    assert len(lv.norm) == 2 and len(lv.scores) > 0 and len(lv.findings) > 0
+    # 2 search events + ≥1 insight-derived event (real entities pulled from live insights)
+    assert len(lv.norm) >= 3 and len(lv.scores) > 0 and len(lv.findings) > 0
     assert lv.mitre and lv.mitre[0]["total"] == 10
     return {"ok": True, "synthetic": s.source, "live_nodes": len(lv.graph.nodes),
             "live_findings": len(lv.findings), "live_scores": len(lv.scores)}

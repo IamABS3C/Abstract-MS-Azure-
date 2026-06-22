@@ -139,14 +139,17 @@ class AbstractClient:
         return {"ok": False, "note": "no /me endpoint; auth verified via connect()"}
 
     # ── streamviewer: search / query / timeline / translate ──────────────────────
-    def search(self, condition: dict = None, query_string: str = "", size: int = 50,
-               start: str = "2026-05-16T00:00:00Z", end: str = "2026-06-16T23:59:59Z") -> dict:
-        body = {"start_time": start, "end_time": end, "size": size,
-                "vendor_account_id": ABSTRACT_ACCOUNT_ID}
+    def search(self, condition: dict = None, size: int = 50,
+               start: str = "2026-05-16T00:00:00Z", end: str = "2026-06-16T23:59:59Z",
+               selected_fields=None, storage_type: str = "HOT") -> dict:
+        # GetEvents schema (verified live + via /openapi.json): vendor_account_id + page_size +
+        # storage_type + non-empty selected_fields (['*'] = all). A typed `condition` is required
+        # for execution; the per-field `field_type` comes from the tenant field schema.
+        body = {"vendor_account_id": ABSTRACT_ACCOUNT_ID, "start_time": start, "end_time": end,
+                "page_size": size, "storage_type": storage_type,
+                "selected_fields": selected_fields or ["*"]}
         if condition:
             body["condition"] = condition
-        if query_string:
-            body["query_string"] = query_string
         return self._req("POST", EP["search"], body)
 
     def raw_search(self, query: dict, aggs: dict = None, size: int = 10,
@@ -196,7 +199,7 @@ class AbstractClient:
     def delete_fieldset(self, fid): return self._req("DELETE", EP["fieldset"] + "/" + fid)
 
     # ── rules + MITRE ──────────────────────────────────────────────────────────
-    def list_rules(self):           return self._req("GET", EP["rules"])
+    def list_rules(self):           return self._req("GET", "/v2/rules/")   # /v1/rules GET 500s; /v2 lists
     def get_rule(self, rid):        return self._req("GET", EP["rules"] + "/" + str(rid))
     def create_rule(self, payload: dict) -> dict:
         self.sent["rules"] += 1
