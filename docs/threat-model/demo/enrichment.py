@@ -494,6 +494,40 @@ def _wildfire(value, kind):
     return {"verdict": codes.get(m.group(1) if m else None, "unknown")}
 
 
+_FEODO_CACHE = {"ips": None}
+
+
+def _feodo(value, kind):
+    """abuse.ch Feodo Tracker — keyless botnet C2 IP blocklist (Dridex/Emotet/QakBot/…)."""
+    if kind != "ip":
+        return {"skipped": "Feodo Tracker is IP-only"}
+    if _FEODO_CACHE["ips"] is None:
+        r = _get("https://feodotracker.abuse.ch/downloads/ipblocklist.json", timeout=15)
+        rows = r.get("data") if isinstance(r.get("data"), list) else []
+        _FEODO_CACHE["ips"] = {str(x.get("ip_address")): x for x in rows if isinstance(x, dict)}
+    if not _FEODO_CACHE["ips"]:
+        return {"error": "feed unavailable"}
+    hit = _FEODO_CACHE["ips"].get(value)
+    return {"feodo_c2": bool(hit),
+            **({"malware": hit.get("malware"), "first_seen": hit.get("first_seen"),
+                "port": hit.get("port")} if hit else {})}
+
+
+def _circl_cve(value, kind):
+    """CIRCL cve-search — keyless CVE intel (CVSS, summary)."""
+    if kind != "cve":
+        return {"skipped": "CIRCL cve-search is CVE-only"}
+    r = _get(f"https://cve.circl.lu/api/cve/{value}")
+    if not r.get("ok"):
+        return {"error": r.get("error") or r.get("status")}
+    d = r.get("data") or {}
+    if not isinstance(d, dict) or not d:
+        return {"found": False}
+    out = {"cvss": d.get("cvss"), "summary": (d.get("summary") or "")[:200],
+           "references": len(d.get("references") or [])}
+    return out if (out["cvss"] or out["summary"]) else {"found": False}
+
+
 # name → (categories, supported kinds, env var(s), adapter)
 ENRICHERS = {
     "VirusTotal": ("multi-rep", ["ip", "domain", "hash", "url"], ["VT_API_KEY"], _virustotal),
@@ -523,6 +557,8 @@ ENRICHERS = {
     "ThreatFox": ("intel-feed", ["ip", "domain", "url", "hash"], ["THREATFOX_API_KEY"], _threatfox),
     "Pulsedive": ("multi-rep", ["ip", "domain", "url"], ["PULSEDIVE_API_KEY"], _pulsedive),
     "Palo Alto WildFire": ("malware", ["hash"], ["WILDFIRE_API_KEY"], _wildfire),
+    "abuse.ch Feodo": ("botnet-c2", ["ip"], [], _feodo),
+    "CIRCL cve-search": ("vuln", ["cve"], [], _circl_cve),
 }
 
 # Non-API pivots — surfaced as keyless deep-links / local compute (no scraping).
@@ -610,7 +646,8 @@ def selftest() -> dict:
     # fabric: free adapters registered + reshaping (all network-free)
     assert {"HIBP Passwords", "Hudson Rock", "CISA KEV", "NVD"} <= set(ENRICHERS)
     assert {"EPSS", "Shodan InternetDB", "crt.sh", "RDAP", "URLhaus", "MalwareBazaar",
-            "Ransomware.live", "ipwho.is", "LeakCheck (public)"} <= set(ENRICHERS)
+            "Ransomware.live", "ipwho.is", "LeakCheck (public)", "abuse.ch Feodo",
+            "CIRCL cve-search"} <= set(ENRICHERS)
     assert ENRICHERS["EPSS"][0] == "exploit-prediction"  # predictive feed wired
     assert "Intelligence X" in ENRICHERS and ENRICHERS["Intelligence X"][2] == ["INTELX_API_KEY"]
     assert STUBS
