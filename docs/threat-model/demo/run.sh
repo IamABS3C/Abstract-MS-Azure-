@@ -2,6 +2,7 @@
 # Abstract AI-SOC — one-command local launcher.
 #   ./run.sh           create env if needed, register kernel, open JupyterLab
 #   ./run.sh --check    validate env + imports and exit 0 (no launch; for CI)
+#   ./run.sh --app      build the self-contained console.html dashboard + open it (no kernel)
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # safe under trailing-space repo path
 CONDA="${HOME}/miniforge3/bin/conda"
@@ -27,6 +28,14 @@ fi
 if [ "${1:-}" = "--check" ]; then
   "$CONDA" run -n "$ENV" python -c \
     "import jupyterlab,ipywidgets,matplotlib,networkx,pandas,plotly,pyvis,mcp,requests; print('env OK')"
+  exit 0
+fi
+
+if [ "${1:-}" = "--app" ]; then
+  # build the self-contained interactive dashboard (no kernel) and open it in a browser
+  ( cd "$HERE" && "$CONDA" run -n "$ENV" python console_app.py )
+  open "${HERE}/console.html" 2>/dev/null || xdg-open "${HERE}/console.html" 2>/dev/null \
+    || echo "open ${HERE}/console.html in any browser"
   exit 0
 fi
 
