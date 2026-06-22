@@ -144,7 +144,7 @@ def validate(client, authored) -> dict:
 def apply(client, authored, *, enabled=False) -> dict:
     """Mutate the tenant. Offline clients return simulated results. Rules are validated first
     and created DISABLED unless enabled=True."""
-    kind, payload, method = authored["kind"], authored["payload"], authored.get("method")
+    payload, method = authored["payload"], authored.get("method")
 
     if not authored.get("live_capable"):
         path = f"{authored.get('export_name', 'authored')}.json"

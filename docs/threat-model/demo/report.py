@@ -34,7 +34,6 @@ def markdown(state) -> str:
     findings, scores, metrics, iocs = state.findings, state.scores, state.metrics, state.iocs
     lead = inv.get("lead_finding")
     summ = II.summary(state, vips={"jsmith@acme.com"})
-    lines, A = [], None
     out = []
     A = out.append
     A("# Incident Report — Qakbot-style intrusion (model demo)\n")

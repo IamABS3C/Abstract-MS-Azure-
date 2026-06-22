@@ -45,16 +45,16 @@ _MODELED_TACTICS = [
 # ── availability guards ──────────────────────────────────────────────────────────
 def available() -> bool:
     try:
-        import pyvis  # noqa: F401
-        return True
+        import pyvis
+        return pyvis is not None
     except Exception:   # noqa: BLE001
         return False
 
 
 def _plotly_ok() -> bool:
     try:
-        import plotly  # noqa: F401
-        return True
+        import plotly
+        return plotly is not None
     except Exception:   # noqa: BLE001
         return False
 
