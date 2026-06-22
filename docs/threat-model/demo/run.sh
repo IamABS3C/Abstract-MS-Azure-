@@ -39,5 +39,13 @@ if [ "${1:-}" = "--app" ]; then
   exit 0
 fi
 
+if [ "${1:-}" = "--serve" ]; then
+  # fully-wired LIVE dashboard: stdlib backend (connect/enrich/xref/author/AI) + browser
+  PORT="${2:-8765}"
+  ( sleep 1.5; open "http://127.0.0.1:${PORT}" >/dev/null 2>&1 \
+      || xdg-open "http://127.0.0.1:${PORT}" >/dev/null 2>&1 ) &
+  cd "$HERE" && exec "$CONDA" run -n "$ENV" python server.py --port "$PORT"
+fi
+
 echo "Launching JupyterLab — pick the 'Abstract AI-SOC' kernel."
 exec "$CONDA" run -n "$ENV" jupyter lab "${HERE}/soc_notebook.ipynb"

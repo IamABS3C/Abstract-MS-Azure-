@@ -95,7 +95,7 @@ def _data(state):
     }
 
 
-def build_app(state) -> str:
+def build_app(state, backend=False) -> str:
     data = _data(state)
     VI._NO_INLINE = True
     top_entity = data["entities"][0]["key"] if data["entities"] else "account:okta:jsmith@acme.com"
@@ -122,6 +122,7 @@ def build_app(state) -> str:
         "__FONT__": brand.FONT_STACK, "__MONO__": brand.MONO_STACK,
         "__LOGO__": brand.logo_svg("white"), "__GRAPHLEGEND__": VI.graph_legend_html(),
         "__PLOTLYJS__": VI.plotlyjs_script(), "__GRAPH__": graph_iframe,
+        "__BACKEND__": ("true" if backend else "false"),
         "__DATA__": _json.dumps(data),
     }
     repl.update(frags)
@@ -258,8 +259,12 @@ footer{grid-column:1/-1;display:none}
         <select class="inp" id="entSel" onchange="selectEntity(this.value)" style="max-width:560px"></select>
         <div style="margin:8px 0">
           <button class="act" onclick="show('graph')">🔭 Pivot to graph</button>
-          <button class="act" onclick="addCompare()">⚖️ Add to compare</button>
-          <span class="field-k">Enrich · cross-ref · author run live in the JupyterLab console.</span></div>
+          <button class="act" onclick="addCompare()">⚖️ Compare</button>
+          <button class="act" onclick="doEnrich()">🌐 Enrich</button>
+          <button class="act" onclick="doXref()">🛰 Cross-ref SIEM/MCP</button>
+          <button class="act" onclick="doAuthor('Insight')">📝 Author (dry-run)</button>
+          <button class="act" onclick="doApply('Insight')">✅ Apply</button></div>
+        <div id="actOut" class="field-k" style="margin:6px 0;white-space:pre-wrap"></div>
         <div id="entDetail"><i class="sub">Select an entity to drill down.</i></div>
       </div>
       <div id="cmpBox"></div>
@@ -316,9 +321,16 @@ footer{grid-column:1/-1;display:none}
           <table><thead><tr><th>Provider</th><th>Status</th></tr></thead><tbody id="aiTbl"></tbody></table></div>
       </div>
       <div class="glass panel"><div class="eyebrow">Connect</div><h3>Abstract</h3>
-        <label class="fld">ABSTRACT_API_KEY</label><input class="inp" type="password" placeholder="key (browser only)">
-        <label class="fld">VENDOR ACCOUNT ID</label><input class="inp" placeholder="X-AS-Vendor-Account-ID">
-        <button class="wiz" style="margin-top:12px" onclick="openWiz()">Open setup wizard</button></div>
+        <label class="fld">ABSTRACT_API_KEY</label><input class="inp" id="setKey" type="password" placeholder="key (this session only)">
+        <label class="fld">VENDOR ACCOUNT ID</label><input class="inp" id="setAcct" placeholder="X-AS-Vendor-Account-ID">
+        <button class="wiz" id="connectBtn" style="margin-top:12px" onclick="doConnect()">Connect to Abstract</button>
+        <span id="connectStatus" class="field-k" style="margin-left:10px"></span>
+        <div style="margin-top:10px"><button class="act" onclick="openWiz()">Open setup wizard</button>
+          <button class="act" onclick="goOffline()">Use offline estate</button></div></div>
+      <div class="glass panel"><div class="eyebrow">AI assist</div><h3>Summarize · triage</h3>
+        <button class="act" onclick="doAI('summarize')">Summarize investigation</button>
+        <button class="act" onclick="doAI('triage')">Triage</button>
+        <div id="aiOut" class="field-k" style="white-space:pre-wrap;margin-top:8px"></div></div>
     </section>
   </main>
 </div>
@@ -482,6 +494,30 @@ function setWiz(n){wstep=n;document.querySelectorAll('.wstep').forEach(s=>s.clas
 function wizNext(){if(wstep<2)setWiz(wstep+1);else closeWiz();}
 function wizBack(){if(wstep>0)setWiz(wstep-1);else closeWiz();}
 document.addEventListener('change',e=>{if(e.target.id==='wmode')document.getElementById('wlive').style.display=e.target.value==='live'?'block':'none';});
+
+// ── live backend actions (server.py). Standalone (no backend) shows a hint. ──
+const BACKEND = __BACKEND__;
+async function api(p,b){const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});return r.json();}
+function _need(el){document.getElementById(el).innerHTML='<i>live actions need the backend — run <b>./run.sh --serve</b> (or python server.py)</i>';}
+function _selVal(){const k=document.getElementById('entSel').value;return k?k.split(':').pop():'';}
+async function doEnrich(){if(!BACKEND)return _need('actOut');const v=_selVal();if(!v){document.getElementById('actOut').textContent='select an entity first';return;}
+  const o=document.getElementById('actOut');o.textContent='enriching '+v+' …';const r=await api('/api/enrich',{value:v});
+  o.innerHTML='<b>Enrich '+esc(v)+'</b> → sources: '+esc((r.sources||[]).join(', ')||'none')+'<ul>'+(r.records||[]).map(x=>'<li>'+esc(x.source)+': '+esc(x.type)+' = '+esc(x.value)+'</li>').join('')+'</ul>';}
+async function doXref(){if(!BACKEND)return _need('actOut');const v=_selVal();if(!v)return;const o=document.getElementById('actOut');o.textContent='cross-referencing …';
+  const r=await api('/api/xref',{value:v});const e=Object.entries(r.results||{});
+  o.innerHTML='<b>Cross-ref SIEM/MCP</b><ul>'+(e.length?e.map(([n,x])=>'<li>'+esc(n)+': '+esc(JSON.stringify(x))+'</li>').join(''):'<li>no configured SIEM/MCP (add creds in Settings)</li>')+'</ul>';}
+async function doAuthor(kind){if(!BACKEND)return _need('actOut');const o=document.getElementById('actOut');o.textContent='building '+kind+' …';
+  const r=await api('/api/author',{kind:kind});o.innerHTML='<b>DRY-RUN '+esc(kind)+'</b>: '+esc(r.diff)+'<pre style="white-space:pre-wrap">'+esc(JSON.stringify(r.payload,null,1))+'</pre>';}
+async function doApply(kind){if(!BACKEND)return _need('actOut');if(!confirm('Apply '+kind+' to the live tenant?'))return;
+  const o=document.getElementById('actOut');o.textContent='applying …';const r=await api('/api/author',{kind:kind,apply:true});
+  o.innerHTML='<b>Apply '+esc(kind)+'</b>: '+esc(JSON.stringify(r.applied||r));}
+async function doAI(action){const o=document.getElementById('aiOut');if(!BACKEND){o.textContent='AI runs with the backend — run ./run.sh --serve';return;}
+  o.textContent='thinking …';const r=await api('/api/ai',{action:action});o.textContent='['+esc(r.provider||'local')+']\n\n'+esc(r.text||r.error||'');}
+async function doConnect(){const s=document.getElementById('connectStatus');if(!BACKEND){s.innerHTML='<i>connect needs the backend — run ./run.sh --serve</i>';return;}
+  s.textContent='connecting …';const r=await api('/api/connect',{key:(document.getElementById('setKey')||{}).value,account:(document.getElementById('setAcct')||{}).value});
+  if(r.ok){s.innerHTML='<span class="ok">✓ connected ('+esc(r.scheme||'')+') — loading live data…</span>';setTimeout(()=>location.reload(),700);}
+  else{s.innerHTML='<span class="warn">connect failed</span>';}}
+async function goOffline(){if(!BACKEND){show('overview');return;}await api('/api/offline',{});location.reload();}
 
 buildNav();render();show('overview');
 </script>
