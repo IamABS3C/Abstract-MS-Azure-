@@ -223,8 +223,9 @@ class AbstractClient:
         return self._req("POST", EP["insights"], payload)
     def update_insight(self, nanoid, payload): return self._req("PATCH", EP["insights"] + nanoid, payload)
     def delete_insight(self, nanoid):          return self._req("DELETE", EP["insights"] + nanoid)
-    def add_insight_comment(self, nanoid, text): return self._req(
-        "POST", EP["insights"] + nanoid + "/comments", {"comment": text})
+    def add_insight_comment(self, nanoid, text, parent_id=None): return self._req(
+        "POST", "/v1/insights/comments",
+        {"insight_nanoid": nanoid, "parent_id": parent_id, "content": text})  # CommentCreate schema
     def get_insight_verdict(self, nanoid):     return self._req("GET", EP["insights"] + nanoid + "/verdict")
     def set_insight_verdict(self, nanoid, verdict, **extra):
         return self._req("POST", EP["insights"] + nanoid + "/verdict", {"verdict": verdict, **extra})
