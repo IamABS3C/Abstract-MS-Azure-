@@ -142,6 +142,32 @@ def research_entity(value: str, kind: str = None) -> dict:
     return {"value": value, "web": web_search(value, 5), "wikipedia": wikipedia(value)}
 
 
+def extract_iocs(text: str) -> dict:
+    """Extract IOCs (ip/domain/url/hash/email) from free text — uses msticpy's IoCExtract when
+    available, else a regex fallback. Useful for scraping IOCs out of fetched articles/advisories."""
+    try:
+        from msticpy.transform.iocextract import IoCExtract
+        res = IoCExtract().extract(text)
+        out = {}
+        for k, v in (res.items() if hasattr(res, "items") else []):
+            vals = sorted(v) if isinstance(v, (set, list, tuple)) else [v]
+            if vals:
+                out[k] = vals[:25]
+        if out:
+            return {"engine": "msticpy", **out}
+    except Exception:   # noqa: BLE001
+        pass
+    pats = {"ipv4": r"\b\d{1,3}(?:\.\d{1,3}){3}\b", "dns": r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b",
+            "url": r"https?://[^\s\"'<>]+", "md5": r"\b[a-f0-9]{32}\b", "sha256": r"\b[a-f0-9]{64}\b",
+            "email": r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b"}
+    out = {"engine": "regex"}
+    for k, p in pats.items():
+        m = sorted(set(re.findall(p, text, re.I)))
+        if m:
+            out[k] = m[:25]
+    return out
+
+
 def capabilities() -> dict:
     """Advertise the keyless sources (no key / no signup)."""
     return {"web_search": "DuckDuckGo Instant Answer API + HTML fallback (keyless)",
@@ -158,7 +184,9 @@ def selftest():
     rel = _flatten_related([{"Text": "x", "FirstURL": "u"},
                             {"Topics": [{"Text": "y", "FirstURL": "v"}]}])
     assert len(rel) == 2 and rel[1]["title"] == "y"
-    return {"ok": True, "sources": list(capabilities())}
+    iocs = extract_iocs("C2 at 185.220.101.45 and cdn.evil-delivery.com, user a@b.com")
+    assert "185.220.101.45" in iocs.get("ipv4", [])
+    return {"ok": True, "sources": list(capabilities()), "ioc_engine": iocs.get("engine")}
 
 
 if __name__ == "__main__":

@@ -186,6 +186,37 @@ def blast_radius(state) -> str:
     return viz_svg.blast_radius_svg((state.inv or {}).get("subagents", {}).get("scoping", {}))
 
 
+def cytoscape_graph(state, height="600px"):
+    """Interactive Cytoscape.js graph (ipycytoscape widget) — an alternative to the pyvis
+    network with richer layouts. Returns the widget, or None if ipycytoscape is absent."""
+    try:
+        import ipycytoscape
+    except Exception:   # noqa: BLE001
+        return None
+    nodes, edges, scores = _nodes_edges(state)
+    idx = _entity_index(state)
+    data = {"nodes": [], "edges": []}
+    for k in nodes:
+        t = k.split(":", 1)[0]
+        risk = idx.get(k, {}).get("risk", scores.get(k, {}).get("final", 0))
+        data["nodes"].append({"data": {"id": k, "label": f"{_GLYPH.get(t, '')} {k.split(':', 1)[-1][:18]}",
+                                       "kind": t, "color": brand.TYPE_COLOR.get(t, brand.MUT),
+                                       "size": 18 + risk / 4}})
+    for a, b in edges:
+        data["edges"].append({"data": {"source": a, "target": b}})
+    w = ipycytoscape.CytoscapeWidget()
+    w.graph.add_graph_from_json(data, directed=False)
+    w.set_style([
+        {"selector": "node", "style": {"label": "data(label)", "background-color": "data(color)",
+         "width": "data(size)", "height": "data(size)", "color": brand.INK, "font-size": "9px"}},
+        {"selector": "edge", "style": {"line-color": "#33334a", "width": 1}}])
+    try:
+        w.set_layout(name="cose", animate=False)
+    except Exception:   # noqa: BLE001
+        pass
+    return w
+
+
 # ── 2. Plotly core panels ─────────────────────────────────────────────────────────
 def risk_panel(state) -> str:
     if not _plotly_ok():
@@ -506,8 +537,10 @@ def selftest():
         assert "<" in out, fn.__name__
     assert "<" in risk_radar(st, ent)
     assert ent in entity_detail_html(st, ent)
+    cg = cytoscape_graph(st)
+    assert cg is None or hasattr(cg, "graph")     # ipycytoscape widget when installed
     return {"ok": True, "pyvis": available(), "plotly": _plotly_ok(),
-            "graph_bytes": len(g), "panels": 14}
+            "graph_bytes": len(g), "panels": 14, "cytoscape": cg is not None}
 
 
 if __name__ == "__main__":

@@ -52,6 +52,29 @@ def _score(features, weights):
     return round(min(100, sum(weights.get(k, 0) * v for k, v in features.items())), 1)
 
 
+def _attach_anomaly(rows):
+    """Unsupervised anomaly score per entity (PyOD ECOD over the feature matrix) — a
+    data-science complement to the weighted score. Graceful: skips if PyOD absent or n<4."""
+    try:
+        from pyod.models.ecod import ECOD
+        import numpy as np
+    except Exception:   # noqa: BLE001
+        return
+    if len(rows) < 4:
+        return
+    keys = list(DEFAULT_WEIGHTS)
+    X = np.array([[r["features"].get(k, 0) for k in keys] for r in rows], dtype=float)
+    try:
+        clf = ECOD(contamination=0.2)
+        clf.fit(X)
+        s = clf.decision_scores_
+        mx = float(s.max()) or 1.0
+        for i, r in enumerate(rows):
+            r["anomaly"] = round(100 * float(s[i]) / mx, 1)
+    except Exception:   # noqa: BLE001
+        pass
+
+
 def build_entity_model(state, weights=None, vips=None) -> dict:
     """Return the full model: weights + per-entity feature vectors + explainable scores."""
     weights = weights or dict(DEFAULT_WEIGHTS)
@@ -75,6 +98,7 @@ def build_entity_model(state, weights=None, vips=None) -> dict:
             "top_factors": sorted(feats.items(), key=lambda kv: -kv[1])[:3],
         })
     rows.sort(key=lambda r: -r["model_score"])
+    _attach_anomaly(rows)
     kinds = {}
     for r in rows:
         kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
@@ -154,7 +178,8 @@ def evaluate(model) -> dict:
             "high_risk": len(high),
             "vip_at_risk": sum(1 for r in high if r["vip"]),
             "signal_coverage_pct": round(100 * len(covered) / len(scs), 1) if scs else 0,
-            "survives_restore": sum(1 for r in model["entities"] if r["survives_restore"])}
+            "survives_restore": sum(1 for r in model["entities"] if r["survives_restore"]),
+            "max_anomaly": max((r.get("anomaly", 0) for r in model["entities"]), default=0)}
 
 
 def optimize(model, state) -> dict:
