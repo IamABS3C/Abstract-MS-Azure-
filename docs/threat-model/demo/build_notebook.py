@@ -300,6 +300,41 @@ _rbtn.on_click(_gen_report); _mbtn.on_click(_mcp)
 display(W.VBox([W.HBox([_rbtn, _mbtn]), _rout]))
 """)
 
+# ── roadmap power-tools (keyless libs) ────────────────────────────────────────────────
+md("### 🧪 Power-tools — detection-as-code (pySigma) · ATT&CK actor intel (attackcti) · "
+   "IOC extract (msticpy) · Cytoscape graph (all keyless)")
+code("""
+import sigma_tools as SG, attack_intel as AK
+# Detection-as-code: Sigma rule → Abstract conditions + view payload
+_sig = W.Textarea(value=SG.SAMPLE, description="Sigma:", layout=W.Layout(width="660px", height="150px"))
+_sigbtn = W.Button(description="Sigma → Abstract", button_style="info")
+_sigout = W.Output()
+_sigbtn.on_click(lambda *_: _act(_sigout, "compile Sigma", lambda: _pre(SG.sigma_to_abstract(_sig.value))))
+# ATT&CK actor intel (first call fetches MITRE over TAXII, keyless)
+_akq = W.Text(placeholder="actor / group — e.g. Lazarus Group, LockBit, FIN7", description="Actor:")
+_akbtn = W.Button(description="ATT&CK group intel")
+_akout = W.Output()
+_akbtn.on_click(lambda *_: _act(_akout, "ATT&CK lookup (first call downloads MITRE)", lambda: _pre(AK.find_group(_akq.value))))
+# IOC extractor (msticpy IoCExtract → regex fallback)
+_iocq = W.Textarea(placeholder="paste advisory / report text…", description="Text:", layout=W.Layout(width="660px", height="90px"))
+_iocbtn = W.Button(description="Extract IOCs")
+_iocout = W.Output()
+_iocbtn.on_click(lambda *_: _act(_iocout, "extract IOCs", lambda: _pre(RS.extract_iocs(_iocq.value))))
+# Cytoscape interactive graph (ipycytoscape)
+_cybtn = W.Button(description="🕸 Cytoscape graph", button_style="info")
+_cyout = W.Output()
+def _cy(*_):
+    _cyout.clear_output(wait=True)
+    with _cyout:
+        cg = VI.cytoscape_graph(state)
+        display(cg if cg is not None else HTML("<i>ipycytoscape not installed</i>"))
+_cybtn.on_click(_cy)
+display(W.VBox([W.HTML("<b>Detection-as-code — Sigma → Abstract</b>"), _sig, _sigbtn, _sigout,
+               W.HTML("<b>ATT&CK actor intel</b>"), W.HBox([_akq, _akbtn]), _akout,
+               W.HTML("<b>IOC extractor</b>"), _iocq, _iocbtn, _iocout,
+               W.HTML("<b>Cytoscape graph</b>"), _cybtn, _cyout]))
+""")
+
 # ── closing ───────────────────────────────────────────────────────────────────────────
 md("""
 ---
