@@ -22,11 +22,13 @@ import rules_engine as RE
 
 LABEL_TO_KIND = {
     "Saved view": "view", "Field set": "fieldset", "Detection rule": "rule",
-    "Suppression": "suppression", "Insight": "insight", "Identity model": "identity_model",
+    "Suppression": "suppression", "Insight": "insight",
+    "Data model": "data_model", "Identity model": "identity_model",
     "Schema / field-map": "schema", "Parser": "parser",
 }
 # kinds with a real endpoint (the rest are export-only)
-LIVE_KINDS = {"view", "fieldset", "rule", "suppression", "insight", "schema", "identity_model"}
+LIVE_KINDS = {"view", "fieldset", "rule", "suppression", "insight", "schema",
+              "data_model", "identity_model"}
 MARKER = "[ABS-DEMO]"
 
 
@@ -107,21 +109,56 @@ def build(kind, state=None, model=None, **opts) -> dict:
                 "diff": f"PERSIST schema as field-set '{payload['name']}' "
                         f"({len(mapping)} source→OCSF maps → {len(payload['fields'])} fields)"}
 
+    if kind == "data_model":
+        # A real Abstract model (POST /v1/models/): a typed field schema + retention policy.
+        payload = {
+            "name": f"{name} — entity data model",
+            "description": "Entity/finding data model authored from the AI-SOC console (typed ACS fields).",
+            "schema": {"fields": [
+                {"name": "identity", "type": "STRING", "isKeyField": True},
+                {"name": "account", "type": "STRING"},
+                {"name": "host", "type": "STRING"},
+                {"name": "src_ip", "type": "IPV4"},
+                {"name": "severity", "type": "STRING"},
+                {"name": "risk_score", "type": "DOUBLE"},
+                {"name": "mitre_techniques", "type": "LIST_STRING"},
+                {"name": "first_seen", "type": "DATE"},
+                {"name": "last_seen", "type": "DATE"},
+            ]},
+            "properties": {"retentionPolicy": {"duration": "P90D", "type": "DELETE"}},
+        }
+        return {"kind": kind, "method": "create_model", "live_capable": True, "payload": payload,
+                "diff": f"CREATE Abstract data model '{payload['name']}' "
+                        f"({len(payload['schema']['fields'])} typed fields · 90d ARCHIVE) → POST /v1/models/"}
+
     if kind == "identity_model":
+        # A real Abstract model keyed on identity, with risk factors derived from the entity model.
         import entity_model as EM
         if model is None:
             if state is None:
                 from live_data import build_state
                 state = build_state()
             model = EM.build_entity_model(state)
-        ab = EM.to_abstract(model, name=f"{name} — identity-risk model")
-        payload = {"title": ab["name"], "status": "open", "severity": "medium",
-                   "summary": json.dumps(ab)[:1900], "categories": ["identity", "model"],
-                   "mitre_attack_techniques": [{"id": "T1078", "name": "Valid Accounts", "sub_id": ""}]}
-        return {"kind": kind, "method": "create_insight", "live_capable": True, "payload": payload,
-                "diff": f"PERSIST identity model as insight '{payload['title']}' "
-                        f"({len(ab['top_risks'])} ranked identities, {len(ab['entity_kinds'])} kinds)",
-                "model": ab}
+        factors = list((model.get("weights") or model.get("factors") or {}).keys())[:12]
+        fields = [{"name": "identity", "type": "STRING", "isKeyField": True},
+                  {"name": "account", "type": "STRING"},
+                  {"name": "cumulative_risk", "type": "DOUBLE"},
+                  {"name": "privileged", "type": "BOOLEAN"},
+                  {"name": "products", "type": "LIST_STRING"},
+                  {"name": "src_ips", "type": "LIST_IPV4"},
+                  {"name": "last_seen", "type": "DATE"}]
+        fields += [{"name": ("f_" + str(f).lower().replace(" ", "_"))[:40], "type": "DOUBLE"} for f in factors]
+        payload = {
+            "name": f"{name} — identity-risk model",
+            "description": "Per-identity cumulative-risk model authored from the console; "
+                           "risk-factor fields derived from entity_model weights.",
+            "schema": {"fields": fields},
+            "properties": {"retentionPolicy": {"duration": "P180D", "type": "DELETE"}},
+        }
+        return {"kind": kind, "method": "create_model", "live_capable": True, "payload": payload,
+                "diff": f"CREATE Abstract identity model '{payload['name']}' "
+                        f"({len(fields)} fields incl. {len(factors)} risk factors · key=identity · 180d) "
+                        f"→ POST /v1/models/"}
 
     if kind == "parser":
         payload = {"name": f"{name} — parser", "source": opts.get("source", "okta"),
@@ -168,8 +205,15 @@ def apply(client, authored, *, enabled=False) -> dict:
 
     fn = getattr(client, method)
     res = fn(payload)
-    body = res.get("body") or {}
-    return {"applied": bool(res.get("ok")), "id": body.get("id") or body.get("nanoid"),
+    body = res.get("body")
+    # some endpoints (e.g. POST /v1/models/) return a bare nanoid string, not an object
+    if isinstance(body, str):
+        rid = body.strip().strip('"') or None
+    elif isinstance(body, dict):
+        rid = body.get("id") or body.get("nanoid")
+    else:
+        rid = None
+    return {"applied": bool(res.get("ok")), "id": rid,
             "status": res.get("status"), "simulated": res.get("simulated", False)}
 
 

@@ -776,7 +776,12 @@ class Console:
             f"<div><div style='color:{brand.PINK};font-family:{brand.FONT_STACK};font-size:20px;"
             f"font-weight:800'>AI-SOC Investigation Console</div>"
             f"<div style='margin-top:4px'>{chips}</div></div></div>")
-        return w.VBox([header, progress, tabs])
+        root = w.VBox([w.HTML(brand.theme_css()), header, progress, tabs])
+        try:
+            root.add_class("as-shell")
+        except Exception:
+            pass
+        return root
 
 
 def launch(connection=None, vips=None):
@@ -801,12 +806,15 @@ def setup_wizard(vips=None):
         f"add SIEM / AI keys to light up integrations.</div></div>")
     mode = w.ToggleButtons(options=[("Offline / demo", "demo"), ("Live Abstract tenant", "live")],
                            value="demo", description="Mode:")
-    key_in = w.Password(placeholder="ABSTRACT_API_KEY", description="API key:")
-    acct_in = w.Text(placeholder="vendor account id (X-AS-Vendor-Account-ID)", description="Tenant:")
+    _fw = w.Layout(width="560px")
+    key_in = w.Password(placeholder="paste your ABSTRACT_API_KEY", description="API key:", layout=_fw)
+    acct_in = w.Text(placeholder="paste your vendor account id (X-AS-Vendor-Account-ID)",
+                     description="Vendor acct:", layout=_fw,
+                     value=_os.environ.get("ABSTRACT_ACCOUNT_ID", _os.environ.get("ABSTRACT_VENDOR_ACCOUNT_ID", "")))
     base_in = w.Text(value=_os.environ.get("ABSTRACT_API_BASE", "https://api.abstractsecurity.app"),
-                     description="API base:")
-    test_btn = w.Button(description="Test connection", button_style="info")
-    status = w.HTML("")
+                     description="API base:", layout=_fw)
+    test_btn = w.Button(description="✔ Test connection", button_style="info")
+    status = w.HTML("<span style='color:%s;font-family:%s;font-size:12px'>Paste your API key + vendor account id, then Test connection.</span>" % (brand.MUT, brand.FONT_STACK))
     live_box = w.VBox([key_in, acct_in, base_in, test_btn, status])
 
     def on_mode(_=None):
@@ -814,25 +822,53 @@ def setup_wizard(vips=None):
     mode.observe(lambda ch: on_mode(), "value")
     on_mode()
 
+    def _card(border, bg, html_in):
+        return (f"<div style='margin-top:8px;padding:11px 15px;border:1px solid {border};"
+                f"border-radius:9px;background:{bg};font-family:{brand.FONT_STACK}'>{html_in}</div>")
+
     def on_test(*_):
         for var, wid in (("ABSTRACT_API_KEY", key_in), ("ABSTRACT_ACCOUNT_ID", acct_in),
-                         ("ABSTRACT_API_BASE", base_in)):
+                         ("ABSTRACT_VENDOR_ACCOUNT_ID", acct_in), ("ABSTRACT_API_BASE", base_in)):
             if wid.value:
                 _os.environ[var] = wid.value
+        status.value = (f"<span style='color:{brand.AMBER};font-family:{brand.FONT_STACK};font-size:12px'>"
+                        f"⏳ testing connection to Abstract…</span>")
         try:
             from abstract_client import AbstractClient
             c = AbstractClient("api")
             conn = c.connect()
             if conn.get("ok"):
                 box["connection"] = c
-                status.value = (f"<span style='color:{brand.TEAL};font-family:{brand.FONT_STACK}'>"
-                                f"✓ connected ({conn.get('scheme')})</span>")
+                ident, perms, email = {}, [], "authenticated"
+                try:
+                    ident = (c._req("GET", "/v2/auth/") or {}).get("body") or {}
+                    email = ident.get("email") or ident.get("username") or email
+                    perms = ident.get("permissions") or []
+                except Exception:
+                    pass
+                write = any(str(p).endswith(".write") for p in perms)
+                acct = acct_in.value or _os.environ.get("ABSTRACT_ACCOUNT_ID", "")
+                status.value = _card(brand.TEAL, "rgba(1,230,157,.09)",
+                    f"<b style='color:{brand.TEAL};font-size:15px'>✅ Connected to Abstract — LIVE</b>"
+                    f"<div style='color:{brand.MUT};font-size:12px;margin-top:3px'>"
+                    f"<b style='color:#e8e8ee'>{html.escape(str(email))}</b> · {len(perms)} permissions · "
+                    f"{'✍️ write-capable' if write else '👁 read-only'} · "
+                    f"vendor <code>{html.escape(acct) or '—'}</code> · auth <code>{conn.get('scheme')}</code></div>"
+                    f"<div style='color:{brand.TEAL};font-size:11px;margin-top:5px'>▶ Go to step 3 and "
+                    f"<b>Launch console</b> — every tab will now run on your live tenant.</div>")
             else:
-                status.value = (f"<span style='color:{brand.AMBER};font-family:{brand.FONT_STACK}'>"
-                                f"connect failed: {html.escape(str(conn))[:160]}</span>")
+                box["connection"] = None
+                status.value = _card(brand.AMBER, "rgba(245,198,30,.09)",
+                    f"<b style='color:{brand.AMBER}'>⚠ Not connected</b>"
+                    f"<div style='color:{brand.MUT};font-size:12px;margin-top:3px'>"
+                    f"{html.escape(str(conn.get('error') or conn))[:200]}</div>"
+                    f"<div style='color:{brand.MUT};font-size:11px;margin-top:4px'>Check the API key + vendor "
+                    f"account id. You can still Launch in <b>offline / demo</b> mode.</div>")
         except Exception as e:   # noqa: BLE001
-            status.value = (f"<span style='color:{brand.AMBER};font-family:{brand.FONT_STACK}'>"
-                            f"offline / error: {html.escape(str(e)[:120])}</span>")
+            box["connection"] = None
+            status.value = _card(brand.AMBER, "rgba(245,198,30,.09)",
+                f"<b style='color:{brand.AMBER}'>⚠ Connection error</b>"
+                f"<div style='color:{brand.MUT};font-size:12px;margin-top:3px'>{html.escape(str(e)[:200])}</div>")
     test_btn.on_click(on_test)
 
     env_opts = sorted({e for s in IN.registry_status() for e in s["needs"]}
@@ -870,11 +906,16 @@ def setup_wizard(vips=None):
 
     def hdr(t):
         return w.HTML(f"<b style='color:{brand.TEAL};font-family:{brand.FONT_STACK}'>{t}</b>")
-    return w.VBox([title, hdr("1 · Connect"), mode, live_box,
+    root = w.VBox([w.HTML(brand.theme_css()), title, hdr("1 · Connect"), mode, live_box,
                    hdr("2 · Optional integrations / AI keys "
                        "(Sentinel · Splunk · Elastic · Claude · OpenAI · Gemini · …)"),
                    w.HBox([env_name, env_val, env_btn]), env_out,
                    hdr("3 · Launch"), launch_btn, out])
+    try:
+        root.add_class("as-shell")
+    except Exception:
+        pass
+    return root
 
 
 if __name__ == "__main__":

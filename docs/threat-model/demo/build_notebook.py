@@ -15,6 +15,7 @@ Validate end-to-end with the env kernel:
 """
 from __future__ import annotations
 
+import os
 import nbformat
 from nbformat.v4 import new_notebook, new_markdown_cell, new_code_cell
 
@@ -33,8 +34,17 @@ def code(src, hide=True):
     CELLS.append(c)
 
 
-from brand import logo_svg
+from brand import logo_svg, PINK, TEAL, MUT
 _LOGO = logo_svg("white")  # inline official SVG → renders offline, on-brand
+
+
+def section(title, phase, howto, useit):
+    """Consistent, branded per-section intro: title + phase badge + how-to + what-it's-for."""
+    md(f"""### {title}
+<span style="background:{PINK};color:#060608;padding:2px 9px;border-radius:6px;font-weight:800;font-size:11px;font-family:'JetBrains Mono',monospace">{phase}</span>
+
+**How:** {howto}
+**Use it to:** {useit}""")
 
 # ── Title ─────────────────────────────────────────────────────────────────────────
 md(f"""
@@ -54,17 +64,40 @@ search / Wikipedia / page-scrape** that *return real results*, plus one-click de
 The console is the whole experience (12 tabs); everything below it is the same engine as
 **interactive building blocks** (every action shows ⏳ progress + full errors/responses). Runs
 **offline** out of the box. *Dashboard mode: code is collapsed — click a bar to read/edit.*
+
+---
+**The flow — six phases.** The 12-tab console (up top) does all of them in one pane; the sections
+below are the same steps, one at a time:
+
+<code style="font-family:'JetBrains Mono',monospace">1 · Connect&nbsp;→&nbsp;2 · Explore&nbsp;→&nbsp;3 · Investigate&nbsp;→&nbsp;4 · Hunt&nbsp;→&nbsp;5 · Model &amp; AI&nbsp;→&nbsp;6 · Act &amp; Report</code>
 """)
 
 # ── THE DASHBOARD + WIZARD (first & foremost) ──────────────────────────────────────
 code("""
 %matplotlib inline
 import warnings; warnings.filterwarnings("ignore")
+import os, sys
+# Runnable from any location (repo root, the demo dir, or solution/notebooks/): locate the demo modules.
+def _find_demo():
+    d = os.getcwd()
+    for _ in range(7):
+        if os.path.isfile(os.path.join(d, "live_data.py")):
+            return os.path.abspath(d)
+        c = os.path.join(d, "docs", "threat-model", "demo")
+        if os.path.isfile(os.path.join(c, "live_data.py")):
+            return os.path.abspath(c)
+        d = os.path.dirname(d)
+    return None
+_demo = _find_demo()
+if _demo and _demo not in sys.path:
+    sys.path.insert(0, _demo)
 import pandas as pd
 pd.set_option("display.max_colwidth", 80); pd.set_option("display.max_rows", 50)
 from IPython.display import display, HTML
 import ipywidgets as W
 
+import brand
+display(HTML(brand.theme_css()))                       # dark hunter theme — keeps all text high-contrast
 from console import setup_wizard                       # full operator console
 from live_data import build_state
 
@@ -129,7 +162,9 @@ print(f"state: {state.source}  ·  {len(state.scores)} entities scored  ·  "
 """)
 
 # ── interactive graph & visuals ─────────────────────────────────────────────────────
-md("### 🕸 Interactive graph & visuals — switch view + layout")
+section("🕸 Interactive graph &amp; visuals", "Phase 2 · Explore",
+        "pick a **View** (network · Sankey · MITRE · sunburst · treemap · timelines · risk) and a **Layout**; focus an entity from the Investigate section to center it here.",
+        "see blast radius, attack flow, and MITRE coverage gaps at a glance.")
 code("""
 _VIEWS = {
     "Network graph":        lambda: VI.correlation_graph(state, layout=_layout.value, focus=_focus["k"]),
@@ -154,7 +189,9 @@ display(W.VBox([W.HBox([_view, _layout]), _gout]))
 """)
 
 # ── interactive entity investigator ─────────────────────────────────────────────────
-md("### 🔎 Investigate any entity — drill-down + enrich + external pivots")
+section("🔎 Investigate any entity", "Phase 3 · Investigate",
+        "search/pick an entity → drill-down detail, **🌐 Enrich** (keyless intel), **🛰 Cross-ref SIEM/MCP**, and open curated OSINT pivots.",
+        "build the who/what/where of a suspect identity, host, or IOC fast.")
 code("""
 _idx = VI._entity_index(state)
 _all_ents = sorted(_idx, key=lambda k: -_idx[k].get("risk", 0))
@@ -191,7 +228,9 @@ display(W.VBox([_efind, W.HBox([_esel, _enr, _xrf]), _eout]))
 """)
 
 # ── interactive hunt runner ──────────────────────────────────────────────────────────
-md("### 🎯 Threat-hunt runner — run the catalog or a single hunt")
+section("🎯 Threat-hunt runner", "Phase 4 · Hunt",
+        "run the **whole catalog** or a single hunt against the current estate; results table shows entity · severity · technique · why.",
+        "surface ATO, C2 beaconing, lateral movement, and exfil across the estate.")
 code("""
 _ctx  = hunts.make_context(state.norm, state.graph, state.iocs, state.scores)
 _hmap = {c["title"]: c["key"] for c in hunts.catalog()}
@@ -209,7 +248,9 @@ display(W.VBox([_hsel, _hout]))
 """)
 
 # ── interactive lookup (any indicator / actor) ──────────────────────────────────────
-md("### 🌐 Research any indicator or actor — keyless live web + Wikipedia + intel (returns scraped results, not just links)")
+section("🌐 Research any indicator or actor", "Phase 4 · Hunt",
+        "type an **IP / domain / hash / email / CVE / APT or ransomware group** → live web + Wikipedia + intel + one-click pivots (keyless, returns real scraped results).",
+        "get real outside context on an IOC or threat actor without any personal API keys.")
 code("""
 _q    = W.Text(placeholder="IP / domain / hash / email / CVE / APT or ransomware group…",
                description="Lookup:", continuous_update=False, layout=W.Layout(width="620px"))
@@ -240,7 +281,9 @@ display(W.VBox([W.HBox([_q, _qbtn]), _qout]))
 """)
 
 # ── AI assist + posture review ───────────────────────────────────────────────────────
-md("### 🤖 AI assist & posture — summarize / triage / optimize (offline fallback if no key)")
+section("🤖 AI assist &amp; posture", "Phase 5 · Model &amp; AI",
+        "**Summarize investigation** · **Triage** · **Review &amp; optimize model** (uses Claude/OpenAI/Gemini if a key is set, else a capable offline fallback).",
+        "get an analyst-grade narrative + data-driven risk-model tuning.")
 code("""
 import ai_agents as AI
 _ai_sum = W.Button(description="Summarize investigation", button_style="info")
@@ -261,7 +304,9 @@ display(W.VBox([W.HBox([_ai_sum, _ai_tri, _ai_rev]), _ai_out]))
 """)
 
 # ── authoring (dry-run → apply) ──────────────────────────────────────────────────────
-md("### ✍️ Author Abstract objects — dry-run → confirm → apply (live when connected)")
+section("✍️ Author Abstract objects", "Phase 6 · Act",
+        "pick an object (view · detection · insight · **data model** · **identity model** · tuning filter) → **Dry-run** → **Apply to tenant** (enabled when connected live).",
+        "turn findings into real Abstract content in your tenant — safely, dry-run first.")
 code("""
 _akind = W.Dropdown(options=list(AA.LABEL_TO_KIND), description="Object:", layout=W.Layout(width="360px"))
 _adry  = W.Button(description="Dry-run", button_style="info")
@@ -277,18 +322,27 @@ display(W.VBox([W.HBox([_akind, _adry, _aapp]), _aout]))
 """)
 
 # ── report export + MCP ───────────────────────────────────────────────────────────────
-md("### 📄 Export branded report · 🔌 MCP tools")
+section("📄 Export branded report · 🔌 MCP tools", "Phase 6 · Report",
+        "choose a **report scope** (full · or a single phase) → generate branded **HTML + Markdown**; also list/call the Abstract **MCP tools**.",
+        "produce a client-ready investigation outbrief, whole or per-phase.")
 code("""
-_rbtn = W.Button(description="📄 Generate branded report", button_style="info")
+import report
+_rscope = W.Dropdown(options=list(report.PHASES), value="Full report", description="Report scope:",
+                     layout=W.Layout(width="360px"))
+_rbtn = W.Button(description="📄 Generate report", button_style="info")
 _mbtn = W.Button(description="🔌 List + call MCP tools")
 _rout = W.Output()
 def _gen_report(*_):
     def work():
-        import report
-        open("investigation_report.html", "w").write(report.html_report(state))
-        open("investigation_report.md", "w").write(report.markdown(state))
-        return HTML("wrote <b>investigation_report.html</b> (open in any browser) + investigation_report.md")
-    _act(_rout, "generating branded report", work)
+        scope = _rscope.value
+        slug = "".join(ch if ch.isalnum() else "_" for ch in scope.lower())
+        htmlf, mdf = f"investigation_report_{slug}.html", f"investigation_report_{slug}.md"
+        open(htmlf, "w").write(report.scoped_html(state, scope))
+        open(mdf, "w").write(report.scoped_markdown(state, scope))
+        return HTML(f"wrote <b>{htmlf}</b> (open in any browser) + {mdf}"
+                    f"<div style='color:#8a8a99;font-size:12px'>scope: <b>{scope}</b> — "
+                    f"pick another scope to export just that phase, or <b>Full report</b> for everything.</div>")
+    _act(_rout, f"generating report — {_rscope.value}", work)
 def _mcp(*_):
     def work():
         from mcp_client import AbstractMCP
@@ -297,12 +351,14 @@ def _mcp(*_):
         return df[["name", "description"]] if "name" in df.columns else HTML("MCP status: " + str(m.status()))
     _act(_rout, "MCP tools", work)
 _rbtn.on_click(_gen_report); _mbtn.on_click(_mcp)
-display(W.VBox([W.HBox([_rbtn, _mbtn]), _rout]))
+display(W.VBox([W.HBox([_rscope, _rbtn, _mbtn]), _rout]))
 """)
 
 # ── roadmap power-tools (keyless libs) ────────────────────────────────────────────────
-md("### 🧪 Power-tools — detection-as-code (pySigma) · ATT&CK actor intel (attackcti) · "
-   "IOC extract (msticpy) · Cytoscape graph (all keyless)")
+section("🧪 Power-tools",
+        "Phase 5 · Model &amp; AI",
+        "**Sigma → Abstract** (detection-as-code) · **ATT&amp;CK actor intel** (attackcti/TAXII) · **IOC extract** (msticpy) · **Cytoscape** interactive graph — all keyless.",
+        "author detections from Sigma, pull adversary TTPs, extract IOCs from any report, and explore the graph interactively.")
 code("""
 import sigma_tools as SG, attack_intel as AK
 # Detection-as-code: Sigma rule → Abstract conditions + view payload
@@ -355,7 +411,13 @@ nb = new_notebook(cells=CELLS, metadata={
 })
 
 if __name__ == "__main__":
-    nbformat.write(nb, "soc_notebook.ipynb")
-    print(f"wrote soc_notebook.ipynb — {len(CELLS)} cells "
+    targets = ["soc_notebook.ipynb"]
+    # keep the packaged solution copy in sync (it uses the path-bootstrap above to find the modules)
+    _sol = os.path.join(os.path.dirname(__file__), "..", "..", "..", "solution", "notebooks", "soc_notebook.ipynb")
+    if os.path.isdir(os.path.dirname(_sol)):
+        targets.append(os.path.abspath(_sol))
+    for t in targets:
+        nbformat.write(nb, t)
+    print(f"wrote {len(targets)} copy/ies — {len(CELLS)} cells "
           f"({sum(1 for c in CELLS if c.cell_type == 'code')} code, "
-          f"{sum(1 for c in CELLS if c.cell_type == 'markdown')} markdown)")
+          f"{sum(1 for c in CELLS if c.cell_type == 'markdown')} markdown): " + ", ".join(targets))

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "3.0.0.0",
+  "metadata": {
+    "description": "EXPLICIT-COLUMN schema variant for the Sentinel Destination template. Use this ONLY if your Abstract routing/mapper emits explicit per-field ACS columns instead of the default wrapped-dynamic 'AbstractEvent' object. The DCR drops any column not declared here, so the stream/table columns MUST match your mapper output. This is a STARTER set built from the ACS fields the ASim_AbstractEvent parser references; expand it to the full set from Abstract's all_fields.json (docs.abstractsecurity.app -> Integrations -> Destination -> Azure Sentinel Destination). Deploy: az deployment group create -g <rg> --template-file templates/destinations/sentinel-destination.azuredeploy.json --parameters @parameters/sentinel-destination.full-schema.parameters.json --parameters principalId=<sp-object-id>. TimeGenerated (datetime) is REQUIRED by Log Analytics. 'AbstractEvent' (dynamic) is retained as a raw catch-all so nothing is lost.",
+    "note": "Nested ACS fields (e.g. user.target.name) cannot be flat columns; keep them inside the AbstractEvent dynamic column or flatten them in your mapper to a flat column name here."
+  },
+  "parameters": {
+    "createWorkspace": { "value": true },
+    "workspaceName": { "value": "" },
+    "workspaceSku": { "value": "PerGB2018" },
+    "workspaceRetentionDays": { "value": 90 },
+    "enableSentinel": { "value": true },
+    "dataCollectionEndpointName": { "value": "abstract-dce" },
+    "dataCollectionRuleName": { "value": "abstract-dcr" },
+    "customTableName": { "value": "AbstractEventLogs_CL" },
+    "principalId": { "value": "<service-principal-OBJECT-id>" },
+    "tableColumns": {
+      "value": [
+        { "name": "TimeGenerated", "type": "datetime" },
+        { "name": "event_timestamp", "type": "datetime" },
+        { "name": "id", "type": "string" },
+        { "name": "vendor", "type": "string" },
+        { "name": "product", "type": "string" },
+        { "name": "type", "type": "string" },
+        { "name": "action", "type": "string" },
+        { "name": "severity", "type": "string" },
+        { "name": "message", "type": "string" },
+        { "name": "risk_score", "type": "real" },
+        { "name": "aggregation_count", "type": "real" },
+        { "name": "identity", "type": "string" },
+        { "name": "user_name", "type": "string" },
+        { "name": "user_id", "type": "string" },
+        { "name": "user_agent", "type": "string" },
+        { "name": "source_ipv4", "type": "string" },
+        { "name": "source_ipv6", "type": "string" },
+        { "name": "source_address", "type": "string" },
+        { "name": "source_port", "type": "int" },
+        { "name": "dest_ipv4", "type": "string" },
+        { "name": "dest_ipv6", "type": "string" },
+        { "name": "dest_address", "type": "string" },
+        { "name": "dest_port", "type": "int" },
+        { "name": "host_ipv4", "type": "string" },
+        { "name": "host_ipv6", "type": "string" },
+        { "name": "host_address", "type": "string" },
+        { "name": "host_name", "type": "string" },
+        { "name": "matched_rules", "type": "dynamic" },
+        { "name": "tags", "type": "dynamic" },
+        { "name": "AbstractEvent", "type": "dynamic" }
+      ]
+    }
+  }
+}

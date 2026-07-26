@@ -37,7 +37,8 @@ Agent:
     2. Call GetInsightVerdict for that insight. If no stored verdict exists,
        summarize the linked events instead.
     3. Use AbstractIdentityActivity (KQL) to scope the actor across products and
-       cumulative risk over 7 days.
+       cumulative risk over 7 days, and AbstractEventsForIp (KQL) to scope the
+       incident's source IP entity across the pipeline (last 24h).
     4. Use SearchAbstractEvents (API) for related pipeline context the SIEM may
        not hold (last 24h, same source IP / user).
     4b. For each external IOC (IP, domain, hash, email), call osint_pivots (via
@@ -51,7 +52,7 @@ Agent:
     Never invent fields. If a tool returns nothing, say so and lower confidence.
   Tools:
     - SkillGroup: AbstractSecurityKql
-      Skills: [AbstractIdentityActivity, AbstractHighSeverity]
+      Skills: [AbstractIdentityActivity, AbstractEventsForIp, AbstractHighSeverity]
     - SkillGroup: AbstractSecurity
       Skills: [GetInsightVerdict, SearchAbstractEvents]
   Outputs:

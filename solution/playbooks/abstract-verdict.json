@@ -8,10 +8,23 @@
     "author": "Abstract Security - Solutions Engineering"
   },
   "parameters": {
-    "PlaybookName": { "type": "string", "defaultValue": "Abstract-Verdict" },
-    "abstractBaseUrl": { "type": "string", "defaultValue": "https://api.abstractsecurity.app" },
-    "abstractVendorAccountId": { "type": "string" },
-    "abstractApiKey": { "type": "securestring" }
+    "PlaybookName": {
+      "type": "string",
+      "defaultValue": "Abstract-Verdict"
+    },
+    "abstractBaseUrl": {
+      "type": "string",
+      "defaultValue": "https://api.abstractsecurity.app"
+    },
+    "abstractVendorAccountId": {
+      "type": "string"
+    },
+    "keyVaultSecretUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault secret URI for the Abstract API key (incl. ?api-version). Fetched at runtime via the playbook's managed identity."
+      }
+    }
   },
   "variables": {
     "AzureSentinelConnectionName": "[concat('azuresentinel-', parameters('PlaybookName'))]"
@@ -27,7 +40,9 @@
         "displayName": "[variables('AzureSentinelConnectionName')]",
         "customParameterValues": {},
         "parameterValueType": "Alternative",
-        "api": { "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azuresentinel')]" }
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azuresentinel')]"
+        }
       }
     },
     {
@@ -35,25 +50,43 @@
       "apiVersion": "2017-07-01",
       "name": "[parameters('PlaybookName')]",
       "location": "[resourceGroup().location]",
-      "identity": { "type": "SystemAssigned" },
-      "dependsOn": [ "[resourceId('Microsoft.Web/connections', variables('AzureSentinelConnectionName'))]" ],
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', variables('AzureSentinelConnectionName'))]"
+      ],
       "properties": {
         "state": "Enabled",
         "definition": {
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
           "contentVersion": "1.0.0.0",
           "parameters": {
-            "$connections": { "type": "Object" },
-            "abstractBaseUrl": { "type": "string" },
-            "abstractVendorAccountId": { "type": "string" },
-            "abstractApiKey": { "type": "securestring" }
+            "$connections": {
+              "type": "Object"
+            },
+            "abstractBaseUrl": {
+              "type": "string"
+            },
+            "abstractVendorAccountId": {
+              "type": "string"
+            },
+            "keyVaultSecretUri": {
+              "type": "string"
+            }
           },
           "triggers": {
             "Microsoft_Sentinel_incident": {
               "type": "ApiConnectionWebhook",
               "inputs": {
-                "body": { "callback_url": "@{listCallbackUrl()}" },
-                "host": { "connection": { "name": "@parameters('$connections')['azuresentinel']['connectionId']" } },
+                "body": {
+                  "callback_url": "@{listCallbackUrl()}"
+                },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                  }
+                },
                 "path": "/incident-creation"
               }
             }
@@ -61,41 +94,92 @@
           "actions": {
             "Get_Abstract_insight_id": {
               "type": "Compose",
-              "inputs": "@coalesce(triggerBody()?['object']?['properties']?['additionalData']?['customDetails']?['AbstractInsightId'], '')"
+              "inputs": "@coalesce(triggerBody()?['object']?['properties']?['additionalData']?['customDetails']?['AbstractInsightId'], '')",
+              "runAfter": {
+                "Get_Abstract_key": [
+                  "Succeeded"
+                ]
+              }
             },
             "Has_insight_id": {
-              "runAfter": { "Get_Abstract_insight_id": ["Succeeded"] },
+              "runAfter": {
+                "Get_Abstract_insight_id": [
+                  "Succeeded"
+                ]
+              },
               "type": "If",
-              "expression": { "not": { "equals": ["@outputs('Get_Abstract_insight_id')", ""] } },
+              "expression": {
+                "not": {
+                  "equals": [
+                    "@outputs('Get_Abstract_insight_id')",
+                    ""
+                  ]
+                }
+              },
               "actions": {
                 "Start_verdict_workflow": {
                   "type": "Http",
+                  "runtimeConfiguration": {
+                    "secureData": {
+                      "properties": [
+                        "inputs"
+                      ]
+                    }
+                  },
                   "inputs": {
                     "method": "POST",
                     "uri": "@{parameters('abstractBaseUrl')}/v1/ase/workflows/verdict",
                     "headers": {
-                      "Authorization": "Bearer @{parameters('abstractApiKey')}",
+                      "Authorization": "Bearer @{body('Get_Abstract_key')?['value']}",
                       "x-as-vendor-account-id": "@parameters('abstractVendorAccountId')",
                       "Content-Type": "application/json"
                     },
-                    "body": { "insight_id": "@outputs('Get_Abstract_insight_id')" }
+                    "body": {
+                      "insight_id": "@outputs('Get_Abstract_insight_id')"
+                    }
                   }
                 },
                 "Poll_until_complete": {
-                  "runAfter": { "Start_verdict_workflow": ["Succeeded"] },
+                  "runAfter": {
+                    "Start_verdict_workflow": [
+                      "Succeeded"
+                    ]
+                  },
                   "type": "Until",
-                  "expression": "@not(equals(coalesce(body('Get_verdict_status')?['status'], 'PROCESSING'), 'PROCESSING'))",
-                  "limit": { "count": 30, "timeout": "PT10M" },
+                  "expression": "@not(empty(coalesce(body('Get_verdict_status')?['verdict'], '')))",
+                  "limit": {
+                    "count": 30,
+                    "timeout": "PT10M"
+                  },
                   "actions": {
-                    "Delay_10s": { "type": "Wait", "inputs": { "interval": { "count": 10, "unit": "Second" } } },
+                    "Delay_10s": {
+                      "type": "Wait",
+                      "inputs": {
+                        "interval": {
+                          "count": 10,
+                          "unit": "Second"
+                        }
+                      }
+                    },
                     "Get_verdict_status": {
-                      "runAfter": { "Delay_10s": ["Succeeded"] },
+                      "runAfter": {
+                        "Delay_10s": [
+                          "Succeeded"
+                        ]
+                      },
                       "type": "Http",
+                      "runtimeConfiguration": {
+                        "secureData": {
+                          "properties": [
+                            "inputs"
+                          ]
+                        }
+                      },
                       "inputs": {
                         "method": "GET",
                         "uri": "@{parameters('abstractBaseUrl')}/v1/ase/workflows/verdict/@{body('Start_verdict_workflow')?['task_id']}",
                         "headers": {
-                          "Authorization": "Bearer @{parameters('abstractApiKey')}",
+                          "Authorization": "Bearer @{body('Get_Abstract_key')?['value']}",
                           "x-as-vendor-account-id": "@parameters('abstractVendorAccountId')"
                         }
                       }
@@ -103,27 +187,48 @@
                   }
                 },
                 "Comment_verdict": {
-                  "runAfter": { "Poll_until_complete": ["Succeeded"] },
+                  "runAfter": {
+                    "Poll_until_complete": [
+                      "Succeeded"
+                    ]
+                  },
                   "type": "ApiConnection",
                   "inputs": {
-                    "host": { "connection": { "name": "@parameters('$connections')['azuresentinel']['connectionId']" } },
+                    "host": {
+                      "connection": {
+                        "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                      }
+                    },
                     "method": "post",
                     "path": "/Incidents/Comment",
                     "body": {
                       "incidentArmId": "@triggerBody()?['object']?['id']",
-                      "message": "<h3>Abstract ASTRO — Verdict</h3><p><b>Verdict:</b> @{coalesce(body('Get_verdict_status')?['verdict'], 'UNKNOWN')} &nbsp; <b>Confidence:</b> @{coalesce(body('Get_verdict_status')?['confidence'], 0)}%</p><p>@{coalesce(body('Get_verdict_status')?['summary'], 'No summary returned.')}</p><p><b>Recommended actions:</b></p><pre>@{string(coalesce(body('Get_verdict_status')?['recommended_actions'], json('[]')))}</pre><p><i>Events analyzed: @{coalesce(body('Get_verdict_status')?['total_events_analyzed'], 0)} · IOCs enriched: @{coalesce(body('Get_verdict_status')?['iocs_enriched'], 0)}</i></p>"
+                      "message": "<h3>Abstract ASTRO \u2014 Verdict</h3><p><b>Verdict:</b> @{coalesce(body('Get_verdict_status')?['verdict'], 'UNKNOWN')} &nbsp; <b>Confidence:</b> @{coalesce(body('Get_verdict_status')?['confidence'], 0)}%</p><p>@{coalesce(body('Get_verdict_status')?['summary'], 'No summary returned.')}</p><p><b>Recommended actions:</b></p><pre>@{string(coalesce(body('Get_verdict_status')?['recommended_actions'], json('[]')))}</pre><p><i>Events analyzed: @{coalesce(body('Get_verdict_status')?['total_events_analyzed'], 0)} \u00b7 IOCs enriched: @{coalesce(body('Get_verdict_status')?['iocs_enriched'], 0)}</i></p>"
                     }
                   }
                 },
                 "If_malicious_raise_severity": {
-                  "runAfter": { "Comment_verdict": ["Succeeded"] },
+                  "runAfter": {
+                    "Comment_verdict": [
+                      "Succeeded"
+                    ]
+                  },
                   "type": "If",
-                  "expression": { "equals": ["@coalesce(body('Get_verdict_status')?['verdict'], '')", "MALICIOUS"] },
+                  "expression": {
+                    "equals": [
+                      "@coalesce(body('Get_verdict_status')?['verdict'], '')",
+                      "MALICIOUS"
+                    ]
+                  },
                   "actions": {
                     "Update_incident_severity": {
                       "type": "ApiConnection",
                       "inputs": {
-                        "host": { "connection": { "name": "@parameters('$connections')['azuresentinel']['connectionId']" } },
+                        "host": {
+                          "connection": {
+                            "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                          }
+                        },
                         "method": "put",
                         "path": "/Incidents",
                         "body": {
@@ -141,7 +246,11 @@
                   "Comment_no_mapping": {
                     "type": "ApiConnection",
                     "inputs": {
-                      "host": { "connection": { "name": "@parameters('$connections')['azuresentinel']['connectionId']" } },
+                      "host": {
+                        "connection": {
+                          "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                        }
+                      },
                       "method": "post",
                       "path": "/Incidents/Comment",
                       "body": {
@@ -152,6 +261,25 @@
                   }
                 }
               }
+            },
+            "Get_Abstract_key": {
+              "type": "Http",
+              "runtimeConfiguration": {
+                "secureData": {
+                  "properties": [
+                    "outputs"
+                  ]
+                }
+              },
+              "inputs": {
+                "method": "GET",
+                "uri": "@{parameters('keyVaultSecretUri')}",
+                "authentication": {
+                  "type": "ManagedServiceIdentity",
+                  "audience": "https://vault.azure.net"
+                }
+              },
+              "runAfter": {}
             }
           }
         },
@@ -162,13 +290,23 @@
                 "connectionId": "[resourceId('Microsoft.Web/connections', variables('AzureSentinelConnectionName'))]",
                 "connectionName": "[variables('AzureSentinelConnectionName')]",
                 "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azuresentinel')]",
-                "connectionProperties": { "authentication": { "type": "ManagedServiceIdentity" } }
+                "connectionProperties": {
+                  "authentication": {
+                    "type": "ManagedServiceIdentity"
+                  }
+                }
               }
             }
           },
-          "abstractBaseUrl": { "value": "[parameters('abstractBaseUrl')]" },
-          "abstractVendorAccountId": { "value": "[parameters('abstractVendorAccountId')]" },
-          "abstractApiKey": { "value": "[parameters('abstractApiKey')]" }
+          "abstractBaseUrl": {
+            "value": "[parameters('abstractBaseUrl')]"
+          },
+          "abstractVendorAccountId": {
+            "value": "[parameters('abstractVendorAccountId')]"
+          },
+          "keyVaultSecretUri": {
+            "value": "[parameters('keyVaultSecretUri')]"
+          }
         }
       }
     }

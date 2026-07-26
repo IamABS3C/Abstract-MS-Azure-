@@ -56,6 +56,31 @@ SkillGroups:
             | where EventSeverity in ("high", "critical")
             | project TimeGenerated, EventSeverity, EventProduct, ActorUsername, SrcIpAddr, AbstractEventId, EventMessage
             | sort by TimeGenerated desc
+      - Name: AbstractEventsForIp
+        DisplayName: Abstract events for a source IP
+        Description: List recent Abstract events from a given source IP with product, identity and severity.
+        DescriptionForModel: >-
+          Given a source IP address, return recent Abstract pipeline events from
+          that IP (product, actor, severity, message, Abstract insight id). Use to
+          scope an incident's IP entity across the pipeline's fuller dataset.
+        Inputs:
+          - Name: ip
+            Description: The source IP address to scope.
+            Required: true
+          - Name: hours
+            Description: Lookback window in hours.
+            Required: true
+        Settings:
+          Target: Defender
+          Template: |-
+            ASim_AbstractEvent
+            | where TimeGenerated > ago({{hours}}h)
+            | where SrcIpAddr == "{{ip}}"
+            | summarize Events = count(), Products = make_set(EventProduct, 15),
+                        Actors = make_set(ActorUsername, 15), MaxSeverity = max(EventSeverity),
+                        TotalRisk = sum(EventRiskScore), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated)
+                        by SrcIpAddr
+            | sort by TotalRisk desc
       - Name: AbstractIdentityActivity
         DisplayName: Abstract activity for an identity
         Description: Summarize Abstract activity and cumulative risk for one identity/user.

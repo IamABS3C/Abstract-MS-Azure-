@@ -271,6 +271,42 @@ backdrop-filter:none;-webkit-backdrop-filter:none}}.reveal{{animation:none;opaci
 </body></html>"""
 
 
+# ── report-per-phase: slice the full markdown into phase-scoped outbriefs ──────────────
+PHASES = {
+    "Full report": None,
+    "Executive summary": ["Executive summary"],
+    "Detections & hunt": ["Detections (shift-left)"],
+    "Identity intelligence": ["Identity Intelligence"],
+    "Blast radius & prediction": ["Blast radius", "Prediction"],
+    "Continuous risk": ["Continuous risk (top entities)"],
+    "OSINT & recommendations": ["OSINT enrichment", "Recommended actions"],
+    "Efficiency vs. SIEM (value)": ["Efficiency vs. SIEM-first"],
+}
+
+
+def scoped_markdown(state, scope: str = "Full report") -> str:
+    """Return the full report markdown, or only the sections for a chosen phase/scope."""
+    full = markdown(state)
+    keep = PHASES.get(scope)
+    if not keep:
+        return full
+    lines = full.split("\n")
+    out, take = [lines[0], ""], False
+    for ln in lines[1:]:
+        if ln.startswith("## "):
+            take = any(ln[3:].strip().startswith(k) for k in keep)
+        if take:
+            out.append(ln)
+    return "\n".join(out)
+
+
+def scoped_html(state, scope: str = "Full report") -> str:
+    """Branded full HTML for 'Full report'; a focused HTML fragment for a single phase."""
+    if scope == "Full report":
+        return html_report(state)
+    return _md_to_html(scoped_markdown(state, scope))
+
+
 def main():
     state = build()
     md = markdown(state)

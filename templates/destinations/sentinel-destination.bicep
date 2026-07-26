@@ -64,6 +64,9 @@ param workspaceRetentionDays int = 90
 @description('Enable Microsoft Sentinel on the workspace (only applied when creating a new workspace; assumed already enabled for existing workspaces).')
 param enableSentinel bool = true
 
+@description('Region of the EXISTING workspace (Existing mode only). The DCE and DCR MUST be created in the same region as the target workspace, so if your existing workspace is in a different region than this deployment, set it here (e.g. eastus2). Leave empty to use the deployment location.')
+param existingWorkspaceLocation string = ''
+
 // ---------------------------------------------------------------------------
 // Data Collection Endpoint + Rule + custom table
 // ---------------------------------------------------------------------------
@@ -108,6 +111,11 @@ param principalType string = 'ServicePrincipal'
 var autoWorkspaceName = 'abstract-sentinel-${uniqueString(resourceGroup().id)}'
 var effectiveWorkspaceName = createWorkspace ? (empty(workspaceName) ? autoWorkspaceName : workspaceName) : workspaceName
 var workspaceResourceId = resourceId('Microsoft.OperationalInsights/workspaces', effectiveWorkspaceName)
+
+// The DCE and DCR must be co-located with the destination workspace. When
+// creating a new workspace they share the deployment location; for an existing
+// workspace in another region, callers set existingWorkspaceLocation.
+var effectiveLocation = createWorkspace ? location : (empty(existingWorkspaceLocation) ? location : existingWorkspaceLocation)
 
 // Stream name for a DCR-based custom table is always Custom-<table>.
 var streamName = 'Custom-${customTableName}'
@@ -168,7 +176,7 @@ resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01
 // ---------------------------------------------------------------------------
 resource dce 'Microsoft.Insights/dataCollectionEndpoints@2023-03-11' = {
   name: dataCollectionEndpointName
-  location: location
+  location: effectiveLocation
   tags: tags
   properties: {
     networkAcls: {
@@ -182,7 +190,7 @@ resource dce 'Microsoft.Insights/dataCollectionEndpoints@2023-03-11' = {
 // ---------------------------------------------------------------------------
 resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
   name: dataCollectionRuleName
-  location: location
+  location: effectiveLocation
   tags: tags
   properties: {
     dataCollectionEndpointId: dce.id

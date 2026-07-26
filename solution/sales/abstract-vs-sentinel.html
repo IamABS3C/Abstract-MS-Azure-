@@ -1,0 +1,717 @@
+<style>
+:root {
+  --bg:#060608; --surface:#0f0f16; --surface2:#17171f; --line:#26262f;
+  --text:#f4f4f6; --muted:#9a9aa8;
+  --pink:#FF216B; --mid:#E8005D; --deep:#C2004C;
+  --teal:#01e69d; --amber:#f5c61e; --blue:#2e9bf0;
+  --grad:linear-gradient(100deg,var(--pink),var(--mid) 55%,var(--deep));
+  --font-display:"Barlow Semi Condensed","Barlow Condensed",system-ui,"Segoe UI",sans-serif;
+  --font-body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --maxw:1120px;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:var(--font-body);
+  font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased; }
+.wrap { max-width:var(--maxw); margin:0 auto; padding:0 24px; }
+a { color:var(--teal); }
+h1,h2,h3,h4 { font-family:var(--font-display); text-wrap:balance; margin:0; line-height:1.05; }
+.eyebrow { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.22em;
+  font-size:12px; color:var(--muted); }
+.grad-text { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+/* hero */
+header.hero { position:relative; overflow:hidden; border-bottom:1px solid var(--line);
+  background:radial-gradient(120% 90% at 78% -10%, rgba(255,33,107,.16), transparent 60%); }
+.hero-inner { display:grid; grid-template-columns:1.4fr .9fr; gap:40px; align-items:center;
+  padding:64px 0 56px; }
+.hero h1 { font-size:clamp(40px,6vw,74px); font-weight:700; letter-spacing:-.01em; text-transform:uppercase; }
+.hero h1 .x { font-family:var(--font-body); font-weight:300; padding:0 .18em; color:var(--muted);
+  text-transform:none; font-size:.7em; vertical-align:.06em; }
+.hero .lede { color:var(--muted); font-size:19px; max-width:46ch; margin-top:18px; }
+.hero .mark { justify-self:center; width:min(280px,80%); filter:drop-shadow(0 8px 40px rgba(255,33,107,.35)); }
+.hero .mark svg { width:100%; height:auto; border-radius:28px; }
+.tagline { margin-top:22px; font-family:var(--font-mono); font-size:13px; color:var(--teal);
+  border-left:2px solid var(--teal); padding-left:12px; }
+.hero-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line);
+  border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:-28px; transform:translateY(28px); }
+.hstat { background:var(--surface); padding:20px 22px; }
+.hstat .hv { font-family:var(--font-display); font-weight:700; font-size:clamp(28px,4vw,42px); font-variant-numeric:tabular-nums; }
+.hstat .hk { color:var(--text); font-size:13.5px; margin-top:4px; }
+.hstat .htag { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); margin-top:6px; }
+@media (max-width:860px) { .hero-stats { grid-template-columns:repeat(2,1fr); } }
+
+section { padding:56px 0; border-bottom:1px solid var(--line); }
+.sec-head { display:flex; align-items:baseline; gap:16px; margin-bottom:28px; flex-wrap:wrap; }
+.sec-head h2 { font-size:clamp(26px,3.4vw,38px); font-weight:600; text-transform:uppercase; letter-spacing:.01em; }
+.sec-head p { color:var(--muted); margin:0; max-width:52ch; }
+
+/* value props */
+.vp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.vp { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px;
+  position:relative; }
+.vp::before { content:""; position:absolute; left:22px; top:0; width:34px; height:3px; background:var(--grad); border-radius:0 0 3px 3px; }
+.vp h3 { font-size:20px; font-weight:600; margin-bottom:8px; }
+.vp p { color:var(--muted); font-size:14.5px; margin:0; }
+
+/* calculator */
+.calc { display:grid; grid-template-columns:340px 1fr; gap:32px; align-items:start; }
+.controls { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px; }
+.field { margin-bottom:18px; }
+.field:last-child { margin-bottom:0; }
+.field label { display:flex; justify-content:space-between; font-size:13px; color:var(--muted);
+  margin-bottom:7px; font-family:var(--font-mono); }
+.field label b { color:var(--text); font-variant-numeric:tabular-nums; }
+.field input[type=range] { width:100%; accent-color:var(--pink); }
+.results { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; align-content:start; }
+.stat { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px 22px; }
+.stat .k { font-family:var(--font-mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); }
+.stat .v { font-family:var(--font-display); font-size:38px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:6px; }
+.stat.hero-stat { grid-column:1/-1; background:linear-gradient(120deg, rgba(255,33,107,.14), rgba(1,230,157,.10)); border-color:rgba(255,33,107,.4); }
+.stat.hero-stat .v { font-size:clamp(44px,7vw,64px); }
+.stat .sub { color:var(--muted); font-size:13px; margin-top:2px; }
+.bars { grid-column:1/-1; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px 22px; }
+.bar-row { display:grid; grid-template-columns:120px 1fr auto; gap:12px; align-items:center; margin:10px 0; }
+.bar-row .lbl { font-family:var(--font-mono); font-size:12px; }
+.bar-track { background:var(--surface2); border-radius:6px; height:22px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:6px; transition:width .35s ease; }
+.bar-fill.sen { background:var(--blue); }
+.bar-fill.abs { background:var(--grad); }
+.bar-row .amt { font-family:var(--font-mono); font-size:13px; font-variant-numeric:tabular-nums; }
+.chip { display:inline-flex; gap:6px; align-items:center; font-family:var(--font-mono); font-size:11px;
+  text-transform:uppercase; letter-spacing:.1em; padding:3px 9px; border-radius:20px; border:1px solid var(--line); }
+.chip.sen { color:var(--blue); border-color:rgba(46,155,240,.5); }
+.chip.abs { color:var(--teal); border-color:rgba(1,230,157,.5); }
+.ctl-group { font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.16em;
+  color:var(--teal); margin:6px 0 12px; padding-top:14px; border-top:1px solid var(--line); }
+.controls .ctl-group:first-child { padding-top:0; border-top:none; margin-top:0; }
+.field .hint { display:block; font-size:11px; color:var(--muted); margin-top:5px; line-height:1.35; }
+.scen-grid { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.scen { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:18px 20px; }
+.scen-com { border-color:rgba(1,230,157,.4); background:linear-gradient(150deg,rgba(1,230,157,.08),var(--surface)); }
+.scen-payg { border-color:rgba(46,155,240,.35); }
+.scen-h { font-family:var(--font-display); font-weight:600; font-size:17px; display:flex; align-items:center; gap:8px; }
+.scen-tag { font-family:var(--font-mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.12em;
+  color:var(--teal); border:1px solid rgba(1,230,157,.5); border-radius:20px; padding:2px 8px; }
+.scen-tag.alt { color:var(--blue); border-color:rgba(46,155,240,.5); }
+.scen-rate { font-family:var(--font-mono); font-size:13px; color:var(--muted); margin:8px 0 12px; }
+.scen-rate-s { display:block; font-size:10px; letter-spacing:.06em; opacity:.8; }
+.scen-line { display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  padding:7px 0; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+.scen-line b { color:var(--text); font-family:var(--font-display); font-variant-numeric:tabular-nums; font-size:16px; }
+.scen-com .scen-line b { color:var(--teal); }
+.bars-cap { font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:10px; }
+.bars-note { font-size:11.5px; color:var(--muted); margin-top:12px; }
+.stat.soft { border-color:rgba(245,198,30,.3); background:linear-gradient(150deg,rgba(245,198,30,.06),var(--surface)); }
+details.assump { margin-top:24px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:0 20px; }
+details.assump summary { cursor:pointer; font-family:var(--font-mono); font-size:12px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--muted); padding:16px 0; list-style:none; }
+details.assump summary::-webkit-details-marker { display:none; }
+details.assump summary::before { content:"▸ "; color:var(--teal); }
+details.assump[open] summary::before { content:"▾ "; }
+details.assump ul { margin:0 0 18px; padding-left:18px; font-size:13px; color:var(--muted); }
+details.assump li { margin:7px 0; } details.assump b { color:var(--text); }
+@media (max-width:860px) { .scen-grid { grid-template-columns:1fr; } }
+
+/* gap matrix */
+.table-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:14px; }
+table.gap { border-collapse:collapse; width:100%; min-width:820px; }
+table.gap thead th { text-align:left; font-family:var(--font-mono); font-size:11.5px; text-transform:uppercase;
+  letter-spacing:.12em; color:var(--muted); padding:14px 16px; border-bottom:1px solid var(--line); background:var(--surface2); position:sticky; top:0; }
+table.gap th[scope=row] { font-family:var(--font-display); font-weight:600; font-size:16px; width:150px; }
+table.gap td, table.gap th { padding:14px 16px; vertical-align:top; border-bottom:1px solid var(--line); font-size:14px; }
+table.gap tr:last-child td { border-bottom:none; }
+table.gap td.sen { color:#c9d6e6; border-left:2px solid rgba(46,155,240,.35); }
+table.gap td.abs { color:#d7f5ea; border-left:2px solid rgba(1,230,157,.45); }
+table.gap td.why { color:var(--muted); font-size:13px; width:26%; }
+.col-tag { display:inline-block; margin-bottom:4px; }
+
+/* migration */
+ol.ladder { list-style:none; margin:0; padding:0; display:grid; gap:14px; counter-reset:none; }
+ol.ladder li { display:grid; grid-template-columns:auto 1fr; gap:18px; align-items:start;
+  background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px 22px; }
+.stage-n { font-family:var(--font-display); font-weight:700; font-size:26px; width:46px; height:46px;
+  display:grid; place-items:center; border-radius:12px; background:var(--grad); color:#fff; }
+ol.ladder h4 { font-size:19px; font-weight:600; margin-bottom:4px; }
+ol.ladder p { color:var(--muted); margin:0; font-size:14.5px; }
+
+/* cited stats */
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.stat-card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px; }
+.stat-card .sc-n { font-family:var(--font-display); font-weight:700; font-size:clamp(30px,4vw,44px); font-variant-numeric:tabular-nums; line-height:1; }
+.stat-card .sc-l { font-weight:600; margin-top:8px; font-size:15px; }
+.stat-card .sc-s { color:var(--muted); font-size:13.5px; margin:8px 0 0; }
+sup.ref { font-family:var(--font-mono); font-size:10px; color:var(--teal); margin-left:3px; }
+/* abstract's own claims */
+.claim-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.claim { background:linear-gradient(140deg, rgba(1,230,157,.08), var(--surface)); border:1px solid rgba(1,230,157,.28); border-radius:14px; padding:20px; }
+.claim .cl-n { font-family:var(--font-display); font-weight:700; font-size:26px; color:var(--teal); }
+.claim .cl-l { font-weight:600; margin-top:4px; } .claim .cl-s { color:var(--muted); font-size:13.5px; margin:8px 0 0; }
+.first-party { font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--teal); }
+/* manifesto */
+section.manifesto { background:
+  radial-gradient(90% 120% at 15% 0%, rgba(255,33,107,.10), transparent 55%),
+  radial-gradient(90% 120% at 100% 100%, rgba(1,230,157,.08), transparent 55%); }
+.manifesto-lede { font-family:var(--font-display); font-size:clamp(22px,3vw,32px); line-height:1.25;
+  max-width:26ch; max-width:60ch; margin:0 0 32px; font-weight:500; text-wrap:balance; }
+.manifesto-lede strong { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700; }
+.tenet-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.tenet { border-left:2px solid var(--pink); padding:4px 0 4px 16px; }
+.tenet h3 { font-size:16px; font-weight:600; margin-bottom:5px; }
+.tenet p { color:var(--muted); font-size:13.5px; margin:0; }
+.blocks-title { font-family:var(--font-display); font-weight:600; font-size:20px; text-transform:uppercase; letter-spacing:.02em; margin:40px 0 18px; }
+.block-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.block { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:10px; }
+.bk-h { display:flex; gap:12px; align-items:center; }
+.bk-n { font-family:var(--font-display); font-weight:700; font-size:20px; width:34px; height:34px; flex:none; display:grid; place-items:center; border-radius:9px; background:var(--grad); color:#fff; }
+.block h3 { font-size:18px; font-weight:600; }
+.bk-tag { font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--teal); }
+.block p { color:var(--muted); font-size:13.5px; margin:0; }
+.bk-fit { border-top:1px solid var(--line); padding-top:10px; margin-top:auto !important; color:#cdd6e2 !important; }
+.bk-fitlbl { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--blue); display:block; margin-bottom:3px; }
+@media (max-width:860px) { .tenet-grid,.block-grid { grid-template-columns:1fr; } }
+/* portfolio band */
+.pf-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+.pf { background:var(--surface); padding:20px 18px; }
+.pf-n { font-family:var(--font-display); font-weight:700; font-size:clamp(26px,3vw,36px); font-variant-numeric:tabular-nums; }
+.pf-l { color:var(--muted); font-size:12.5px; margin-top:6px; }
+.pf-src { font-family:var(--font-mono); font-size:11px; color:var(--muted); margin-top:12px; }
+@media (max-width:860px) { .pf-grid { grid-template-columns:repeat(2,1fr); } }
+/* dual path */
+.paths { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.path { border:1px solid var(--line); border-radius:16px; padding:22px; background:var(--surface); }
+.path.tog { border-top:3px solid var(--blue); } .path.wo { border-top:3px solid var(--teal); }
+.path h3 { font-size:21px; font-weight:600; margin-bottom:12px; }
+.path ul { margin:0; padding-left:18px; } .path li { margin:7px 0; color:var(--muted); font-size:14px; }
+table.uc { border-collapse:collapse; width:100%; min-width:720px; }
+table.uc th[scope=row] { font-family:var(--font-display); font-weight:600; font-size:15px; width:34%; text-align:left; }
+table.uc td, table.uc th { padding:13px 16px; border-bottom:1px solid var(--line); vertical-align:top; font-size:14px; }
+table.uc td.why { color:var(--muted); }
+.posture { font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.08em; padding:3px 9px; border-radius:20px; white-space:nowrap; border:1px solid var(--line); }
+.posture.pt-tog { color:var(--blue); border-color:rgba(46,155,240,.5); }
+.posture.pt-hyb { color:var(--amber); border-color:rgba(245,198,30,.5); }
+.posture.pt-reb { color:var(--teal); border-color:rgba(1,230,157,.5); }
+/* positioning */
+.pos-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.pos { background:var(--surface2); border:1px dashed var(--line); border-radius:14px; padding:20px; }
+.pos h3 { font-size:18px; font-weight:600; margin-bottom:6px; } .pos p { color:var(--muted); font-size:14px; margin:0; }
+.pov-tag { font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--amber); }
+/* sources */
+.sources { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 20px; margin-bottom:16px; }
+.sources h4 { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.14em; font-size:12px; color:var(--muted); margin-bottom:10px; }
+.sources ol { margin:0; padding-left:20px; font-size:12.5px; } .sources li { margin:4px 0; }
+.sources a { word-break:break-all; }
+@media (max-width:860px) { .stat-grid,.claim-grid,.pos-grid { grid-template-columns:1fr 1fr; } .paths { grid-template-columns:1fr; } }
+
+/* footer */
+footer { padding:40px 0 64px; color:var(--muted); font-size:13px; }
+footer .validate { background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--amber);
+  border-radius:10px; padding:16px 20px; margin-bottom:22px; }
+footer .validate h4 { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.14em; font-size:12px; color:var(--amber); margin-bottom:8px; }
+footer ul { margin:0; padding-left:18px; } footer li { margin:3px 0; }
+.disc { font-size:12px; opacity:.8; margin-top:14px; }
+
+@media (max-width:860px) {
+  .hero-inner { grid-template-columns:1fr; } .hero .mark { order:-1; width:180px; }
+  .vp-grid { grid-template-columns:1fr; } .calc { grid-template-columns:1fr; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+
+<header class="hero">
+  <div class="wrap hero-inner">
+    <div>
+      <div class="eyebrow">Composable SIEM&nbsp;&nbsp;/&nbsp;&nbsp;Sentinel · Competitive &amp; TCO brief</div>
+      <h1 style="margin-top:14px">Abstract <span class="x">×</span> <span class="grad-text">Sentinel</span></h1>
+      <p class="lede">A transparent, bidirectional look at where the <b>world's first Composable SIEM</b> and a <b>traditional SIEM</b> overlap, complement, and diverge — with the cost math to back an <b>augment, optimize, or rebalance</b> decision.</p>
+      <div class="tagline">SIEM is a state of mind. Abstract is the world&#x27;s first Composable SIEM — assemble collection, detection, retention and AI-SecOps by design, not by lock-in.</div>
+    </div>
+    <div class="mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Abstract Security mark">
+  <defs>
+    <radialGradient id="mglow" cx="50%" cy="50%" r="55%">
+      <stop offset="0" stop-color="#FF216B" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#E8005D" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#060608" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="abm-grad2" x1="66.0417" y1="9.0674" x2="112.992" y2="58.4591" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF216B"/><stop offset="0.671702" stop-color="#E8005D"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="200" height="200" rx="30" fill="#060608"/>
+  <rect x="0" y="0" width="200" height="200" rx="30" fill="url(#mglow)"/>
+  <g transform="translate(28.2 36.25) scale(0.85)">
+    <path fill="#E8005D" d="M153.268 146.625L133.228 109.622C142.25 107.978 152.641 107.864 160.971 112.129C163.164 113.252 165.226 114.717 166.595 116.736C171.065 123.297 168.525 134.367 164.055 140.26C161.68 143.385 158.397 146.201 154.291 148.627C154.06 148.188 153.746 147.569 153.284 146.625H153.268Z"/>
+    <path fill="#C2004C" d="M16.4096 118.411C15.5354 118.313 14.6942 118.085 13.9025 117.694C12.0882 116.782 10.7852 115.074 10.01 113.218C7.10698 106.233 9.15228 97.296 11.7748 90.5566C14.2654 84.1754 18.5043 78.3471 22.0176 72.4865C25.4319 65.7471 29.9017 59.3656 33.7943 52.8865C35.9055 49.3539 39.0558 46.6352 42.8825 45.0236C47.1709 43.2166 53.7025 41.084 60.5145 41.084C60.5145 41.084 61.0753 41.084 61.2237 41.084H61.5866H61.7186H62.0485C66.9308 41.2794 71.6151 42.4352 76.0189 44.5189C75.458 44.2585 69.3221 52.2678 68.7781 52.9516C65.4459 57.0703 62.2959 61.3191 59.2775 65.6659C53.785 73.5446 48.8203 81.7661 44.202 90.1822C41.9918 94.2031 39.6497 98.2568 37.6869 102.392C35.7241 106.527 34.4375 110.401 31.0068 113.38C28.5657 115.497 25.4978 116.734 22.3805 117.645C20.4507 118.199 18.3724 118.638 16.4096 118.411Z"/>
+    <path fill="url(#abm-grad2)" d="M108.458 64.661C103.922 57.4981 96.2852 47.6491 85.4487 40.9095L83.0574 39.4769C76.5584 35.635 69.4828 33.5838 62.0275 33.3559C61.5657 33.3396 61.0708 33.3396 60.5925 33.3396C54.2423 33.3396 48.5024 34.6257 43.7852 36.2211L47.2654 30.4419L48.7168 28.0814L50.8446 24.5325L51.8342 22.8884C54.6052 18.265 57.7061 14.2278 61.0214 10.8579L61.3677 10.5161C62.0605 9.84864 62.7365 9.19744 63.4295 8.59515C64.2045 7.91141 65.0295 7.24397 65.8871 6.60908C66.7779 5.9416 67.6518 5.33927 68.5263 4.78577C68.8725 4.55786 69.1529 4.37879 69.4334 4.24856L69.8784 4.02065L69.9611 3.93925C70.1263 3.84158 70.291 3.7439 70.4562 3.64622L70.9176 3.41832C71.6437 3.04389 72.4187 2.66947 73.3752 2.24621L73.5236 2.18109C74.7111 1.70899 75.7997 1.33457 76.8388 1.02526L77.0535 0.976423C77.6307 0.829913 78.1584 0.683396 78.7362 0.585722L80.6987 0.243857C81.8036 0.0973438 82.9091 0.0322266 84.0139 0.0322266C85.0199 0.0322266 86.0922 0.0973439 87.214 0.227578C87.6096 0.276416 88.0221 0.341533 88.4178 0.40665L88.451 0.439209L89.4406 0.602001C89.6385 0.634559 89.8363 0.683396 90.0673 0.732233C90.5455 0.84619 90.9743 0.960146 91.3706 1.09038L91.7662 1.20434C92.0629 1.30201 92.3765 1.38341 92.6733 1.49736L93.3168 1.72527L93.9597 1.96946C94.3559 2.13225 94.7847 2.31132 95.2135 2.50668C96.1043 2.89738 97.0114 3.3532 97.9347 3.89041C98.8255 4.39507 99.7163 4.94857 100.673 5.59974C103.395 7.50443 106.05 9.91373 108.54 12.7138C109.827 14.1626 111.097 15.7906 112.334 17.5324C113.736 19.5023 114.957 21.7976 115.98 24.386C116.408 25.4442 116.721 26.5511 116.92 27.6744C117.332 29.9372 117.612 31.7605 117.711 32.9326C117.744 33.2908 117.777 33.6489 117.777 33.9908V34.1861C117.81 34.4304 117.827 34.6583 117.827 34.9187V35.0815C117.859 35.6838 117.876 36.3024 117.876 36.9536C117.876 42.7816 116.804 48.4143 114.692 53.705L114.627 53.8678C114.577 53.998 114.528 54.112 114.478 54.2259L114.396 54.405L114.33 54.5841L114.264 54.7306L114.214 54.8771C114.214 54.8771 114.148 55.0399 114.115 55.1213C112.647 58.4748 110.751 61.6818 108.441 64.7261L108.458 64.661Z"/>
+    <path fill="#FF216B" d="M28.293 149.977C26.5611 149.977 24.8292 149.83 23.1303 149.505C19.0068 148.723 15.1142 146.949 11.733 144.523C8.35171 142.098 5.3663 138.891 3.28805 135.228C2.80973 134.398 2.39738 133.535 2.01802 132.655C1.42423 131.239 0.962403 129.791 0.632525 128.293C0.550053 127.87 0.467583 127.446 0.385113 127.007L0.302643 126.567C0.236668 126.176 0.187186 125.721 0.137704 125.248C0.0882215 124.744 0.0552337 124.207 0.0387397 123.719V123.328C0.00575178 122.856 -0.0107422 122.465 -0.0107422 122.09C-0.0107422 121.521 0.0882215 119.111 0.137704 118.753C0.137704 118.753 0.220173 117.907 0.269656 117.614L0.418101 116.523C0.418101 116.523 0.583041 115.53 0.583041 115.497C0.583041 115.497 1.22631 112.323 1.30878 112.03C1.82009 115.188 2.79323 117.858 4.21171 119.99C6.35593 123.067 9.48976 125.086 13.1844 125.867C16.3843 126.535 19.7325 126.29 22.9159 125.607C28.9197 124.304 34.1813 121.407 39.6243 118.737C42.4778 117.337 45.2652 115.823 48.0362 114.293C56.0688 109.914 63.9858 105.307 71.8533 100.651C78.6653 96.6295 85.6588 92.7716 92.2568 88.4247L93.1469 87.8712L93.7905 87.4968L93.8236 87.4646C94.1041 87.3016 94.3845 87.1224 94.665 86.9433L95.7204 86.3086L95.803 86.2113C101.576 82.5319 106.573 78.446 110.697 74.0179C115.315 69.0524 118.927 63.583 121.418 57.7385C123.81 52.1873 125.195 46.2779 125.558 40.1406L134.118 55.2804L136.131 58.7479L152.195 87.0084L153.037 88.5065C154.439 90.997 157.985 97.4111 161.185 103.825C159.997 103.37 158.744 102.978 157.391 102.621C156.93 102.474 156.468 102.36 155.99 102.246C155.263 102.083 154.554 101.92 153.795 101.79L152.74 101.595C151.866 101.449 150.926 101.318 149.986 101.204L149.771 101.172H149.557C149.293 101.123 149.012 101.09 148.715 101.074C148.303 101.025 147.891 101.009 147.479 100.976C146.192 100.895 145.021 100.862 143.8 100.862C138.308 100.862 132.42 101.644 126.317 103.174C117.888 105.323 108.916 108.937 99.5965 113.967L99.1345 114.114L98.9367 114.293L98.8704 114.325L98.8209 114.374C94.5986 116.881 90.36 119.388 86.1371 121.895C82.1621 124.255 78.187 126.6 74.212 128.944C70.6 131.077 66.9712 133.226 63.3429 135.358C60.1758 137.23 57.009 139.086 53.8421 140.942C50.3783 142.977 46.9476 145.061 43.2365 146.64C41.3067 147.47 39.3439 148.17 37.3152 148.723C34.3627 149.521 31.2948 149.993 28.227 149.977H28.293Z"/>
+  </g>
+</svg>
+</div>
+  </div>
+  <div class="wrap"><div class="hero-stats"><div class="hstat"><div class="hv grad-text">~34:1</div><div class="hk">aggregation / dedupe ratio</div><div class="htag">demo-measured</div></div>
+<div class="hstat"><div class="hv grad-text">~99.6%</div><div class="hk">raw volume routed off the SIEM</div><div class="htag">demo-measured</div></div>
+<div class="hstat"><div class="hv grad-text">100%</div><div class="hk">events enriched &amp; risk-scored upstream</div><div class="htag">demo-measured</div></div>
+<div class="hstat"><div class="hv grad-text">~0.5s</div><div class="hk">shift-left detection vs. ingest+schedule</div><div class="htag">modeled</div></div></div></div>
+</header>
+
+<section class="manifesto">
+  <div class="wrap">
+    <div class="sec-head"><h2>Change the game — the <span class="grad-text">Composable SIEM</span></h2>
+      <p><a href="https://www.abstract.security/manifesto" target="_blank" rel="noopener">The Composable SIEM Manifesto</a> · Abstract Security</p></div>
+    <p class="manifesto-lede">“SIEM is a state of mind.” Not a box, not a single vendor — an organizational philosophy of adaptability, modularity, and choice. Abstract built the world&#x27;s first <strong>Composable SIEM</strong>: collection, detection, retention, and AI-enabled security operations as independent, interoperable building blocks you assemble by design — with Microsoft Sentinel as one composable component you keep, augment, or rebalance.</p>
+    <div class="tenet-grid"><article class="tenet"><h3>Next-Gen SIEM is not a SIEM</h3><p>The true next generation breaks the monolith — it isn&#x27;t a glorified log store with a new coat of paint.</p></article>
+<article class="tenet"><h3>Cut waste before storage</h3><p>Detect in the stream, before data becomes expensive, rigid, or locked in. Prioritize signal over noise, outcomes over ingestion volume.</p></article>
+<article class="tenet"><h3>Escape the data swamp</h3><p>Most collected security data is never used for detection. Store data intelligently — right data, right tier, right place — not everything in one indexed box.</p></article>
+<article class="tenet"><h3>AI is baked in, not bolted on</h3><p>Born in the AI era: AI-GEN is stream-first and composable by design. Without normalized, streaming, contextual data, AI is blind, shallow, and late.</p></article>
+<article class="tenet"><h3>AI-SOC is a capability, not a category</h3><p>Like SOAR before it, AI-SOC collapses into the fabric. AI augments SIEM across triage, investigation and response — it doesn&#x27;t replace it.</p></article>
+<article class="tenet"><h3>Composable means intentional assembly</h3><p>Not fragmented, not complex — an architecture of choice. Pick components and vendors per outcome, evolve incrementally, no forced re-architecture.</p></article></div>
+    <h3 class="blocks-title">Four building blocks — assembled by design, not lock-in</h3>
+    <div class="block-grid"><article class="block"><div class="bk-h"><span class="bk-n">1</span><div><h3>Collection</h3><div class="bk-tag">The Security Data Fabric</div></div></div>
+      <p>The control plane where data is shaped, normalized and enriched before it becomes expensive or locked in — feeding many downstream systems, not one monolith.</p><p class="bk-fit"><span class="bk-fitlbl">With Sentinel</span> Feeds Sentinel (and any SIEM) clean, enriched, cost-reduced data via the destination + insights connectors.</p></article>
+<article class="block"><div class="bk-h"><span class="bk-n">2</span><div><h3>Detection</h3><div class="bk-tag">Signal at Speed</div></div></div>
+      <p>Portable detection logic — in-stream, historical, and federated — that runs where the data lives. Detection is no longer bound to storage.</p><p class="bk-fit"><span class="bk-fitlbl">With Sentinel</span> Complements Sentinel analytics: shift-left convictions arrive as high-fidelity insights; Sentinel rules still run on what lands.</p></article>
+<article class="block"><div class="bk-h"><span class="bk-n">3</span><div><h3>Retention</h3><div class="bk-tag">Context at Scale</div></div></div>
+      <p>Tiered + federated storage: high-signal data near detection, everything else affordable and still query-ready (LakeVilla, replay, no rehydration).</p><p class="bk-fit"><span class="bk-fitlbl">With Sentinel</span> Route full fidelity to LakeVilla, send only convictions + context to Sentinel&#x27;s hot tier — the big cost lever.</p></article>
+<article class="block"><div class="bk-h"><span class="bk-n">4</span><div><h3>AI-SecOps</h3><div class="bk-tag">AI-Enabled Security Operations</div></div></div>
+      <p>AI embedded across triage, investigation, hunting and response — ASTRO enabling analysts, not replacing them, over pipeline-clean data + context.</p><p class="bk-fit"><span class="bk-fitlbl">With Sentinel</span> ASTRO auto-triages and reasons; results flow back to Sentinel incidents via playbooks, Copilot and MCP.</p></article></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>The <span class="grad-text">numbers</span> behind the problem</h2>
+      <p>Independent, cited industry research — the pain a security data pipeline is built to fix. Sources are numbered and listed at the foot of the page.</p></div>
+    <div class="stat-grid"><article class="stat-card"><div class="sc-n grad-text">79%</div>
+      <div class="sc-l">of MITRE ATT&amp;CK techniques enterprise SIEMs miss<sup class="ref">1</sup></div>
+      <p class="sc-s">You pay to ingest data that never becomes a detection — CardinalOps found the data already ingested could cover 90%+. Abstract turns telemetry into detections in-stream.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">83%</div>
+      <div class="sc-l">of SOC alerts are false positives<sup class="ref">2</sup></div>
+      <p class="sc-s">Abstract collapses repetitive/benign events upstream and auto-triages with ASTRO — analysts see signal, not noise.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">67%</div>
+      <div class="sc-l">of daily alerts go unaddressed<sup class="ref">3</sup></div>
+      <p class="sc-s">Fewer, higher-fidelity insights mean the queue is workable — not a backlog nobody can clear.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">4,484</div>
+      <div class="sc-l">alerts hit the average SOC per day<sup class="ref">4</sup></div>
+      <p class="sc-s">Pipeline aggregation/dedupe (demo ~34:1) cuts the raw flood before it becomes alerts.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">14 days</div>
+      <div class="sc-l">median attacker dwell time<sup class="ref">5</sup></div>
+      <p class="sc-s">Shift-left detection (~0.5s) shrinks time-to-detect vs. ingest-then-schedule SIEM latency.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">29 min</div>
+      <div class="sc-l">average eCrime breakout time (fastest 27 sec)<sup class="ref">6</sup></div>
+      <p class="sc-s">When lateral movement takes minutes, detecting after ingest+schedule is too slow — detect in-stream.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">$4.44M</div>
+      <div class="sc-l">average cost of a data breach — 241 days to identify + contain<sup class="ref">7</sup></div>
+      <p class="sc-s">Cost falls when you detect and contain faster; IBM attributes the 2025 drop to AI-driven defenses. Shift-left detection + ASTRO triage shrink that window.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">4.8M</div>
+      <div class="sc-l">global cybersecurity workforce gap<sup class="ref">8</sup></div>
+      <p class="sc-s">You can&#x27;t hire your way out — reclaim capacity by removing false-positive toil upstream.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">64%</div>
+      <div class="sc-l">of analysts spend &gt;half their time on manual work<sup class="ref">9</sup></div>
+      <p class="sc-s">Auto-triage + tune-at-source give that time back to real investigation.</p></article>
+<article class="stat-card"><div class="sc-n grad-text">63%</div>
+      <div class="sc-l">of security pros report burnout<sup class="ref">10</sup></div>
+      <p class="sc-s">Less noise, less swivel-chair — a pipeline that lands decision-ready insights protects the team.</p></article></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>Why <span class="grad-text">together</span> wins</h2>
+      <p>Grounded in the Abstract solution content in this repo plus well-known Microsoft Sentinel product facts. $/% figures are demo-measured or modeled — not vendor benchmarks.</p></div>
+    <div class="vp-grid"><article class="vp"><h3>Cut SIEM cost at the source</h3><p>Abstract aggregates, dedupes, filters and routes upstream — the SIEM bill is volume-driven, so cutting volume before ingest cuts the bill. Demo: ~34:1 aggregation and ~99.6% volume routed away from the SIEM.</p></article>
+<article class="vp"><h3>Shift-left detection</h3><p>Six in-stream detections (verdict fusion, IOC blast-match, beaconing/C2, ATO↔C2 bridge, lateral/exfil, campaign clustering) fire in ~0.5s — before data lands — vs. SIEM ingest+schedule latency.</p></article>
+<article class="vp"><h3>100% enrichment, upstream</h3><p>A 5-step in-stream chain (identity/asset resolution, geo/ASN, TI/AIG IOC match, 29+ OSINT adapters, verdict fusion) enriches every event before it lands. The SIEM receives conclusions, not raw noise.</p></article>
+<article class="vp"><h3>ASTRO — the AI SOC engine</h3><p>ASTRO is Abstract&#x27;s AI security engineer, embedded natively in the platform — not a generic chatbot. It runs agentic triage, investigation and detection-tuning over pipeline-clean, correlated, enriched data and full case context: a grounded verdict + recommended actions before an analyst opens the case (e.g. Verdict, IP Threat Intelligence) — and considerably more.</p></article>
+<article class="vp"><h3>Compliance handled in-stream</h3><p>Abstract states it detects and redacts PII in-stream (GDPR/HIPAA/PCI) before data lands anywhere, and normalizes to OCSF, ECS or Splunk CIM — so the same clean data fits any destination and sensitive fields never hit the SIEM.</p></article>
+<article class="vp"><h3>Destination- &amp; source-agnostic — less lock-in</h3><p>Normalize once to OCSF/ACS (473 fields); route the same events, detections and findings to Sentinel, Splunk, any SIEM, Event Hub, or LakeVilla. Pick destinations per-cost, not per-capability.</p></article>
+<article class="vp"><h3>Retroactive hunts without rehydration</h3><p>Full-fidelity telemetry lives in LakeVilla, always query-ready; replay a new IOC through live detections across 90+ days to find historical victims — no SIEM archive rehydration cost.</p></article>
+<article class="vp"><h3>Microsoft is validating the model</h3><p>Microsoft&#x27;s own moves — Auxiliary/Basic logs tiers, the Sentinel data lake, and Defender XDR correlation — validate cheap tiered storage and pre-SIEM curation. Abstract does it upstream and vendor-agnostic, so the savings and the detections travel with you across SIEMs, not just within one.</p></article></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>Abstract's <span class="grad-text">own</span> published claims</h2>
+      <p><span class="first-party">First-party / self-reported</span> — Abstract Security's public positioning, quoted for alignment (not independently verified).</p></div>
+    <div class="claim-grid"><article class="claim"><div class="cl-n">70–80%</div><div class="cl-l">average data-volume reduction Abstract reports<sup class="ref">11</sup></div>
+      <p class="cl-s">By filtering on “actionable relevance and risk,” not blindly dropping events.</p></article>
+<article class="claim"><div class="cl-n">10–15%</div><div class="cl-l">of security telemetry actually drives detection &amp; real-time analytics (Abstract)<sup class="ref">12</sup></div>
+      <p class="cl-s">The other ~85–90% can live in low-cost, query-ready cold storage (LakeVilla) — no rehydration, no retrieval fees.</p></article>
+<article class="claim"><div class="cl-n">“data volume, not data value”</div><div class="cl-l">Abstract&#x27;s own SIEM-cost framing<sup class="ref">13</sup></div>
+      <p class="cl-s">“Your SIEM bill is driven by data volume, not data value.” — the case for aligning spend with reduction.</p></article></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>What lands on <span class="grad-text">day one</span></h2>
+      <p>Abstract ships pre-built, version-controlled content — you inherit source value immediately, instead of building it through PS-heavy onboarding billed against an ingest meter.</p></div>
+    <div class="pf-grid"><div class="pf"><div class="pf-n grad-text">141</div><div class="pf-l">supported source content packs</div></div>
+<div class="pf"><div class="pf-n grad-text">1,153</div><div class="pf-l">curated, MITRE-mapped detections (maintained as content)</div></div>
+<div class="pf"><div class="pf-n grad-text">591</div><div class="pf-l">streaming pipeline functions (shape + reduce in flight)</div></div>
+<div class="pf"><div class="pf-n grad-text">27</div><div class="pf-l">pre-built analytic views / dashboards</div></div>
+<div class="pf"><div class="pf-n grad-text">~34.5%</div><div class="pf-l">avg data reduction per pack (range 10–75%, n=105)</div></div>
+<div class="pf"><div class="pf-n grad-text">13 / 13</div><div class="pf-l">MITRE ATT&amp;CK tactics covered out of the box</div></div></div>
+    <p class="pf-src">Source: Abstract content-packs portfolio — internal SE Source Value Guide (Jun 2026)</p>
+  </div>
+</section>
+
+<section id="tco">
+  <div class="wrap">
+    <div class="sec-head"><h2>Live <span class="grad-text">TCO &amp; ROI</span> calculator</h2>
+      <p>Drag the inputs to your environment. Modeled on <b>current Microsoft list pricing</b> (East US, Jul 2026) — shown two ways: a realistic <b>commitment-tier</b> case and an aggressive <b>pay-as-you-go</b> case. Reduced data is <b>retained</b>, not deleted. Nothing leaves this page.</p></div>
+    <div class="calc">
+      <form class="controls" id="calc" aria-label="TCO inputs">
+        <div class="ctl-group">Sentinel &amp; data</div>
+        <div class="field"><label for="gb">Daily ingest <b><span id="gb_v">200</span> GB/day</b></label>
+          <input type="range" id="gb" min="10" max="5000" step="10" value="200"></div>
+        <div class="field"><label for="red">Abstract data reduction <b><span id="red_v">65</span>%</b></label>
+          <input type="range" id="red" min="10" max="90" step="1" value="65"><span class="hint">Abstract reports 70–80%; 65% is a conservative blended default.</span></div>
+        <div class="field"><label for="ret">Retention requirement <b><span id="ret_v">12</span> mo</b></label>
+          <input type="range" id="ret" min="3" max="84" step="1" value="12"><span class="hint">First 90 days hot are free; set to 3 for an ingest-only comparison.</span></div>
+        <div class="field"><label for="acost">Abstract platform cost <b><span id="acost_v">30</span>% of Sentinel spend</b></label>
+          <input type="range" id="acost" min="5" max="70" step="1" value="30"><span class="hint">Enter your Abstract quote as a % of current Sentinel spend (≈ <span id="acost_dollar">$0</span>/yr).</span></div>
+        <div class="ctl-group">Analyst / operational (soft)</div>
+        <div class="field"><label for="alerts">Alerts / day <b><span id="alerts_v">500</span></b></label>
+          <input type="range" id="alerts" min="0" max="5000" step="10" value="500"></div>
+        <div class="field"><label for="fp">False positives among alerts <b><span id="fp_v">60</span>%</b></label>
+          <input type="range" id="fp" min="0" max="90" step="1" value="60"></div>
+        <div class="field"><label for="fpr">FP toil Abstract removes <b><span id="fpr_v">55</span>%</b></label>
+          <input type="range" id="fpr" min="0" max="90" step="1" value="55"><span class="hint">Upstream collapse + auto-triage — a share of FP handling, not all of it.</span></div>
+        <div class="field"><label for="min">Min. per FP disposition <b><span id="min_v">10</span></b></label>
+          <input type="range" id="min" min="1" max="30" step="1" value="10"></div>
+        <div class="field"><label for="rate">Analyst cost <b>$<span id="rate_v">75</span>/hr</b></label>
+          <input type="range" id="rate" min="30" max="200" step="5" value="75"></div>
+      </form>
+      <div class="results">
+        <div class="stat hero-stat"><div class="k">Net 3-year infrastructure savings with Abstract</div>
+          <div class="v grad-text" id="r_3yr">$0</div>
+          <div class="sub">realistic (commitment) → aggressive (PAYG) · net of Abstract cost · yr-1 ramped to 75%</div></div>
+        <div class="scen-grid">
+          <div class="scen scen-com"><div class="scen-h">Commitment tier <span class="scen-tag">realistic</span></div>
+            <div class="scen-rate">eff. $<span id="com_rate">0</span>/GB<span class="scen-rate-s">at this volume</span></div>
+            <div class="scen-line"><span>Net infra savings / yr</span><b id="com_net">$0</b></div>
+            <div class="scen-line"><span>Reduction in Sentinel infra</span><b id="com_pct">0%</b></div>
+            <div class="scen-line"><span>Abstract pays for itself in</span><b id="com_pay">0 mo</b></div>
+            <div class="scen-line"><span>3-yr net ROI</span><b id="com_roi">0×</b></div>
+          </div>
+          <div class="scen scen-payg"><div class="scen-h">Pay-as-you-go <span class="scen-tag alt">aggressive</span></div>
+            <div class="scen-rate">$4.30/GB<span class="scen-rate-s">East US PAYG</span></div>
+            <div class="scen-line"><span>Net infra savings / yr</span><b id="payg_net">$0</b></div>
+            <div class="scen-line"><span>Reduction in Sentinel infra</span><b id="payg_pct">0%</b></div>
+            <div class="scen-line"><span>Abstract pays for itself in</span><b id="payg_pay">0 mo</b></div>
+            <div class="scen-line"><span>3-yr net ROI</span><b id="payg_roi">0×</b></div>
+          </div>
+        </div>
+        <div class="bars">
+          <div class="bars-cap">Annual infrastructure cost — commitment-tier case (ingest + retention)</div>
+          <div class="bar-row"><span class="lbl"><span class="chip sen">Sentinel only</span></span>
+            <div class="bar-track"><div class="bar-fill sen" id="bar_sen" style="width:100%"></div></div>
+            <span class="amt" id="amt_sen">$0</span></div>
+          <div class="bar-row"><span class="lbl"><span class="chip abs">Abstract + Sentinel</span></span>
+            <div class="bar-track"><div class="bar-fill abs" id="bar_abs" style="width:40%"></div></div>
+            <span class="amt" id="amt_abs">$0</span></div>
+          <div class="bars-note">Abstract bar = reduced hot ingest + LakeVilla/lake-tier retention of the rest + Abstract platform fee.</div>
+        </div>
+        <div class="stat"><div class="k">Sentinel infra today (commitment)</div><div class="v" id="r_current">$0</div><div class="sub">ingest + retention beyond 90 days</div></div>
+        <div class="stat"><div class="k">With Abstract (all-in)</div><div class="v" id="r_with">$0</div><div class="sub">hot + lake + Abstract fee</div></div>
+        <div class="stat soft"><div class="k">Operational upside / yr</div><div class="v grad-text" id="r_labor">$0</div>
+          <div class="sub"><span id="r_fte">0</span> FTE-equiv · <span id="r_hours">0</span> hrs back — <b>separate from hard ROI</b></div></div>
+        <div class="stat"><div class="k">Full fidelity, hunt-ready</div><div class="v">100%</div><div class="sub">retained in lake tier, no rehydration</div></div>
+      </div>
+    </div>
+    <details class="assump"><summary>Model assumptions &amp; rates (Microsoft list pricing, East US, Jul 2026)</summary>
+      <ul>
+        <li><b>Analytics — pay-as-you-go:</b> $4.30/GB (East US simplified tier).</li>
+        <li><b>Analytics — commitment tier (effective $/GB):</b> 100GB $2.96 · 200GB $2.74 · 300GB $2.67 · 400GB $2.59 · 500GB $2.53 · 1TB $2.48 · 5TB $2.31 (combined Log Analytics + Sentinel; interpolated between tiers). Below 100 GB/day no commitment discount applies.</li>
+        <li><b>Hot interactive retention beyond 90 days:</b> ~$0.10/GB-month (Azure Monitor standard).</li>
+        <li><b>Data lake / LakeVilla-equivalent tier:</b> $0.05/GB ingest + $0.026/GB-month storage at a 6:1 compression ratio (≈ $0.0043 per raw GB-month).</li>
+        <li><b>Model:</b> kept data (1 − reduction) stays in hot Analytics; reduced data is <b>routed to the lake tier, not deleted</b>, so it still carries ingest + storage cost. Abstract platform fee = your entered % of current Sentinel spend. Year 1 realizes 75% of steady-state (deployment ramp) plus a one-month onboarding cost; years 2–3 full. Payback = Abstract fee ÷ monthly gross infra savings. 3-yr net ROI = 3-yr net savings ÷ 3-yr Abstract cost.</li>
+        <li><b>Operational upside is reported separately</b> and excluded from the hard-dollar ROI headline: FP toil removed = alerts × FP% × (share Abstract removes) × minutes × analyst rate. Conservative by design.</li>
+        <li>All figures are modeled estimates for discussion, not a quote. Regional rates vary ($4.30 East US → $5.59 West US). Validate against your Azure bill and an Abstract quote.</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>Capability <span class="grad-text">gap analysis</span></h2>
+      <p>SIEM (<span style="color:var(--blue)">Sentinel</span>) vs. Security Data Pipeline (<span style="color:var(--teal)">Abstract</span>). Different layers — complementary, not a like-for-like swap.</p></div>
+    <div class="table-scroll"><table class="gap">
+      <thead><tr><th>Dimension</th><th><span class="chip sen col-tag">Microsoft Sentinel</span></th>
+      <th><span class="chip abs col-tag">Abstract Security</span></th><th>Why it matters</th></tr></thead>
+      <tbody><tr>
+      <th scope="row">Primary role</th>
+      <td class="sen">Cloud-native SIEM/SOAR — detect, investigate, respond over *ingested* data.</td>
+      <td class="abs">Security data pipeline — normalize, enrich, correlate, detect and route *before* ingest (shift-left).</td>
+      <td class="why">They occupy different layers: a pipeline in front of a SIEM is complementary, not a like-for-like swap.</td>
+    </tr>
+<tr>
+      <th scope="row">Cost model</th>
+      <td class="sen">Priced per GB ingested + retention; cost scales with raw volume. Analytics ~$4.30/GB PAYG (East US); commitment tiers land ~$2.31–$2.96/GB effective (~30–46% off PAYG). Real bills sit at the tier rate, not PAYG.</td>
+      <td class="abs">Reduce/aggregate/route before ingest; Abstract reports 70–80% volume reduction (demo here: ~34:1 aggregation, ~99.6% routed off the SIEM).</td>
+      <td class="why">The SIEM bill is a volume bill. Cutting volume at the source is the largest, most durable cost lever.</td>
+    </tr>
+<tr>
+      <th scope="row">Volume handling</th>
+      <td class="sen">Ingests what you send; limited native dedup/aggregation.</td>
+      <td class="abs">Aggregation, dedupe, filtering and down-sampling in-stream (aggregation_count on every record).</td>
+      <td class="why">Most SIEM volume is repetitive/benign; collapsing it upstream is pure savings + less analyst noise.</td>
+    </tr>
+<tr>
+      <th scope="row">Storage &amp; retention</th>
+      <td class="sen">Tiered: Analytics ~$4.30/GB PAYG (~$2.74 at a 200GB commitment), Basic ~$1.00/GB, Auxiliary $0.15/GB ingest + $0.02/GB-mo, hot retention beyond 90 days ~$0.10/GB-mo, and the data lake ~$0.05/GB ingest + $0.026/GB-mo (6:1 compression) — but tiering + retention are managed inside the SIEM, per source.</td>
+      <td class="abs">LakeVilla full-fidelity cold tier, always query-ready; replay with no rehydration, decided upstream and independent of any SIEM.</td>
+      <td class="why">Keep everything affordably and still hunt it retroactively — and your tiering decision isn&#x27;t locked to one SIEM&#x27;s pricing.</td>
+    </tr>
+<tr>
+      <th scope="row">Normalization</th>
+      <td class="sen">ASIM, applied post-ingest with per-source parsers.</td>
+      <td class="abs">OCSF + Abstract Common Schema (473 fields), normalized once in-stream before landing.</td>
+      <td class="why">Normalize-once means the same detections/queries work across any vendor&#x27;s data.</td>
+    </tr>
+<tr>
+      <th scope="row">Detections</th>
+      <td class="sen">Scheduled analytics rules over already-ingested data.</td>
+      <td class="abs">Six shift-left in-stream detections at ~0.5s (verdict fusion, IOC blast-match, beaconing, ATO↔C2, lateral/exfil, campaign clustering).</td>
+      <td class="why">Detecting before ingest shortens time-to-detect and avoids paying to store what you were going to alert on anyway.</td>
+    </tr>
+<tr>
+      <th scope="row">Enrichment</th>
+      <td class="sen">TI/enrichment via connectors + playbooks, post-ingest.</td>
+      <td class="abs">5-step in-stream enrichment (identity/asset, geo/ASN, TI/AIG, 29+ OSINT adapters, verdict fusion) — 100% coverage.</td>
+      <td class="why">Enriched-at-landing data means higher-fidelity detections and less swivel-chair during triage.</td>
+    </tr>
+<tr>
+      <th scope="row">Identity &amp; entity model</th>
+      <td class="sen">UEBA add-on; entities scoped per incident.</td>
+      <td class="abs">Cross-source identity/entity graph (10 entity types) with cumulative risk scoring across products.</td>
+      <td class="why">Cross-product identity risk is a signal a per-incident SIEM view rarely assembles on its own.</td>
+    </tr>
+<tr>
+      <th scope="row">AI SOC</th>
+      <td class="sen">Security Copilot — a prompt-based assistant (add-on) layered on the SIEM.</td>
+      <td class="abs">ASTRO — an AI security engineer embedded in the platform — auto-triages, investigates and tunes detections over pipeline data + case context (Verdict, IP Threat Intelligence, and more).</td>
+      <td class="why">Auto-triage + recommended actions reach the analyst with the case, not after they start digging.</td>
+    </tr>
+<tr>
+      <th scope="row">Insights vs. raw alerts</th>
+      <td class="sen">Raw alerts → incidents; analysts triage the noise.</td>
+      <td class="abs">Correlated, verdicted insights (finding + context); noise collapsed upstream.</td>
+      <td class="why">Fewer, richer, decision-ready items lowers alert fatigue and mean-time-to-decision.</td>
+    </tr>
+<tr>
+      <th scope="row">Noise tuning</th>
+      <td class="sen">Tune rules post-ingest — you still pay to ingest the noise.</td>
+      <td class="abs">rule-tuning-filters down-sample the pattern *upstream* (tune-at-source loop).</td>
+      <td class="why">A false-positive disposition permanently lowers *future* ingest AND future incidents — not just this one.</td>
+    </tr>
+<tr>
+      <th scope="row">Source &amp; destination agnostic</th>
+      <td class="sen">Microsoft-centric; strongest with Microsoft sources.</td>
+      <td class="abs">OCSF pipeline routes the same model to Sentinel, Splunk, any SIEM, Event Hub, LakeVilla.</td>
+      <td class="why">Heterogeneous / M&amp;A estates get one model; destinations become a per-cost choice.</td>
+    </tr>
+<tr>
+      <th scope="row">Vendor lock-in</th>
+      <td class="sen">Data + detections live in the SIEM; switching = re-onboarding sources and rewriting content.</td>
+      <td class="abs">Pipeline decouples sources from the SIEM; portable normalization + detections; SIEM is a swappable destination.</td>
+      <td class="why">Decoupling protects negotiating leverage and makes future platform changes low-risk.</td>
+    </tr>
+<tr>
+      <th scope="row">SOAR &amp; automation cost</th>
+      <td class="sen">Logic Apps playbooks bill per action; automation volume scales with incident/alert volume.</td>
+      <td class="abs">Fewer, higher-fidelity insights + upstream tune-at-source mean fewer incidents to automate against.</td>
+      <td class="why">Cutting incident volume upstream lowers both SIEM ingest AND downstream automation spend.</td>
+    </tr>
+<tr>
+      <th scope="row">Multi-SIEM / multi-cloud</th>
+      <td class="sen">One workspace is the destination; multi-SIEM or migration means re-onboarding sources.</td>
+      <td class="abs">Fan out the same normalized events + findings simultaneously — Abstract lists Sentinel, Splunk, AWS Security Lake, CrowdStrike NG-SIEM, Elastic, Google SecOps, Cortex XSIAM and SentinelOne as destinations.</td>
+      <td class="why">Run a bake-off, support M&amp;A/mixed estates, or migrate with no source re-onboarding.</td>
+    </tr>
+<tr>
+      <th scope="row">Compliance &amp; PII</th>
+      <td class="sen">Masking/redaction configured post-ingest or via connectors; sensitive data can land before it&#x27;s handled.</td>
+      <td class="abs">Abstract states PII is detected and redacted in-stream (GDPR/HIPAA/PCI) before data reaches any destination.</td>
+      <td class="why">Sensitive fields never hit the SIEM in the clear — compliance handled upstream, not after landing.</td>
+    </tr>
+<tr>
+      <th scope="row">Onboarding &amp; upkeep</th>
+      <td class="sen">Per-source connectors + ASIM parser upkeep as sources and schemas change.</td>
+      <td class="abs">Normalize once to OCSF/ACS upstream; new sources map once and every downstream query still works.</td>
+      <td class="why">Less parser/rule maintenance as the estate changes — engineering time back to the SOC.</td>
+    </tr>
+<tr>
+      <th scope="row">Deployment relationship</th>
+      <td class="sen">Terminal destination for data.</td>
+      <td class="abs">Bidirectional: feeds Sentinel (destination) AND reads back via API (verdict, search, tune-at-source).</td>
+      <td class="why">Transparent two-way integration — augment today, rebalance later, on your timeline.</td>
+    </tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>Better <span style="color:var(--blue)">together</span> — or better <span style="color:var(--teal)">without</span></h2>
+      <p>Two honest paths. The right one depends on your estate, cost pressure, and lock-in tolerance.</p></div>
+    <div class="paths">
+      <div class="path tog"><h3>Lean “better together” when…</h3><ul><li>Microsoft-heavy estate — Defender XDR, Entra, M365 already correlate in Sentinel.</li><li>Compliance, reporting and IR runbooks are standardized in Sentinel today.</li><li>The team is fluent in KQL and Sentinel content and wants uplift, not change.</li><li>Goal is higher fidelity + AI-SOC (ASTRO) + cost relief with zero disruption.</li><li>You want a fast, reversible win to prove value before any bigger decision.</li></ul></div>
+      <div class="path wo"><h3>Lean “better without / rebalance” when…</h3><ul><li>SIEM spend is the pain — a volume-driven bill growing faster than the security value.</li><li>Multi-SIEM / multi-cloud / vendor-neutral mandate; avoiding lock-in is strategic.</li><li>Retention-heavy (long compliance windows) — hot-tier-everything doesn&#x27;t scale.</li><li>Noisy high-volume sources (firewall, DNS, proxy, flow) dominate ingestion.</li><li>Migrating off a legacy or over-priced SIEM — you want a durable pipeline layer first.</li></ul></div>
+    </div>
+    <div class="table-scroll"><table class="uc">
+      <thead><tr><th>Use case</th><th>Recommended posture</th><th>Why</th></tr></thead>
+      <tbody><tr><th scope="row">Microsoft-centric SOC, Sentinel is home</th>
+      <td><span class="posture pt-tog">Better together</span></td>
+      <td class="why">Route Abstract findings + context into Sentinel; add ASTRO verdicts and tune-at-source. Keep everything you have, raise fidelity, trim noise.</td></tr>
+<tr><th scope="row">Runaway SIEM ingest cost</th>
+      <td><span class="posture pt-hyb">Hybrid / optimize</span></td>
+      <td class="why">Send convictions + context to Sentinel, full fidelity to LakeVilla. Volume-based bill drops sharply (demo: ~99.6%) with no loss of hunt coverage.</td></tr>
+<tr><th scope="row">Multi-SIEM / M&amp;A / vendor-neutral</th>
+      <td><span class="posture pt-reb">Better without / rebalance</span></td>
+      <td class="why">Normalize once, fan out to Sentinel, Splunk, any SIEM simultaneously. Run a bake-off or consolidate without re-onboarding sources.</td></tr>
+<tr><th scope="row">Long-retention compliance</th>
+      <td><span class="posture pt-hyb">Hybrid / optimize</span></td>
+      <td class="why">Keep multi-year full-fidelity in an always-queryable cold tier with replay; send only what the SIEM needs to the hot tier.</td></tr>
+<tr><th scope="row">Legacy/over-priced SIEM migration</th>
+      <td><span class="posture pt-reb">Better without / rebalance</span></td>
+      <td class="why">Stand up the pipeline first; detections + normalization live in Abstract, so the SIEM becomes a swappable, per-cost destination and migration is low-risk.</td></tr>
+<tr><th scope="row">Building an AI/agentic SOC</th>
+      <td><span class="posture pt-tog">Better together</span></td>
+      <td class="why">Feed agents decision-ready insights + an entity graph via API/MCP; Sentinel + Copilot and ASTRO operate on signal, not raw log soup.</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>Augment → optimize → <span class="grad-text">rebalance</span></h2>
+      <p>A low-risk path. Start by adding value to Sentinel today; decide augment-vs-replace later, on real numbers.</p></div>
+    <ol class="ladder"><li><span class="stage-n">1</span><div><h4>Stage 1</h4><p>Keep Sentinel exactly as-is. Route Abstract findings + enriched context in via the destination connector; pull insights/verdicts back via the API connector. Immediate fidelity + AI-SOC uplift, zero disruption.</p></div></li>
+<li><span class="stage-n">2</span><div><h4>Stage 2</h4><p>Send only convictions + supporting context to Sentinel; route full-fidelity telemetry to LakeVilla. Volume-based ingest drops sharply (demo: ~99.6%) while retention/hunt coverage stays complete.</p></div></li>
+<li><span class="stage-n">3</span><div><h4>Stage 3</h4><p>With normalization + detections living in the pipeline, the SIEM becomes a swappable, per-cost destination. Evaluate augment-vs-replace on real numbers — using the TCO panels in this solution.</p></div></li></ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>Future-<span class="grad-text">proof</span></h2>
+      <p>Why this ages well — data gravity, AI-readiness, and Microsoft's own direction.</p></div>
+    <div class="vp-grid"><article class="vp"><h3>Own your data gravity</h3><p>Normalizing to OCSF upstream means your detections, enrichment and history aren&#x27;t trapped in one SIEM&#x27;s schema. When the market shifts — new SIEM, new tier, new owner — your security logic travels with you instead of being rewritten.</p></article>
+<article class="vp"><h3>AI-ready by construction</h3><p>Agentic SOC needs clean, correlated, enriched, entity-resolved data — not raw log soup. Abstract lands decision-ready insights + a queryable entity graph, and exposes them to agents via API/MCP, so ASTRO and your own AI stack operate on signal, not noise.</p></article>
+<article class="vp"><h3>Ride Microsoft&#x27;s own roadmap without the lock-in</h3><p>Microsoft&#x27;s own Sentinel data lake (GA Oct 2025) and Basic/Auxiliary tiers price cheap storage at ~$0.05/GB vs. ~$4.30/GB for Analytics — proof of the pre-SIEM-curation thesis Abstract already delivers. Abstract lets you apply that economics upstream and across every SIEM you run, not just inside one.</p></article>
+<article class="vp"><h3>Retention economics that scale with regulation</h3><p>As retention mandates grow, hot-tier-everything doesn&#x27;t scale. Full-fidelity in an always-queryable cold tier (LakeVilla) with replay lets you satisfy multi-year retention and still hunt it — without multiplying SIEM ingest.</p></article>
+<article class="vp"><h3>One model across a consolidating estate</h3><p>M&amp;A, multi-cloud and tool consolidation are constant. A vendor- and destination-agnostic pipeline lets you absorb new sources and route to new destinations without re-onboarding or rewriting content each time.</p></article></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><h2>Positioning <span class="grad-text">POV</span></h2>
+      <p><span class="pov-tag">Our point of view — not a benchmark.</span> The strategic case, stated plainly.</p></div>
+    <div class="pos-grid"><article class="pos"><h3>Speed vs. scale</h3><p>Abstract is pipeline-native and focused — one hard problem, solved deeply, shipped fast. A hyperscaler bundles the SIEM into a vast platform and ships on platform time; a focused vendor iterates on pipeline economics and detections at startup speed.</p></article>
+<article class="pos"><h3>Incentive alignment</h3><p>A per-GB SIEM earns more the more you ingest — the opposite of your cost goal. A pipeline earns by making your data smaller and smarter. Align spend with a vendor whose incentive is your reduction, not your volume.</p></article>
+<article class="pos"><h3>Neutral by design</h3><p>Abstract is Switzerland for security data — it doesn&#x27;t need you all-in on one cloud or SIEM. That neutrality is the hedge: detections, normalization and history stay portable however the platform market shifts.</p></article>
+<article class="pos"><h3>Focused roadmap</h3><p>Pipeline, cost, fidelity and AI-SOC are the whole roadmap here — not line items competing with hundreds of other platform priorities. Requests land with the team that owns the problem end to end.</p></article>
+<article class="pos"><h3>Adopt the future without betting the SOC</h3><p>Because it&#x27;s additive and reversible, put Abstract in front of Sentinel today and decide augment-vs-replace later — moving as fast as your risk tolerance allows, not as fast as a migration forces.</p></article></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="sources"><h4>Sources — cited industry &amp; first-party research</h4><ol><li>[1] CardinalOps, 5th Annual State of SIEM Detection Risk, 2025 — <a href="https://www.prnewswire.com/news-releases/enterprise-siems-miss-79-of-mitre-attck-techniques-used-by-adversaries-according-to-cardinalops-5th-annual-report-302473779.html" target="_blank" rel="noopener">https://www.prnewswire.com/news-releases/enterprise-siems-miss-79-of-mitre-attck-techniques-used-by-adversaries-according-to-cardinalops-5th-annual-report-302473779.html</a></li><li>[2] Vectra AI, 2023 State of Threat Detection (n=2,000 analysts) — <a href="https://www.vectra.ai/resources/2023-state-of-threat-detection" target="_blank" rel="noopener">https://www.vectra.ai/resources/2023-state-of-threat-detection</a></li><li>[3] Vectra AI, 2023 State of Threat Detection — <a href="https://www.vectra.ai/resources/2023-state-of-threat-detection" target="_blank" rel="noopener">https://www.vectra.ai/resources/2023-state-of-threat-detection</a></li><li>[4] Vectra AI, 2023 State of Threat Detection — <a href="https://www.vectra.ai/resources/2023-state-of-threat-detection" target="_blank" rel="noopener">https://www.vectra.ai/resources/2023-state-of-threat-detection</a></li><li>[5] Mandiant / Google Cloud, M-Trends 2026 (2025 data) — <a href="https://cloud.google.com/blog/topics/threat-intelligence/m-trends-2026" target="_blank" rel="noopener">https://cloud.google.com/blog/topics/threat-intelligence/m-trends-2026</a></li><li>[6] CrowdStrike, 2026 Global Threat Report — <a href="https://www.crowdstrike.com/en-us/global-threat-report/" target="_blank" rel="noopener">https://www.crowdstrike.com/en-us/global-threat-report/</a></li><li>[7] IBM, Cost of a Data Breach 2025 — <a href="https://www.ibm.com/reports/data-breach" target="_blank" rel="noopener">https://www.ibm.com/reports/data-breach</a></li><li>[8] ISC2, 2024 Cybersecurity Workforce Study (latest published gap figure) — <a href="https://www.isc2.org/Insights/2024/09/ISC2-Publishes-2024-Cybersecurity-Workforce-Study-First-Look" target="_blank" rel="noopener">https://www.isc2.org/Insights/2024/09/ISC2-Publishes-2024-Cybersecurity-Workforce-Study-First-Look</a></li><li>[9] Tines, Voice of the SOC Analyst 2022 — <a href="https://www.tines.com/reports/voice-of-the-soc-analyst/" target="_blank" rel="noopener">https://www.tines.com/reports/voice-of-the-soc-analyst/</a></li><li>[10] Tines, Voice of the SOC 2023 — <a href="https://www.tines.com/reports/voice-of-the-soc-2023/" target="_blank" rel="noopener">https://www.tines.com/reports/voice-of-the-soc-2023/</a></li><li>[11] Abstract Security — Reduce Data Volume &amp; Costs — <a href="https://www.abstract.security/use-cases/reduce-data-volume-costs" target="_blank" rel="noopener">https://www.abstract.security/use-cases/reduce-data-volume-costs</a></li><li>[12] Abstract Security — Introducing LakeVilla — <a href="https://www.abstract.security/blog/introducing-abstract-lakevilla-pipeline-powered-analyst-ready-and-efficient-storage" target="_blank" rel="noopener">https://www.abstract.security/blog/introducing-abstract-lakevilla-pipeline-powered-analyst-ready-and-efficient-storage</a></li><li>[13] Abstract Security — Reduce Data Volume &amp; Costs — <a href="https://www.abstract.security/use-cases/reduce-data-volume-costs" target="_blank" rel="noopener">https://www.abstract.security/use-cases/reduce-data-volume-costs</a></li><li>[14] Microsoft Sentinel pricing (Analytics PAYG/commitment tiers, data lake, retention) — <a href="https://azure.microsoft.com/pricing/details/microsoft-sentinel/" target="_blank" rel="noopener">https://azure.microsoft.com/pricing/details/microsoft-sentinel/</a></li><li>[15] Microsoft Learn — Plan costs and understand Microsoft Sentinel pricing &amp; billing (commitment tiers, data lake 6:1 compression, retention) — <a href="https://learn.microsoft.com/en-us/azure/sentinel/billing" target="_blank" rel="noopener">https://learn.microsoft.com/en-us/azure/sentinel/billing</a></li></ol>
+      <p class="disc" style="margin-top:12px">TCO/ROI calculator uses Microsoft list pricing (East US, retrieved Jul 2026): Analytics $4.30/GB PAYG; commitment-tier effective rates $2.31–$2.96/GB; hot retention ~$0.10/GB-mo beyond the free 90 days; data lake $0.05/GB ingest + $0.026/GB-mo at 6:1 compression. Rates change and vary by region — re-verify against Azure's current pricing page.</p></div>
+    <div class="validate"><h4>Validate before external claims</h4><ul><li>Insights list API endpoint (the pull connector path is parameterized; confirm against your OpenAPI spec).</li><li>LakeVilla replay-through-live-detections semantics and retention limits.</li><li>Detection-as-code / Sigma authoring format (not documented in this repo).</li><li>Stateful cross-stream correlation window + persistent entity store durability.</li><li>Licensing, quotas, and Azure Government parity.</li></ul></div>
+    <p class="disc">The TCO/ROI calculator is modeled from your inputs against Microsoft's published list pricing (sourced above); it is an estimate for discussion, not a quote — Abstract's platform fee is entered by you as a % of current Sentinel spend, not a list price. Other $/% figures are demo-measured or modeled and labeled as such, not vendor benchmarks. Capability statements draw on the Abstract solution content in this repository plus well-known Microsoft Sentinel product facts. Product capabilities and pricing tiers on both sides change — validate against your environment and each vendor&#x27;s current docs before external use.</p>
+    <p class="disc">Abstract Security × Microsoft Sentinel · generated from the solution's integration profile.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var fmt = new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
+  function money(n){ return '$'+fmt.format(Math.round(n)); }
+  // --- Microsoft list rates, East US, Jul 2026 (see assumptions block) ---
+  var PAYG=4.30, RET_HOT=0.10, LAKE_INGEST=0.05, LAKE_STORE=0.026, COMPRESS=6;
+  var FREE_MO=3, RAMP1=0.75, ONBOARD_MO=1;
+  // Analytics commitment effective $/GB by daily volume (interpolated between published tiers)
+  var TIERS=[[100,2.96],[200,2.74],[300,2.67],[400,2.59],[500,2.53],[1000,2.48],[5000,2.31]];
+  function commitRate(gb){
+    if(gb<100) return PAYG;                 // no commitment discount below 100 GB/day
+    if(gb>=5000) return 2.31;
+    for(var i=0;i<TIERS.length-1;i++){
+      var a=TIERS[i], b=TIERS[i+1];
+      if(gb>=a[0] && gb<=b[0]) return a[1]+(b[1]-a[1])*(gb-a[0])/(b[0]-a[0]);
+    }
+    return 2.96;
+  }
+  // Annual infra cost (ingest + retention) for a scenario at analytics rate `rate`
+  function infra(gb, red, retMo, rate){
+    var keep=1-red, retBeyond=Math.max(retMo-FREE_MO,0);
+    var lakePerRawMo=LAKE_STORE/COMPRESS;   // storage $/raw-GB-month after 6:1 compression
+    var base = gb*365*rate                                  // hot ingest, all data
+             + gb*30*retBeyond*RET_HOT*12;                  // hot retention beyond 90 days, all data
+    var withA = gb*keep*365*rate                            // reduced hot ingest
+              + gb*keep*30*retBeyond*RET_HOT*12             // hot retention on kept data
+              + gb*red*365*LAKE_INGEST                      // lake ingest of the reduced remainder
+              + gb*red*30*retMo*lakePerRawMo*12;            // lake storage of the remainder (full window)
+    return {base:base, withA:withA};
+  }
+  var ids=['gb','red','ret','acost','alerts','fp','fpr','min','rate'];
+  var el={}; ids.forEach(function(id){ el[id]=document.getElementById(id); });
+  function calc(){
+    var gb=+el.gb.value, red=+el.red.value/100, retMo=+el.ret.value, acost=+el.acost.value/100,
+        alerts=+el.alerts.value, fp=+el.fp.value/100, fpr=+el.fpr.value/100, min=+el.min.value, rate=+el.rate.value;
+    gb_v.textContent=fmt.format(gb); red_v.textContent=Math.round(red*100); ret_v.textContent=retMo;
+    acost_v.textContent=Math.round(acost*100);
+    alerts_v.textContent=fmt.format(alerts); fp_v.textContent=Math.round(fp*100);
+    fpr_v.textContent=Math.round(fpr*100); min_v.textContent=min; rate_v.textContent=rate;
+
+    var cRate=commitRate(gb);
+    // Abstract fee is anchored to the realistic (commitment) baseline spend
+    var comBase=infra(gb,red,retMo,cRate), paygBase=infra(gb,red,retMo,PAYG);
+    var abstractFee=comBase.base*acost;
+    acost_dollar.textContent=money(abstractFee);
+
+    function model(x, feeShown){
+      var infraSave=x.base-x.withA;                 // gross infra savings before Abstract fee
+      var allIn=x.withA+abstractFee;                // total spend with Abstract
+      var netYr=x.base-allIn;                        // net annual savings after Abstract fee
+      var onboard=abstractFee*ONBOARD_MO/12;
+      var net3=infraSave*(RAMP1+2) - abstractFee*3 - onboard;   // yr1 ramped, yrs 2-3 full
+      var cost3=abstractFee*3+onboard;
+      var roi=cost3>0 ? net3/cost3 : 0;
+      var payback=infraSave>0 ? abstractFee/(infraSave/12) : Infinity;   // months to cover the fee
+      var pct=x.base>0 ? 100*(x.base-allIn)/x.base : 0;
+      return {infraSave:infraSave, allIn:allIn, netYr:netYr, net3:net3, roi:roi, payback:payback, pct:pct};
+    }
+    var com=model(comBase), payg=model(paygBase);
+
+    // hero: net 3-yr range, realistic -> aggressive
+    r_3yr.textContent=money(com.net3)+' – '+money(payg.net3);
+
+    com_rate.textContent=cRate.toFixed(2);
+    com_net.textContent=money(com.netYr); com_pct.textContent=Math.round(com.pct)+'%';
+    com_pay.textContent=isFinite(com.payback)?(com.payback<1?'<1 mo':Math.round(com.payback)+' mo'):'—';
+    com_roi.textContent=(com.roi>0?com.roi.toFixed(1):'0')+'×';
+    payg_net.textContent=money(payg.netYr); payg_pct.textContent=Math.round(payg.pct)+'%';
+    payg_pay.textContent=isFinite(payg.payback)?(payg.payback<1?'<1 mo':Math.round(payg.payback)+' mo'):'—';
+    payg_roi.textContent=(payg.roi>0?payg.roi.toFixed(1):'0')+'×';
+
+    // bars = commitment case, baseline vs all-in with Abstract
+    r_current.textContent=money(comBase.base); r_with.textContent=money(com.allIn);
+    amt_sen.textContent=money(comBase.base); amt_abs.textContent=money(com.allIn);
+    bar_abs.style.width=(comBase.base>0?Math.max(4,Math.min(100,100*com.allIn/comBase.base)):100)+'%';
+
+    // operational upside (separate, conservative) — uses commitment analyst rate context only
+    var fpPerYr=alerts*365*fp, hoursSaved=fpPerYr*min/60*fpr, laborSave=hoursSaved*rate;
+    r_labor.textContent=money(laborSave);
+    r_hours.textContent=fmt.format(Math.round(hoursSaved));
+    r_fte.textContent=(hoursSaved/2080).toFixed(1);
+  }
+  ids.forEach(function(id){ el[id].addEventListener('input',calc); });
+  calc();
+})();
+</script>

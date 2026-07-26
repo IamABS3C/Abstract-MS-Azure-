@@ -95,6 +95,11 @@ def _demo_to_acs(e: dict, idx: int) -> dict:
         "benign_auth": ("Okta", "Benign", "authentication", "login"),
     }
     product, vendor, etype, action = catalog.get(t, ("Abstract", "Abstract", t or "event", "observe"))
+    # aggregation_count models Abstract collapsing many raw events into one enriched
+    # record upstream (dedupe/aggregation). High-volume/benign types represent many
+    # raw events; high-signal singletons represent themselves (1).
+    high_volume = {"benign_traffic", "benign_dns", "benign_auth", "pan_traffic", "dns"}
+    agg = (10 + (idx % 50)) if t in high_volume else 1
     acs = {
         "id": f"demo-{idx:05d}", "@timestamp": iso, "type": etype, "action": action,
         "product": product, "vendor": vendor, "severity": sev,
@@ -102,6 +107,10 @@ def _demo_to_acs(e: dict, idx: int) -> dict:
         "source_ipv4": e.get("src_ip", ""),
         "dest_ipv4": e.get("dst") if str(e.get("dst", "")).count(".") == 3 else e.get("resp", ""),
         "risk_score": _sev_to_risk(sev),
+        "aggregation_count": agg,
+        # Abstract resolves an identity for the actor so risk is scored per-identity
+        # across products (drives the identity hunt + cumulative-risk ROI panels).
+        "identity": user or "",
         "message": e.get("query") or e.get("url") or e.get("proc") or f"{t} event",
         "tags": ["demo", "threat-model", t],
     }

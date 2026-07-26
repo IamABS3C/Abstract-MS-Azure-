@@ -67,6 +67,7 @@ EP = {
     "rules":          "/v1/rules",
     "mitre":          "/v3/rules/mitre",
     "insights":       "/v1/insights/",
+    "models":         "/v1/models/",
 }
 
 
@@ -227,6 +228,18 @@ class AbstractClient:
         "POST", "/v1/insights/comments",
         {"insight_nanoid": nanoid, "parent_id": parent_id, "content": text})  # CommentCreate schema
     def get_insight_verdict(self, nanoid):     return self._req("GET", EP["insights"] + nanoid + "/verdict")
+
+    # ── models (data models / identity models — typed field schemas) ─────────────
+    def list_models(self, page_size: int = 200, page: int = 0):
+        return self._req("GET", EP["models"] + "?" + urllib.parse.urlencode({"pageSize": page_size, "page": page}))
+    def get_model(self, nanoid):    return self._req("GET", EP["models"] + str(nanoid))
+    def create_model(self, payload: dict) -> dict:
+        self.sent["models"] = self.sent.get("models", 0) + 1
+        if self.mode == "offline":
+            print("[offline] model:", payload.get("name")); return {"ok": True, "simulated": True}
+        return self._req("POST", EP["models"], payload)
+    def delete_model(self, nanoid):            return self._req("DELETE", EP["models"] + str(nanoid))
+    def run_verdict(self, insight_id: str):    return self._req("POST", "/v1/ase/workflows/verdict", {"insight_id": insight_id})
     def set_insight_verdict(self, nanoid, verdict, **extra):
         return self._req("POST", EP["insights"] + nanoid + "/verdict", {"verdict": verdict, **extra})
     def insight_findings(self, nanoid):        return self._req("GET", EP["insights"] + nanoid + "/findings")
