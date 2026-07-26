@@ -10,10 +10,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --pink:#f8226a; --teal:#01e69d; --bg:#060608; --bg2:#0b0b10;
+    --pink:#FF216B; --mid:#E8005D; --deep:#C2004C;
+    --teal:#01e69d; --amber:#f5c61e; --blue:#2e9bf0;
+    --bg:#060608; --bg2:#0b0b10;
     --panel:#101016; --panel2:#15151d; --line:#24242f; --line2:#33333f;
     --text:#f4f4f7; --muted:#9c9caa; --dim:#6c6c79;
-    --pink-soft:rgba(248,34,106,.14); --teal-soft:rgba(1,230,157,.12);
+    --pink-soft:rgba(255,33,107,.14); --teal-soft:rgba(1,230,157,.12);
     --ease:cubic-bezier(.22,.61,.36,1);
     --display:"Barlow Semi Condensed",system-ui,sans-serif;
     --body:"Barlow",system-ui,sans-serif;
@@ -30,10 +32,11 @@
   a:hover{text-decoration:underline}
   h1,h2,h3{font-family:var(--display); font-weight:700; letter-spacing:.4px; line-height:1.04; margin:0}
   ::selection{background:var(--pink); color:#fff}
+  code{font-family:var(--mono); font-size:.92em; color:var(--teal); background:rgba(1,230,157,.08); padding:1px 6px; border-radius:5px}
 
   /* ---- ambient background layers ---- */
   .bg{position:fixed; inset:0; z-index:-3; background:
-      radial-gradient(1200px 600px at var(--mx,78%) -6%, rgba(248,34,106,.20), transparent 60%),
+      radial-gradient(1200px 600px at var(--mx,78%) -6%, rgba(255,33,107,.20), transparent 60%),
       radial-gradient(900px 520px at 4% 8%, rgba(1,230,157,.13), transparent 55%),
       linear-gradient(180deg,var(--bg),var(--bg2));}
   .grid{position:fixed; inset:0; z-index:-2; opacity:.5;
@@ -51,6 +54,11 @@
       background:rgba(6,6,8,.62); border-bottom:1px solid var(--line);}
   .nav-in{max-width:1140px; margin:0 auto; padding:13px 24px; display:flex; align-items:center; gap:26px}
   .nav-in img{height:30px}
+  .brand{display:inline-flex; align-items:center; gap:10px}
+  .brand:hover{text-decoration:none}
+  .brand img{display:block; border-radius:8px}
+  .wordmark{font-family:var(--display); font-weight:700; font-size:20px; letter-spacing:2px;
+      color:var(--text); line-height:1}
   .nav-links{display:flex; gap:24px; margin-left:auto; font-size:14px; font-weight:500}
   .nav-links a{color:var(--muted)}
   .nav-links a:hover{color:var(--text); text-decoration:none}
@@ -64,8 +72,8 @@
       font-size:15px; padding:13px 22px; border-radius:11px; border:1px solid transparent; cursor:pointer;
       transition:transform .15s var(--ease), box-shadow .25s, background .2s; text-decoration:none}
   .btn:hover{text-decoration:none; transform:translateY(-2px)}
-  .btn-primary{background:linear-gradient(135deg,var(--pink),#ff5e92); color:#fff; box-shadow:0 10px 30px -8px rgba(248,34,106,.6)}
-  .btn-primary:hover{box-shadow:0 16px 44px -8px rgba(248,34,106,.75)}
+  .btn-primary{background:linear-gradient(135deg,var(--pink),#ff5e92); color:#fff; box-shadow:0 10px 30px -8px rgba(255,33,107,.6)}
+  .btn-primary:hover{box-shadow:0 16px 44px -8px rgba(255,33,107,.75)}
   .btn-ghost{border-color:var(--line2); color:var(--text); background:rgba(255,255,255,.02)}
   .btn-ghost:hover{border-color:var(--teal); color:#fff}
 
@@ -74,7 +82,7 @@
 
   /* ---- hero ---- */
   header.hero{padding:78px 0 30px; text-align:center}
-  .hero .logo{height:78px; margin-bottom:26px; filter:drop-shadow(0 8px 30px rgba(248,34,106,.35))}
+  .hero .logo{height:78px; margin-bottom:26px; filter:drop-shadow(0 8px 30px rgba(255,33,107,.35))}
   .hero h1{font-size:clamp(40px,7.5vw,90px); letter-spacing:.5px}
   .hero h1 .g{background:linear-gradient(115deg,var(--pink),var(--teal)); -webkit-background-clip:text; background-clip:text; color:transparent}
   .hero p.lead{max-width:660px; margin:20px auto 0; color:var(--muted); font-size:19px}
@@ -94,7 +102,7 @@
       padding:18px 16px; text-align:center; position:relative; z-index:2}
   .node .lbl{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim)}
   .node .ttl{font-family:var(--display); font-weight:600; font-size:18px; margin-top:5px}
-  .node.core{border-color:var(--pink); box-shadow:0 0 0 1px rgba(248,34,106,.4),0 14px 50px -14px rgba(248,34,106,.55)}
+  .node.core{border-color:var(--pink); box-shadow:0 0 0 1px rgba(255,33,107,.4),0 14px 50px -14px rgba(255,33,107,.55)}
   .node.core .ttl{color:var(--pink)}
   .node.azure .ttl{color:var(--teal)}
   .conduit{position:relative; height:3px; background:linear-gradient(90deg,var(--line2),var(--line2)); border-radius:3px; overflow:visible; margin:0 -2px}
@@ -103,7 +111,7 @@
   .packet{position:absolute; top:50%; width:9px; height:9px; border-radius:50%; transform:translateY(-50%);
       background:var(--teal); box-shadow:0 0 12px var(--teal); }
   .conduit.to-core .packet{background:var(--teal); box-shadow:0 0 12px 2px rgba(1,230,157,.8); animation:flowR 2.4s linear infinite}
-  .conduit.from-core .packet{background:var(--pink); box-shadow:0 0 12px 2px rgba(248,34,106,.8); animation:flowR 2.4s linear infinite}
+  .conduit.from-core .packet{background:var(--pink); box-shadow:0 0 12px 2px rgba(255,33,107,.8); animation:flowR 2.4s linear infinite}
   .conduit .packet:nth-child(2){animation-delay:.8s}
   .conduit .packet:nth-child(3){animation-delay:1.6s}
   @keyframes flowR{0%{left:-4%; opacity:0}10%{opacity:1}90%{opacity:1}100%{left:104%; opacity:0}}
@@ -136,7 +144,7 @@
   .card{border:1px solid var(--line); border-radius:18px; padding:24px; background:linear-gradient(180deg,var(--panel),var(--panel2));
       display:flex; flex-direction:column; transition:border-color .25s, transform .25s; position:relative; overflow:hidden}
   .card::after{content:""; position:absolute; inset:0; border-radius:18px; padding:1px; pointer-events:none;
-      background:linear-gradient(135deg,transparent 40%,rgba(248,34,106,.5));
+      background:linear-gradient(135deg,transparent 40%,rgba(255,33,107,.5));
       -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
       mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
       -webkit-mask-composite:xor; mask-composite:exclude; opacity:0; transition:opacity .25s}
@@ -145,7 +153,7 @@
   .badge{align-self:flex-start; font-family:var(--mono); font-size:10.5px; letter-spacing:1.4px; text-transform:uppercase;
       padding:4px 10px; border-radius:999px; border:1px solid var(--line2); color:var(--muted); margin-bottom:14px}
   .badge.src{color:var(--teal); border-color:rgba(1,230,157,.4)}
-  .badge.dst{color:var(--pink); border-color:rgba(248,34,106,.4)}
+  .badge.dst{color:var(--pink); border-color:rgba(255,33,107,.4)}
   .card h3{font-size:22px}
   .card .sub{font-family:var(--mono); font-size:12px; color:var(--dim); margin:4px 0 12px}
   .card p{color:var(--muted); font-size:14px; flex:1; margin:0 0 16px}
@@ -157,7 +165,7 @@
 
   /* ---- builder ---- */
   .builder{border:1px solid var(--line2); border-radius:22px; background:
-      radial-gradient(900px 400px at 100% 0%, rgba(248,34,106,.08), transparent 60%),
+      radial-gradient(900px 400px at 100% 0%, rgba(255,33,107,.08), transparent 60%),
       linear-gradient(180deg,var(--panel),var(--panel2)); overflow:hidden}
   .builder-grid{display:grid; grid-template-columns:1.05fr 1fr}
   @media(max-width:880px){.builder-grid{grid-template-columns:1fr}}
@@ -175,7 +183,7 @@
   .opts{display:flex; flex-direction:column; gap:10px}
   .opt{display:flex; gap:13px; align-items:flex-start; border:1px solid var(--line2); border-radius:13px; padding:14px 16px; cursor:pointer; transition:.2s; background:var(--bg)}
   .opt:hover{border-color:var(--line2); background:#0e0e14}
-  .opt[aria-checked="true"]{border-color:var(--pink); box-shadow:0 0 0 1px rgba(248,34,106,.35) inset; background:#120c10}
+  .opt[aria-checked="true"]{border-color:var(--pink); box-shadow:0 0 0 1px rgba(255,33,107,.35) inset; background:#120c10}
   .opt .dot{width:18px; height:18px; border-radius:50%; border:2px solid var(--line2); margin-top:2px; flex:none; transition:.2s}
   .opt[aria-checked="true"] .dot{border-color:var(--pink); background:radial-gradient(circle,var(--pink) 42%,transparent 46%)}
   .opt .o-ttl{font-weight:600; font-size:15px}
@@ -209,7 +217,7 @@
   .timeline{position:relative; margin-left:8px; padding-left:30px; border-left:2px solid var(--line2)}
   .tl{position:relative; padding:0 0 26px}
   .tl::before{content:""; position:absolute; left:-39px; top:2px; width:16px; height:16px; border-radius:50%;
-      background:var(--bg); border:2px solid var(--pink); box-shadow:0 0 0 4px rgba(248,34,106,.12)}
+      background:var(--bg); border:2px solid var(--pink); box-shadow:0 0 0 4px rgba(255,33,107,.12)}
   .tl h4{font-family:var(--display); font-size:18px; margin:0 0 5px}
   .tl p{margin:0; color:var(--muted); font-size:14px}
   .tl code{font-family:var(--mono); font-size:12px; color:var(--teal); background:rgba(1,230,157,.08); padding:1px 6px; border-radius:5px}
@@ -227,12 +235,15 @@
   }
 </style>
 </head>
-<body>
+<body id="top">
 <div class="bg" id="bg"></div><div class="grid"></div><div class="grain"></div>
 
 <nav>
   <div class="nav-in">
-    <img src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" />
+    <a class="brand" href="#top" aria-label="Abstract Security">
+      <img src="abstract-mark.svg" alt="" width="30" height="30" />
+      <span class="wordmark">ABSTRACT</span>
+    </a>
     <div class="nav-links">
       <a href="#how">How it works</a>
       <a href="#integrations">Integrations</a>
@@ -246,7 +257,7 @@
 <div class="wrap">
   <!-- ===================== HERO ===================== -->
   <header class="hero">
-    <img class="logo rise d1" src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" />
+    <img class="logo rise d1" src="abstract-logo.svg" alt="Abstract Security" width="130" height="130" />
     <div class="eyebrow rise d2">Azure Deployment Console</div>
     <h1 class="rise d3">Pipe Azure into Abstract.<br /><span class="g">And back out again.</span></h1>
     <p class="lead rise d4">The Security Data Pipeline Platform. Stand up every Azure <strong>source</strong> and <strong>destination</strong> integration — Event Hub, Activity Log, and Microsoft Sentinel — from one console. Pick a direction, pick an integration, pick a cloud, and deploy.</p>
@@ -343,9 +354,33 @@
     <div class="sec-head reveal">
       <div class="eyebrow pink">Before you deploy · Sentinel only</div>
       <h2>Create the Entra app first</h2>
-      <p>ARM can't create app registrations, so the Sentinel Destination needs an Entra app you make ahead of time. Five minutes, once.</p>
+      <p>ARM can't create app registrations, so the standard Sentinel Destination template needs an Entra app first. Skip the click-through — run the operator script (recommended), or use the one-click template that registers the app for you. The manual steps are below if you'd rather.</p>
     </div>
+
+    <!-- RECOMMENDED · operator script -->
+    <div class="reveal needs none" style="border-left:3px solid var(--teal); padding:22px 24px; margin-bottom:18px; font-size:inherit; color:inherit">
+      <h4 style="font-family:var(--display); font-size:18px; margin:0 0 8px; color:var(--text)">✓ Recommended · one command</h4>
+      <p style="color:var(--muted); font-size:14.5px; margin:0 0 15px">The operator script creates the app, service principal and client secret for you. Add <code>--deploy</code>&nbsp;/&nbsp;<code>-Deploy</code> and it also runs the Sentinel Destination template, so the service principal lands <b>both</b> DCR roles — <code>Monitoring Metrics Publisher</code> and <code>Monitoring Contributor</code> — then prints the exact Abstract modal values. The secret is shown once (or pushed to Key Vault) and never written to disk.</p>
+      <div class="field-block"><div class="fb-h"><span>bash · Azure CLI</span></div><pre>./scripts/new-abstract-sentinel-app.sh --deploy</pre></div>
+      <div class="field-block" style="margin-top:10px"><div class="fb-h"><span>PowerShell 7 · Az</span></div><pre>./scripts/New-AbstractSentinelApp.ps1 -Deploy</pre></div>
+    </div>
+
+    <!-- ADVANCED · one-click ARM with-app -->
+    <div class="reveal needs" style="padding:22px 24px; margin-bottom:26px">
+      <h4 style="font-family:var(--display); font-size:18px; margin:0 0 8px; color:var(--text)">Advanced · one-click ARM that creates the app for you</h4>
+      <p style="color:var(--muted); font-size:14.5px; margin:0 0 15px">A single template that registers the app via an Azure <code>deploymentScript</code> and stores the client secret in <b>Key Vault</b> — never in outputs. No app registration needed beforehand.</p>
+      <div class="deploy-row" id="withapp-deploy"><!-- button injected by builder --></div>
+      <div class="needs" style="border-left-color:var(--amber); margin-top:16px">
+        <h4>Prerequisite</h4>
+        <ul>
+          <li>A user-assigned managed identity that already holds <b>Application Administrator</b>, passed as <code>managedIdentityResourceId</code>.</li>
+          <li>Deployer needs <b>Owner</b>, or <b>Contributor</b> + <b>User Access Administrator</b>, on the resource group.</li>
+        </ul>
+      </div>
+    </div>
+
     <div class="reveal">
+      <div class="eyebrow" style="margin-bottom:16px; display:block">Or do it manually</div>
       <div class="timeline">
         <div class="tl"><h4>1 · Register the app</h4><p>Entra ID → App registrations → <b>New registration</b> (e.g. <code>Abstract-Sentinel-App</code>, single tenant). Save the <b>Application (client) ID</b> and <b>Directory (tenant) ID</b>.</p></div>
         <div class="tl"><h4>2 · Add a client secret</h4><p>Certificates &amp; secrets → <b>New client secret</b>. Copy the <b>Value</b> immediately — it's shown once.</p></div>
@@ -359,7 +394,10 @@
 
 <footer>
   <div class="wrap foot-in">
-    <img src="https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png" alt="Abstract Security" />
+    <a class="brand" href="#top" aria-label="Abstract Security">
+      <img src="abstract-mark.svg" alt="" width="26" height="26" />
+      <span class="wordmark" style="font-size:16px">ABSTRACT</span>
+    </a>
     <div class="foot-links">
       <a href="https://abstract.security" target="_blank" rel="noopener">Website ↗</a>
       <a href="https://docs.abstractsecurity.app" target="_blank" rel="noopener">Docs ↗</a>
@@ -417,9 +455,9 @@
     {
       id:"sentinel", dir:"destination", name:"Microsoft Sentinel", kind:"Destination",
       sub:"Abstract writes → Sentinel", scope:"Resource group",
-      blurb:"The full Logs Ingestion stack: Log Analytics workspace, Microsoft Sentinel, Data Collection Endpoint, a custom _CL table, a Data Collection Rule, and the DCR role assignments — all in one deployment.",
+      blurb:"The full Logs Ingestion stack: Log Analytics workspace, Microsoft Sentinel, Data Collection Endpoint, a custom _CL table, a Data Collection Rule, and both DCR role assignments (Monitoring Metrics Publisher + Monitoring Contributor) for your Entra app — all in one deployment.",
       tmpl:"templates/destinations/sentinel-destination.azuredeploy.json", ui:"templates/destinations/sentinel-destination.createUiDefinition.json",
-      chips:["Log Analytics","Sentinel","DCE","Custom _CL table","DCR","DCR RBAC"],
+      chips:["Log Analytics","Sentinel","DCE","Custom _CL table","DCR","Metrics Publisher","Monitoring Contributor"],
       cli:["az deployment group create -g rg-abstract-sentinel \\","  --template-file templates/destinations/sentinel-destination.azuredeploy.json \\","  --parameters parameters/sentinel-destination.parameters.json \\","  --parameters principalId=<spn-object-id>"],
       needs:["Entra app registration + client secret (ARM can't create it)","The app's service principal OBJECT id","Rights to assign roles on the DCR (Owner / User Access Administrator)"],
       map:[["Client ID","your app registration"],["Client Secret Value","your app registration"],["Application Tenant ID","output: tenantId"],["Data Collection Rule ID","output: dataCollectionRuleImmutableId"],["Data Collection Endpoint","output: dataCollectionEndpointUrl"],["Log Stream Name","output: logStreamName (Custom-<table>)"]],
@@ -556,11 +594,23 @@
     document.getElementById("bg").style.setProperty("--mx", (e.clientX/window.innerWidth*100)+"%");
   });
 
+  /* ---------- one-click "with app" ARM button (reuses REPO + RAW + portalUrl) ---------- */
+  function renderWithApp(){
+    var el = $("#withapp-deploy");
+    if(!el) return;
+    var withApp = { tmpl:"templates/destinations/sentinel-destination-with-app.azuredeploy.json", ui:null };
+    var pub = portalUrl(withApp, "public"), gov = portalUrl(withApp, "gov");
+    el.innerHTML =
+        '<a href="'+pub+'" target="_blank" rel="noopener" title="Open the Azure portal"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>'
+      + '<a class="link-sm" href="'+gov+'" target="_blank" rel="noopener">Azure Government ↗</a>';
+  }
+
   /* ---------- init ---------- */
   $("#yr").textContent = new Date().getFullYear();
   renderGallery("all");
   renderOpts();
   renderOut();
+  renderWithApp();
 })();
 </script>
 </body>

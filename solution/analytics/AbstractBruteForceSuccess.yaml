@@ -34,7 +34,7 @@ query: |
   failures
   | join kind=inner successes on SrcIpAddr
   | where SuccessTime between (TimeGenerated .. (TimeGenerated + 10m))
-  | where ActorUsername in (FailUsers)
+  | where set_has_element(FailUsers, ActorUsername)
   | project SuccessTime, SrcIpAddr, ActorUsername, Failures, EventProduct, AbstractInsightId
   | sort by Failures desc
 entityMappings:

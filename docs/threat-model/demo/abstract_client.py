@@ -67,6 +67,7 @@ EP = {
     "rules":          "/v1/rules",
     "mitre":          "/v3/rules/mitre",
     "insights":       "/v1/insights/",
+    "models":         "/v1/models/",
 }
 
 
@@ -139,14 +140,17 @@ class AbstractClient:
         return {"ok": False, "note": "no /me endpoint; auth verified via connect()"}
 
     # ── streamviewer: search / query / timeline / translate ──────────────────────
-    def search(self, condition: dict = None, query_string: str = "", size: int = 50,
-               start: str = "2026-05-16T00:00:00Z", end: str = "2026-06-16T23:59:59Z") -> dict:
-        body = {"start_time": start, "end_time": end, "size": size,
-                "vendor_account_id": ABSTRACT_ACCOUNT_ID}
+    def search(self, condition: dict = None, size: int = 50,
+               start: str = "2026-05-16T00:00:00Z", end: str = "2026-06-16T23:59:59Z",
+               selected_fields=None, storage_type: str = "HOT") -> dict:
+        # GetEvents schema (verified live + via /openapi.json): vendor_account_id + page_size +
+        # storage_type + non-empty selected_fields (['*'] = all). A typed `condition` is required
+        # for execution; the per-field `field_type` comes from the tenant field schema.
+        body = {"vendor_account_id": ABSTRACT_ACCOUNT_ID, "start_time": start, "end_time": end,
+                "page_size": size, "storage_type": storage_type,
+                "selected_fields": selected_fields or ["*"]}
         if condition:
             body["condition"] = condition
-        if query_string:
-            body["query_string"] = query_string
         return self._req("POST", EP["search"], body)
 
     def raw_search(self, query: dict, aggs: dict = None, size: int = 10,
@@ -196,7 +200,7 @@ class AbstractClient:
     def delete_fieldset(self, fid): return self._req("DELETE", EP["fieldset"] + "/" + fid)
 
     # ── rules + MITRE ──────────────────────────────────────────────────────────
-    def list_rules(self):           return self._req("GET", EP["rules"])
+    def list_rules(self):           return self._req("GET", "/v2/rules/")   # /v1/rules GET 500s; /v2 lists
     def get_rule(self, rid):        return self._req("GET", EP["rules"] + "/" + str(rid))
     def create_rule(self, payload: dict) -> dict:
         self.sent["rules"] += 1
@@ -220,9 +224,22 @@ class AbstractClient:
         return self._req("POST", EP["insights"], payload)
     def update_insight(self, nanoid, payload): return self._req("PATCH", EP["insights"] + nanoid, payload)
     def delete_insight(self, nanoid):          return self._req("DELETE", EP["insights"] + nanoid)
-    def add_insight_comment(self, nanoid, text): return self._req(
-        "POST", EP["insights"] + nanoid + "/comments", {"comment": text})
+    def add_insight_comment(self, nanoid, text, parent_id=None): return self._req(
+        "POST", "/v1/insights/comments",
+        {"insight_nanoid": nanoid, "parent_id": parent_id, "content": text})  # CommentCreate schema
     def get_insight_verdict(self, nanoid):     return self._req("GET", EP["insights"] + nanoid + "/verdict")
+
+    # ── models (data models / identity models — typed field schemas) ─────────────
+    def list_models(self, page_size: int = 200, page: int = 0):
+        return self._req("GET", EP["models"] + "?" + urllib.parse.urlencode({"pageSize": page_size, "page": page}))
+    def get_model(self, nanoid):    return self._req("GET", EP["models"] + str(nanoid))
+    def create_model(self, payload: dict) -> dict:
+        self.sent["models"] = self.sent.get("models", 0) + 1
+        if self.mode == "offline":
+            print("[offline] model:", payload.get("name")); return {"ok": True, "simulated": True}
+        return self._req("POST", EP["models"], payload)
+    def delete_model(self, nanoid):            return self._req("DELETE", EP["models"] + str(nanoid))
+    def run_verdict(self, insight_id: str):    return self._req("POST", "/v1/ase/workflows/verdict", {"insight_id": insight_id})
     def set_insight_verdict(self, nanoid, verdict, **extra):
         return self._req("POST", EP["insights"] + nanoid + "/verdict", {"verdict": verdict, **extra})
     def insight_findings(self, nanoid):        return self._req("GET", EP["insights"] + nanoid + "/findings")

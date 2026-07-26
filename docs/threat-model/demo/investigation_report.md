@@ -5,7 +5,7 @@
 
 ## Executive summary
 
-A malware verdict corroborated by endpoint execution and C2 beaconing, with an identity authenticating from the same C2 infrastructure (account takeover). Detected in-stream before landing. **8 entities** implicated across 5 identity kinds; **2** predicted next targets.
+A malware verdict corroborated by endpoint execution and C2 beaconing, with an identity authenticating from the same C2 infrastructure (account takeover). Detected in-stream before landing. **8 entities** implicated; **2** predicted next targets.
 
 ## Detections (shift-left)
 
@@ -26,16 +26,28 @@ A malware verdict corroborated by endpoint execution and C2 beaconing, with an i
 - **[71] ioc-blast-match** — host:ACME-LT-8802 contacted 2 known-bad IOC(s)  
   _matched: 185.220.101.45, cdn.evil-delivery.com_
 
+## Identity Intelligence
+
+**Continuous re-exposure**
+- `account:okta:jsmith@acme.com` — 8× exposure — **survives IDP/backup restore**
+- `identity:jsmith@acme.com` — 3× exposure
+- `account:aws:jsmith` — 1× exposure
+- `identity:mraj@acme.com` — 1× exposure
+- `nhi:svc-ci-pipeline` — 1× exposure
+- `agent:agent-soc-autobot` — 1× exposure
+
+**Signals**
+- `account:okta:jsmith@acme.com` — session_hijacking (75): auth from new IP 91.219.236.12 (was 52.20.10.5) [known-bad IP]
+- `account:okta:jsmith@acme.com` — session_hijacking (75): auth from new IP 91.219.236.12 (was 52.20.10.5) [known-bad IP]
+- `account:okta:jsmith@acme.com` — mfa_bombing (70): 4 MFA prompts in burst
+- `account:okta:jsmith@acme.com` — password_reuse (60): credential seen in breach/infostealer corpus
+- `account:okta:jsmith@acme.com` — vip_at_risk (100.0): VIP elevated risk 100.0
+- `identity:jsmith@acme.com` — vip_at_risk (100.0): VIP elevated risk 100.0
+
 ## Blast radius
 
 - **Real-time:** aws:jsmith, okta:jsmith@acme.com, agent-soc-autobot, ACME-LT-4471, ACME-LT-8802, jsmith@acme.com, svc-ci-pipeline
-- **Historical (LakeVilla replay):** ACME-LT-2210
-- **By identity kind:**
-  - `ai_agent` — agent-soc-autobot
-  - `human_user` — okta:jsmith@acme.com, jsmith@acme.com
-  - `machine_host` — ACME-LT-2210, ACME-LT-4471, ACME-LT-8802
-  - `non_human_identity` — svc-ci-pipeline
-  - `service_principal` — aws:jsmith
+- **Historical (replay):** ACME-LT-2210
 
 ## Prediction
 
@@ -44,9 +56,9 @@ A malware verdict corroborated by endpoint execution and C2 beaconing, with an i
 
 ## Continuous risk (top entities)
 
+- `account:okta:jsmith@acme.com` — 100.0 (trend +0.0)
 - `host:ACME-LT-4471` — 100.0 (trend +0.0)
 - `identity:jsmith@acme.com` — 100.0 (trend +0.0)
-- `account:okta:jsmith@acme.com` — 79.6 (trend +20.0)
 - `host:ACME-LT-8802` — 68.0 (trend +30.0)
 - `host:ACME-LT-2210` — 60.0 (trend +30.0)
 - `account:aws:jsmith` — 30.0 (trend +30.0)
@@ -54,7 +66,7 @@ A malware verdict corroborated by endpoint execution and C2 beaconing, with an i
 ## OSINT enrichment
 
 - **ip** `185.220.101.45` → Maltego, SpiderFoot, Criminal IP, GreyNoise, Shodan / Censys, VirusTotal, AbuseIPDB, AlienVault OTX
-- **domain** `cdn.evil-delivery.com` → Maltego, SpiderFoot, Shodan / Censys, VirusTotal, AlienVault OTX, MISP / OpenCTI, Recorded Future, urlscan.io
+- **domain** `api.telemetry-sync.net` → Maltego, SpiderFoot, Shodan / Censys, VirusTotal, AlienVault OTX, MISP / OpenCTI, Recorded Future, urlscan.io
 - **hash** `dca86121cc7427e375fd24fe5871d727a4604532c4f3a567b3c956a3b6b6e0c4` → SpiderFoot, VirusTotal, AlienVault OTX, MISP / OpenCTI, Recorded Future
 
 ## Recommended actions
@@ -62,12 +74,9 @@ A malware verdict corroborated by endpoint execution and C2 beaconing, with an i
 - disable sessions / force re-auth
 - rotate NHI/service tokens
 - review agent tool grants
-- Compromised principals: aws:jsmith, okta:jsmith@acme.com, svc-ci-pipeline
 
 ## Efficiency vs. SIEM-first
 
-- SIEM volume cut **99.6%** (5,018 → 18)
-- Alert fatigue cut **87.5%** (8 alerts → 1 incident)
-- MTTD ~0.5s shift-left vs ~20m SIEM (modeled)
-
-> Model demo. Verdict fusion / entity correlation / campaign clustering mirror what Abstract Amplify produces; replay, scoring, prediction, and sub-agents run in the local engine.
+- SIEM volume cut **99.5%** (5,025 → 25)
+- Alert fatigue cut **88.9%** (9 alerts → 1 incident)
+> Model demo. Verdict fusion / entity correlation / identity intelligence mirror what Abstract produces; replay, scoring, prediction run in the local engine.

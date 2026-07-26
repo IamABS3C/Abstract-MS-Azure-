@@ -138,6 +138,18 @@ Ship customers safeMode=true for onboarding; harden later.
 param safeMode bool = true
 
 // ---------------------------------------------------------------------------
+// Diagnostics (health of the destination pipeline itself) — parity with main.bicep
+// ---------------------------------------------------------------------------
+@description('Enable diagnostic settings on the destination namespace so you can monitor the health of the delivery pipeline itself.')
+param enableDiagnostics bool = false
+
+@description('Resource ID of the Log Analytics workspace for namespace diagnostics.')
+param logAnalyticsWorkspaceId string = ''
+
+@description('Optional storage account resource ID for diagnostics archive.')
+param diagnosticsStorageAccountId string = ''
+
+// ---------------------------------------------------------------------------
 // Derived values
 // ---------------------------------------------------------------------------
 var isStandard = sku == 'Standard'
@@ -260,6 +272,30 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
         properties: {
           privateDnsZoneId: privateDnsZoneId
         }
+      }
+    ]
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic settings (delivery-pipeline health) — parity with the source template
+// ---------------------------------------------------------------------------
+resource diagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (enableDiagnostics && (!empty(logAnalyticsWorkspaceId) || !empty(diagnosticsStorageAccountId))) {
+  name: '${namespaceName}-diagnostics'
+  scope: ehNamespace
+  properties: {
+    workspaceId: empty(logAnalyticsWorkspaceId) ? null : logAnalyticsWorkspaceId
+    storageAccountId: empty(diagnosticsStorageAccountId) ? null : diagnosticsStorageAccountId
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
       }
     ]
   }

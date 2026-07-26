@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "12565277154865192550"
+      "templateHash": "16821445434871458355"
     }
   },
   "parameters": {
@@ -65,6 +65,13 @@
       "defaultValue": true,
       "metadata": {
         "description": "Enable Microsoft Sentinel on the workspace (only applied when creating a new workspace; assumed already enabled for existing workspaces)."
+      }
+    },
+    "existingWorkspaceLocation": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Region of the EXISTING workspace (Existing mode only). The DCE and DCR MUST be created in the same region as the target workspace, so if your existing workspace is in a different region than this deployment, set it here (e.g. eastus2). Leave empty to use the deployment location."
       }
     },
     "dataCollectionEndpointName": {
@@ -132,6 +139,7 @@
     "autoWorkspaceName": "[format('abstract-sentinel-{0}', uniqueString(resourceGroup().id))]",
     "effectiveWorkspaceName": "[if(parameters('createWorkspace'), if(empty(parameters('workspaceName')), variables('autoWorkspaceName'), parameters('workspaceName')), parameters('workspaceName'))]",
     "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('effectiveWorkspaceName'))]",
+    "effectiveLocation": "[if(parameters('createWorkspace'), parameters('location'), if(empty(parameters('existingWorkspaceLocation')), parameters('location'), parameters('existingWorkspaceLocation')))]",
     "streamName": "[format('Custom-{0}', parameters('customTableName'))]",
     "logAnalyticsDestinationName": "abstractSentinelWorkspace",
     "monitoringMetricsPublisherRoleId": "3913510d-42f4-4e42-8a64-420c390055eb",
@@ -194,7 +202,7 @@
       "type": "Microsoft.Insights/dataCollectionEndpoints",
       "apiVersion": "2023-03-11",
       "name": "[parameters('dataCollectionEndpointName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('effectiveLocation')]",
       "tags": "[parameters('tags')]",
       "properties": {
         "networkAcls": {
@@ -206,7 +214,7 @@
       "type": "Microsoft.Insights/dataCollectionRules",
       "apiVersion": "2023-03-11",
       "name": "[parameters('dataCollectionRuleName')]",
-      "location": "[parameters('location')]",
+      "location": "[variables('effectiveLocation')]",
       "tags": "[parameters('tags')]",
       "properties": {
         "dataCollectionEndpointId": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dataCollectionEndpointName'))]",

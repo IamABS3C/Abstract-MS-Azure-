@@ -18,15 +18,19 @@
     },
     "abstractVendorAccountId": {
       "type": "string",
-      "metadata": { "description": "Abstract vendor account id (x-as-vendor-account-id)." }
-    },
-    "abstractApiKey": {
-      "type": "securestring",
-      "metadata": { "description": "Abstract API key (Bearer). Lab use - prefer a Key Vault reference in production." }
+      "metadata": {
+        "description": "Abstract vendor account id (x-as-vendor-account-id)."
+      }
     },
     "lookbackHours": {
       "type": "int",
       "defaultValue": 24
+    },
+    "keyVaultSecretUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault secret URI for the Abstract API key (incl. ?api-version). Fetched at runtime via the playbook's managed identity."
+      }
     }
   },
   "variables": {
@@ -53,7 +57,9 @@
       "apiVersion": "2017-07-01",
       "name": "[parameters('PlaybookName')]",
       "location": "[resourceGroup().location]",
-      "identity": { "type": "SystemAssigned" },
+      "identity": {
+        "type": "SystemAssigned"
+      },
       "dependsOn": [
         "[resourceId('Microsoft.Web/connections', variables('AzureSentinelConnectionName'))]"
       ],
@@ -63,18 +69,34 @@
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
           "contentVersion": "1.0.0.0",
           "parameters": {
-            "$connections": { "type": "Object" },
-            "abstractBaseUrl": { "type": "string" },
-            "abstractVendorAccountId": { "type": "string" },
-            "abstractApiKey": { "type": "securestring" },
-            "lookbackHours": { "type": "int" }
+            "$connections": {
+              "type": "Object"
+            },
+            "abstractBaseUrl": {
+              "type": "string"
+            },
+            "abstractVendorAccountId": {
+              "type": "string"
+            },
+            "lookbackHours": {
+              "type": "int"
+            },
+            "keyVaultSecretUri": {
+              "type": "string"
+            }
           },
           "triggers": {
             "Microsoft_Sentinel_incident": {
               "type": "ApiConnectionWebhook",
               "inputs": {
-                "body": { "callback_url": "@{listCallbackUrl()}" },
-                "host": { "connection": { "name": "@parameters('$connections')['azuresentinel']['connectionId']" } },
+                "body": {
+                  "callback_url": "@{listCallbackUrl()}"
+                },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                  }
+                },
                 "path": "/incident-creation"
               }
             }
@@ -85,40 +107,93 @@
               "inputs": {
                 "start_time": "@{addHours(utcNow(), mul(parameters('lookbackHours'), -1))}",
                 "end_time": "@{utcNow()}"
+              },
+              "runAfter": {
+                "Get_Abstract_key": [
+                  "Succeeded"
+                ]
               }
             },
             "Search_Abstract_events": {
-              "runAfter": { "Compute_window": ["Succeeded"] },
+              "runAfter": {
+                "Compute_window": [
+                  "Succeeded"
+                ]
+              },
               "type": "Http",
+              "runtimeConfiguration": {
+                "secureData": {
+                  "properties": [
+                    "inputs"
+                  ]
+                }
+              },
               "inputs": {
                 "method": "POST",
                 "uri": "@{parameters('abstractBaseUrl')}/v1/streamviewer/search",
                 "headers": {
-                  "Authorization": "Bearer @{parameters('abstractApiKey')}",
+                  "Authorization": "Bearer @{body('Get_Abstract_key')?['value']}",
                   "x-as-vendor-account-id": "@parameters('abstractVendorAccountId')",
                   "Content-Type": "application/json"
                 },
                 "body": {
                   "vendor_account_id": "@parameters('abstractVendorAccountId')",
                   "page_size": 25,
-                  "selected_fields": ["id", "@timestamp", "severity", "product", "vendor", "message", "source_ipv4", "dest_ipv4", "user_name"],
+                  "selected_fields": [
+                    "id",
+                    "@@timestamp",
+                    "severity",
+                    "product",
+                    "vendor",
+                    "message",
+                    "source_ipv4",
+                    "dest_ipv4",
+                    "user_name"
+                  ],
                   "start_time": "@{outputs('Compute_window')['start_time']}",
                   "end_time": "@{outputs('Compute_window')['end_time']}"
                 }
               }
             },
             "Add_comment_to_incident": {
-              "runAfter": { "Search_Abstract_events": ["Succeeded"] },
+              "runAfter": {
+                "Search_Abstract_events": [
+                  "Succeeded"
+                ]
+              },
               "type": "ApiConnection",
               "inputs": {
-                "host": { "connection": { "name": "@parameters('$connections')['azuresentinel']['connectionId']" } },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['azuresentinel']['connectionId']"
+                  }
+                },
                 "method": "post",
                 "path": "/Incidents/Comment",
                 "body": {
                   "incidentArmId": "@triggerBody()?['object']?['id']",
-                  "message": "<h3>Abstract Security — related pipeline events (last @{parameters('lookbackHours')}h)</h3><p>Returned <b>@{length(coalesce(body('Search_Abstract_events')?['events'], json('[]')))}</b> events from the Abstract pipeline. Top matches:</p><pre>@{substring(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))), 0, min(2800, length(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))))))}</pre>"
+                  "message": "<h3>Abstract Security \u2014 related pipeline events (last @{parameters('lookbackHours')}h)</h3><p>Returned <b>@{length(coalesce(body('Search_Abstract_events')?['events'], json('[]')))}</b> events from the Abstract pipeline. Top matches:</p><pre>@{substring(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))), 0, min(2800, length(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))))))}</pre>"
                 }
               }
+            },
+            "Get_Abstract_key": {
+              "type": "Http",
+              "runtimeConfiguration": {
+                "secureData": {
+                  "properties": [
+                    "outputs"
+                  ]
+                }
+              },
+              "inputs": {
+                "method": "GET",
+                "uri": "@{parameters('keyVaultSecretUri')}",
+                "authentication": {
+                  "type": "ManagedServiceIdentity",
+                  "audience": "https://vault.azure.net"
+                }
+              },
+              "runAfter": {}
             }
           }
         },
@@ -129,14 +204,26 @@
                 "connectionId": "[resourceId('Microsoft.Web/connections', variables('AzureSentinelConnectionName'))]",
                 "connectionName": "[variables('AzureSentinelConnectionName')]",
                 "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azuresentinel')]",
-                "connectionProperties": { "authentication": { "type": "ManagedServiceIdentity" } }
+                "connectionProperties": {
+                  "authentication": {
+                    "type": "ManagedServiceIdentity"
+                  }
+                }
               }
             }
           },
-          "abstractBaseUrl": { "value": "[parameters('abstractBaseUrl')]" },
-          "abstractVendorAccountId": { "value": "[parameters('abstractVendorAccountId')]" },
-          "abstractApiKey": { "value": "[parameters('abstractApiKey')]" },
-          "lookbackHours": { "value": "[parameters('lookbackHours')]" }
+          "abstractBaseUrl": {
+            "value": "[parameters('abstractBaseUrl')]"
+          },
+          "abstractVendorAccountId": {
+            "value": "[parameters('abstractVendorAccountId')]"
+          },
+          "lookbackHours": {
+            "value": "[parameters('lookbackHours')]"
+          },
+          "keyVaultSecretUri": {
+            "value": "[parameters('keyVaultSecretUri')]"
+          }
         }
       }
     }

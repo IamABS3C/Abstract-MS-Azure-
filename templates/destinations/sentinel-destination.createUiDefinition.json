@@ -87,6 +87,19 @@
               "text": "Make sure Microsoft Sentinel is already enabled on the existing workspace. This template does not change onboarding state for existing workspaces."
             },
             "visible": "[equals(steps('workspace').mode, 'Existing')]"
+          },
+          {
+            "name": "existingWorkspaceLocation",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Existing workspace region",
+            "defaultValue": "",
+            "toolTip": "The Azure region of the existing workspace (e.g. eastus2). The DCE and DCR must be created in the SAME region as the workspace. Leave empty only if the workspace is in this deployment's region.",
+            "constraints": {
+              "required": false,
+              "regex": "^$|^[a-z][a-z0-9]{2,30}$",
+              "validationMessage": "Enter the workspace region as its short name (e.g. eastus, westeurope), or leave empty to use the deployment region."
+            },
+            "visible": "[equals(steps('workspace').mode, 'Existing')]"
           }
         ]
       },
@@ -172,6 +185,7 @@
       "workspaceName": "[if(equals(steps('workspace').mode, 'Create'), coalesce(steps('workspace').workspaceNameNew, ''), steps('workspace').workspaceNameExisting)]",
       "workspaceRetentionDays": "[coalesce(steps('workspace').workspaceRetentionDays, 90)]",
       "enableSentinel": "[if(equals(steps('workspace').mode, 'Create'), coalesce(steps('workspace').enableSentinel, true), false)]",
+      "existingWorkspaceLocation": "[if(equals(steps('workspace').mode, 'Existing'), coalesce(steps('workspace').existingWorkspaceLocation, ''), '')]",
       "dataCollectionEndpointName": "[steps('ingestion').dataCollectionEndpointName]",
       "dataCollectionRuleName": "[steps('ingestion').dataCollectionRuleName]",
       "customTableName": "[steps('ingestion').customTableName]",

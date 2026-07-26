@@ -1,0 +1,27 @@
+name: abstract-soc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - jupyterlab>=4.0
+  - ipykernel>=6.29
+  - ipywidgets>=8.1
+  - nbformat>=5.9
+  - nbconvert>=7.10
+  - matplotlib>=3.7
+  - networkx>=3.1
+  - numpy>=1.24
+  - pandas>=2.0
+  - plotly>=5.20
+  - pyvis>=0.3.2
+  - voila>=0.5
+  - requests>=2.31
+  - pip
+  - pip:
+      - mcp>=1.2
+      # roadmap: threat-hunting / detection-as-code / ATT&CK / anomaly / graph
+      - msticpy>=2.0
+      - pysigma>=0.11
+      - attackcti>=0.4
+      - pyod>=1.1
+      - ipycytoscape>=1.3

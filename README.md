@@ -37,6 +37,7 @@ Buttons target **`IamABS3C/Abstract-MS-Azure-`** on `main`. The repo must be **p
 | --- | --- | --- | --- |
 | **Event Hub Destination** — namespace, destination hub, Send SAS rule | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json) | Wizard: basics → destination hub → auth → networking |
 | **Azure Sentinel Destination** — LAW + Sentinel + DCE + DCR + custom table + RBAC | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json) | Wizard: workspace → ingestion (DCE/DCR/table) → auth & RBAC. **Create the Entra app first** (see [Destinations](#destinations)) |
+| **Sentinel Destination — one-click incl. app registration** *(advanced)* | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.createUiDefinition.json) | Guided wizard (workspace → ingestion → app registration & Key Vault). Also creates the Entra app via a deploymentScript, secret → Key Vault. **Needs a user-assigned identity with Application Administrator** — see [Automate the app registration](#automate-the-app-registration--roles) |
 
 > **Button URL format:** `https://portal.azure.com/#create/Microsoft.Template/uri/<URL-encoded raw azuredeploy.json>[/createUIDefinitionUri/<URL-encoded raw createUiDefinition.json>]` — URL-encode the `raw.githubusercontent.com` link (`:` → `%3A`, `/` → `%2F`). If you fork or rename, replace `IamABS3C/Abstract-MS-Azure-` throughout (and in `docs/index.html`).
 >
@@ -74,16 +75,25 @@ Buttons target **`IamABS3C/Abstract-MS-Azure-`** on `main`. The repo must be **p
 │   ├── private-only.parameters.json
 │   ├── hybrid.parameters.json
 │   ├── eventhub-destination.parameters.json
-│   └── sentinel-destination.parameters.json
+│   ├── sentinel-destination.parameters.json
+│   ├── sentinel-destination.full-schema.parameters.json   # explicit per-field ACS columns
+│   └── sentinel-destination-with-app.parameters.json      # one-click incl. app registration
 ├── scripts/
-│   └── Deploy-AbstractEventHub.ps1  # guided deploy / credentials / delete (source only)
+│   ├── Deploy-AbstractEventHub.ps1  # guided deploy / credentials / delete (source only)
+│   ├── new-abstract-sentinel-app.sh    # create Entra app + SP + secret, grant DCR roles (bash)
+│   ├── New-AbstractSentinelApp.ps1     # same, PowerShell 7 / Az
+│   └── gen-sentinel-schema.py          # all_fields.json → Log Analytics tableColumns params
+├── solution/
+│   └── schema/
+│       └── all_fields.json             # canonical Abstract ACS field catalog (from GET /v1/acs/fields)
 ├── templates/
 │   ├── subscription/
 │   │   ├── activitylog.bicep         # Activity Log → hub (subscription scope)
 │   │   └── activitylog.azuredeploy.json
 │   └── destinations/
 │       ├── eventhub-destination.bicep / .azuredeploy.json / .createUiDefinition.json
-│       └── sentinel-destination.bicep / .azuredeploy.json / .createUiDefinition.json
+│       ├── sentinel-destination.bicep / .azuredeploy.json / .createUiDefinition.json
+│       └── sentinel-destination-with-app.bicep / .azuredeploy.json / .createUiDefinition.json  # one-click + app reg (deploymentScript → Key Vault)
 └── .github/workflows/validate.yml   # CI: JSON parse + Bicep compile/drift + arm-ttk
 ```
 
@@ -214,27 +224,74 @@ az deployment group create -g rg-abstract-dest \
 
 ### Azure Sentinel Destination
 
-Per the [Sentinel Destination docs](https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/), Abstract delivers events through the Azure Monitor **Logs Ingestion API**. The template (`templates/destinations/sentinel-destination.*`) provisions the full stack: Log Analytics workspace → **Microsoft Sentinel** → Data Collection Endpoint → custom `*_CL` table → Data Collection Rule → DCR role assignments.
+Per the [Sentinel Destination docs](https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/), Abstract delivers events through the Azure Monitor **Logs Ingestion API**. The template (`templates/destinations/sentinel-destination.*`) automates the Azure side in one deployment: Log Analytics workspace → **Microsoft Sentinel** → Data Collection Endpoint → custom `*_CL` table → Data Collection Rule → **both** DCR role assignments.
 
-**Prerequisite — create the Entra app first (ARM cannot):** register an app (e.g. `Abstract-Sentinel-App`), add a client secret, and note its **Application (client) ID**, **Directory (tenant) ID**, the **secret value**, and the **service principal object ID**. Pass the object ID to the template so it grants the SP `Monitoring Metrics Publisher` + `Monitoring Contributor` on the DCR.
+**Prerequisite — register the Entra app yourself (ARM cannot create app registrations).** Create a **single-tenant** app (e.g. `Abstract-Sentinel-App`), then:
 
-| Abstract Sentinel field | Where it comes from |
+- copy the **Application (client) ID** and **Directory (tenant) ID**;
+- create a **client secret** and copy its **value immediately** (shown only once);
+- get the app's **service principal object ID** and pass it to the template as `principalId`.
+
+The template then grants that service principal **both** `Monitoring Metrics Publisher` **and** `Monitoring Contributor` on the DCR — the Logs Ingestion API needs both role assignments on the same app. Everything else in the doc's manual flow (workspace, Sentinel, DCE, custom `_CL` table, DCR + its Immutable ID and `Custom-<table>` stream name) is created by the deployment.
+
+**Deployment outputs → Abstract "Azure Monitor Details":**
+
+| Deployment output | Abstract modal field |
 | --- | --- |
-| Client ID | your app registration's Application (client) ID |
-| Client Secret Value | the secret you created (store it once) |
-| Application Tenant ID | Directory (tenant) ID (template output also surfaces it) |
-| Data Collection Rule ID | output `dataCollectionRuleImmutableId` |
-| Data Collection Endpoint | output `dataCollectionEndpointUrl` (logs-ingestion URI) |
-| Log Stream Name | output `logStreamName` = `Custom-<table>` (default `Custom-AbstractEventLogs_CL`) |
+| `dataCollectionRuleImmutableId` | Data Collection Rule ID |
+| `dataCollectionEndpointUrl` (logs-ingestion URI) | Data Collection Endpoint |
+| `logStreamName` = `Custom-<table>` (default `Custom-AbstractEventLogs_CL`) | Log Stream Name |
 
-The default custom-table schema is minimal (`TimeGenerated`, `Message`, `AbstractEvent`). To capture the full Abstract Common Schema, deploy via CLI and pass a `tableColumns` array built from Abstract's `all_fields.json`:
+The **Authentication** values are *not* template outputs — they come from the app registration: Client ID = Application (client) ID, Client Secret Value = the secret you copied, Application Tenant ID = Directory (tenant) ID.
+
+**Add the destination in Abstract** — Integrations → Available → **Azure Sentinel Destination** → **Add Integration**:
+
+1. **Name & instance** — Integration Name, Poll Interval (default `300`s), Abstract Instance, optional Forwarder.
+2. **Authentication** — Client ID, Client Secret Value, Application Tenant ID (from the app registration).
+3. **Azure Monitor Details** — Data Collection Rule ID, Data Collection Endpoint, Log Stream Name (from the outputs above).
+4. *(Optional)* upload a custom **Parser/Mapper**.
+5. **Validate → Save & Close**, then configure **Routing** to send a pipeline's events to this destination.
+
+**Schema note — mind the columns.** The template's default table schema is minimal: three columns — `TimeGenerated` (datetime), `Message` (string), and `AbstractEvent` (dynamic). The whole Abstract Common Schema event lands in the `AbstractEvent` dynamic column, and the solution's `ASim_AbstractEvent` parser projects fields out of it. This is intentional, works with Abstract's default mapper, and is the **only** schema the portal Deploy button supports. **If your Abstract routing/mapper instead emits explicit per-field ACS columns** (the doc's `all_fields.json` approach), you must deploy via **CLI** and pass a matching `tableColumns` parameter built from Abstract's `all_fields.json` — otherwise the DCR silently **drops any column not declared in the table**, and you lose fields.
 
 ```bash
+# default minimal schema (wrapped-dynamic AbstractEvent):
 az deployment group create -g rg-abstract-sentinel \
   --template-file templates/destinations/sentinel-destination.azuredeploy.json \
   --parameters parameters/sentinel-destination.parameters.json \
   --parameters principalId=<spn-object-id>
+
+# full per-field ACS schema (explicit columns) — generated from the real catalog:
+az deployment group create -g rg-abstract-sentinel \
+  --template-file templates/destinations/sentinel-destination.azuredeploy.json \
+  --parameters parameters/sentinel-destination.full-schema.parameters.json \
+  --parameters principalId=<spn-object-id>
 ```
+
+The full-schema params file is **generated from the canonical Abstract Common Schema** — [`solution/schema/all_fields.json`](solution/schema/all_fields.json) (1,872 fields: 473 static + the `ext.*` vendor namespace, sourced from the Abstract API's `GET /v1/acs/fields`). Regenerate or re-tune it with [`scripts/gen-sentinel-schema.py`](scripts/gen-sentinel-schema.py), which maps Abstract types → Log Analytics types, flattens dotted ACS names to underscores, and collapses `ext.*` into one dynamic column (474 columns; `--static-only` or `--explode-ext` to change coverage).
+
+> **Existing workspace in another region?** In *Existing* mode the DCE/DCR must sit in the workspace's region. Pass `existingWorkspaceLocation=<region>` (or set it in the wizard's "Existing workspace region" field) so they are created there.
+
+#### Automate the app registration + roles
+
+ARM can't create Entra app registrations, but you don't have to click through the portal for them either. Two options:
+
+- **Standalone script (recommended)** — [`scripts/new-abstract-sentinel-app.sh`](scripts/new-abstract-sentinel-app.sh) (bash / `az`) and [`scripts/New-AbstractSentinelApp.ps1`](scripts/New-AbstractSentinelApp.ps1) (PowerShell 7 / Az) create the app + service principal + client secret, then (with `--deploy` / `-Deploy`) deploy the template so the SP gets **both** DCR roles, and print the exact modal values. The secret is shown **once** (or pushed to Key Vault with `--keyvault` / `-KeyVault`) and never written to disk. Lowest privilege — you only need rights to register an app, plus Owner/UAA on the RG to deploy.
+
+  ```bash
+  # identity + full ingestion stack + both DCR roles, in one shot:
+  ./scripts/new-abstract-sentinel-app.sh --app-name Abstract-Sentinel-App \
+    --deploy --resource-group rg-abstract-sentinel --location eastus
+  ```
+
+- **One-click ARM variant (advanced)** — [`templates/destinations/sentinel-destination-with-app.*`](templates/destinations/) does the *whole thing* — including the app registration — via an Azure `deploymentScript`, storing the client secret in **Key Vault** (never in a deployment output). It's heavier and has prerequisites: you must supply a **user-assigned managed identity that already holds "Application Administrator"** (`managedIdentityResourceId`), and the deployer needs Owner (or Contributor + User Access Administrator) on the resource group. Retrieve the secret from Key Vault to paste into Abstract; all other modal values are in the deployment outputs. Prefer the standalone script unless you specifically need pure one-click.
+
+  ```bash
+  az deployment group create -g rg-abstract-sentinel \
+    --template-file templates/destinations/sentinel-destination-with-app.azuredeploy.json \
+    --parameters parameters/sentinel-destination-with-app.parameters.json \
+    --parameters managedIdentityResourceId=<uami-resource-id>
+  ```
 
 ---
 

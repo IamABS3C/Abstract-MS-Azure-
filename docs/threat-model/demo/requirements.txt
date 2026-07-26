@@ -23,6 +23,24 @@ networkx>=3.1
 numpy>=1.24
 pandas>=2.0
 
+# interactive (browser-native) visuals — JS bundled inline so the notebook works offline
+plotly>=5.20
+pyvis>=0.3.2
+
+# optional: pure code-free dashboard mode  ->  voila soc_notebook.ipynb
+voila>=0.5
+
+# roadmap: threat hunting (msticpy), detection-as-code (pySigma), ATT&CK (attackcti),
+# anomaly detection (PyOD), interactive graphs (ipycytoscape) — all keyless
+msticpy>=2.0
+pysigma>=0.11
+attackcti>=0.4
+pyod>=1.1
+ipycytoscape>=1.3
+
+# in-notebook interactive control panel (GUI cockpit: connect / authorize / dev console)
+ipywidgets>=8.1
+
 # Model Context Protocol — connect the notebook to the Abstract MCP server
 # (bundled at solution/mcp/abstract_mcp_server.py) and call its tools.
 mcp>=1.2

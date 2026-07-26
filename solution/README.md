@@ -8,10 +8,25 @@ first-class, *actionable* integration. Two reinforcing stories:
 - **Loop‑back** — let the SOC reach back into the pipeline from Microsoft's tools
   (Logic Apps playbooks + a Security Copilot plugin that call the **Abstract API**).
 
-> **Status: experimental / lab.** Authored and grounded against a live Abstract
-> test tenant (org `setest`) — the API client is verified working; the ARM/KQL/YAML
-> artifacts are schema-built and **not yet deployed to a live workspace**. Validate
-> in a lab first. Secrets are never embedded — see *Secret handling*.
+> **Status: deployed & validated in a lab workspace.** The full solution
+> (`Package/mainTemplate.json`) was deployed to a live Sentinel workspace
+> (`abstract-pipeline`) — connector, ASIM parser, 2 analytics rules, 2 hunting
+> queries, 2 workbooks, and 3 playbooks all install and link as solution content,
+> and the seeded threat-model campaign proves the value model live (see below).
+> Still lab/experimental; run Microsoft's packaging + `arm-ttk` before Content Hub
+> submission. Secrets are never embedded — see *Secret handling*.
+
+### Proven live (seeded threat-model campaign, 5k+ events)
+
+| Signal | Measured |
+| --- | --- |
+| **Aggregation / dedupe ratio** | **~34:1** raw events represented : events ingested (from `aggregation_count`) |
+| **Enrichment coverage** | **100%** risk-scored and tagged upstream |
+| **Cross-product identity hunt** | `jsmith@acme.com` — cumulative risk 650 across 5 products (Okta, Email, DNS, Palo Alto, CrowdStrike) |
+
+The **Value & ROI workbook** turns these into a parameterized cost model (Sentinel
+$/GB + optional pre-Abstract source volume) so you can show dollars avoided by
+aggregation/dedupe and upstream filtering.
 
 ---
 
@@ -30,15 +45,29 @@ solution/
 │   └── seed_sentinel.py                         # Logs-Ingestion seeder -> AbstractEventLogs_CL (demo)
 ├── mcp/abstract_mcp_server.py (+ README)        # Abstract API + OSINT as MCP tools for Claude/Copilot/agents
 ├── osint/ (search_engines.json, osint_pivots.py)# IOC pivots from awesome-hacker-search-engines (MCP tool + agent)
-├── connector/abstract-connector-definition.json # Sentinel "Abstract Security" connector tile (CCF)
+├── connector/
+│   ├── abstract-connector-definition.json        # Sentinel "Abstract Security" connector tile (CCF, destination)
+│   ├── abstract-insights-pull.json               # API pull connector: Logic App -> AbstractInsights_CL (compare w/o Sentinel-as-destination)
+│   └── abstract-api-sync.json                    # multi-endpoint sync: insights + tune-filters + pipeline-metrics + detection-effectiveness
+├── notebooks/abstract-vs-sentinel-comparison.ipynb  # runnable side-by-side: Abstract API + Sentinel KQL (cost/reduction/MTTR/MTTD/AI-SOC)
 ├── parsers/ASim_AbstractEvent.kql               # ASIM-style normalizer over AbstractEventLogs_CL
 ├── analytics/
 │   ├── abstract-high-severity-insight.json      # scheduled rule (ARM) -> incident (+ AbstractInsightId)
+│   ├── AbstractHighSeverity.yaml                 # same rule in authoring (YAML) format for packaging
 │   └── AbstractBruteForceSuccess.yaml           # authoring-format rule: failures -> success
 ├── hunting/
 │   ├── AbstractRareProduct.yaml                 # rare / newly-seen sources
 │   └── AbstractHighRiskIdentities.yaml          # high cumulative pipeline risk
-├── workbooks/abstract-pipeline-overview.workbook.json  # volume / coverage / reduction estimate
+├── workbooks/
+│   ├── abstract-pipeline-overview.workbook.json  # volume / coverage / reduction estimate
+│   ├── abstract-value-roi.workbook.json          # ROI: aggregation/dedupe ratio, enrichment %, hunt yield, $ avoided
+│   └── abstract-competitive-tco.workbook.json    # Abstract vs Sentinel: cost/TCO, coverage, MTTR, gap matrix, migration
+├── integration-profile/                          # reusable SE asset: dual-direction wiring, gap analysis, value props
+│   ├── abstract-sentinel-integration-profile.json
+│   └── README.md
+├── sales/
+│   ├── abstract-vs-sentinel.html                 # branded interactive competitive leave-behind (live TCO calculator)
+│   └── gaps-and-gamechanger.md                   # SE strategy: why this is a homerun + gaps checklist + POV playbook
 ├── playbooks/
 │   ├── abstract-enrich-incident.json            # incident -> Abstract search -> comment
 │   ├── abstract-verdict.json                    # incident -> Abstract agentic Verdict -> comment + severity
@@ -181,12 +210,25 @@ python3 solution/scripts/abstract_api.py fields --grep ip
 python3 solution/scripts/abstract_api.py workflows
 ```
 
-## Roadmap / not yet built
+## Built (v3.3.0)
 
-- **Tune-at-source playbook** — analyst dispositions an alert false-positive →
-  playbook calls Abstract to add a pipeline rule that down-samples that pattern
-  upstream (needs the Abstract tuning/pipeline API surface confirmed).
-- **Content Hub packaging** — wrap the above as a single installable Sentinel
-  *solution* (mainTemplate + createUiDefinition) for in-product discovery, and
-  pursue Marketplace / certification for the verified badge.
-- **Hunting queries** over `ASim_AbstractEvent`.
+- **Tune-at-source playbook** — `playbooks/abstract-tune-at-source.json`. On a
+  FalsePositive/BenignPositive disposition it calls `POST /v2/rule-tuning-filters/`
+  so the pattern is down-sampled upstream in the pipeline.
+- **Content Hub packaging** — `Package/mainTemplate.json` + `createUiDefinition.json`
+  install the whole solution in one deployment (connector, parser, 2 analytics
+  rules, 2 hunting queries, workbook, 3 playbooks) with `contentPackages` +
+  per-item `metadata`. See `Package/PACKAGING.md` for the official
+  certification path (Marketplace verified badge).
+- **Hunting queries** over `ASim_AbstractEvent` — `hunting/AbstractRareProduct.yaml`,
+  `hunting/AbstractHighRiskIdentities.yaml`.
+- **Official branding** — the connector tile, package icon, and install wizard
+  use the official Abstract mark, embedded self-contained (SVG data-URI, no
+  external image host).
+
+## Roadmap
+
+- **Marketplace certification** — run Microsoft's `createSolutionV4.ps1` +
+  `arm-ttk` over `solution/` and submit via Partner Center for the verified badge.
+- **Additional detections** — impossible-travel and data-exfiltration rules over
+  the normalized `ASim_AbstractEvent` surface.

@@ -1,0 +1,527 @@
+{
+  "$schema": "https://abstract.security/schemas/sentinel-integration-profile/v1.json",
+  "profileVersion": "1.0.0",
+  "name": "Abstract Security \u00d7 Microsoft Sentinel",
+  "tagline": "SIEM is a state of mind. Abstract is the world's first Composable SIEM \u2014 assemble collection, detection, retention and AI-SecOps by design, not by lock-in.",
+  "description": "A reusable SE / evaluation profile describing the transparent, bidirectional Abstract<->Sentinel integration: how they connect, where they overlap or complement, and the augment/optimize/rebalance path.",
+  "positioning": "Abstract is the world's first Composable SIEM (collection \u00b7 detection \u00b7 retention \u00b7 AI-SecOps); Microsoft Sentinel is one composable component you keep, augment, or rebalance.",
+  "manifesto": {
+    "title": "The Composable SIEM Manifesto \u2014 SIEM is a State of Mind",
+    "url": "https://www.abstract.security/manifesto",
+    "lede": "\u201cSIEM is a state of mind.\u201d Not a box, not a single vendor \u2014 an organizational philosophy of adaptability, modularity, and choice. Abstract built the world's first **Composable SIEM**: collection, detection, retention, and AI-enabled security operations as independent, interoperable building blocks you assemble by design \u2014 with Microsoft Sentinel as one composable component you keep, augment, or rebalance.",
+    "tenets": [
+      {
+        "tenet": "Next-Gen SIEM is not a SIEM",
+        "detail": "The true next generation breaks the monolith \u2014 it isn't a glorified log store with a new coat of paint."
+      },
+      {
+        "tenet": "Cut waste before storage",
+        "detail": "Detect in the stream, before data becomes expensive, rigid, or locked in. Prioritize signal over noise, outcomes over ingestion volume."
+      },
+      {
+        "tenet": "Escape the data swamp",
+        "detail": "Most collected security data is never used for detection. Store data intelligently \u2014 right data, right tier, right place \u2014 not everything in one indexed box."
+      },
+      {
+        "tenet": "AI is baked in, not bolted on",
+        "detail": "Born in the AI era: AI-GEN is stream-first and composable by design. Without normalized, streaming, contextual data, AI is blind, shallow, and late."
+      },
+      {
+        "tenet": "AI-SOC is a capability, not a category",
+        "detail": "Like SOAR before it, AI-SOC collapses into the fabric. AI augments SIEM across triage, investigation and response \u2014 it doesn't replace it."
+      },
+      {
+        "tenet": "Composable means intentional assembly",
+        "detail": "Not fragmented, not complex \u2014 an architecture of choice. Pick components and vendors per outcome, evolve incrementally, no forced re-architecture."
+      }
+    ],
+    "buildingBlocks": [
+      {
+        "block": "Collection",
+        "tagline": "The Security Data Fabric",
+        "what": "The control plane where data is shaped, normalized and enriched before it becomes expensive or locked in \u2014 feeding many downstream systems, not one monolith.",
+        "withSentinel": "Feeds Sentinel (and any SIEM) clean, enriched, cost-reduced data via the destination + insights connectors."
+      },
+      {
+        "block": "Detection",
+        "tagline": "Signal at Speed",
+        "what": "Portable detection logic \u2014 in-stream, historical, and federated \u2014 that runs where the data lives. Detection is no longer bound to storage.",
+        "withSentinel": "Complements Sentinel analytics: shift-left convictions arrive as high-fidelity insights; Sentinel rules still run on what lands."
+      },
+      {
+        "block": "Retention",
+        "tagline": "Context at Scale",
+        "what": "Tiered + federated storage: high-signal data near detection, everything else affordable and still query-ready (LakeVilla, replay, no rehydration).",
+        "withSentinel": "Route full fidelity to LakeVilla, send only convictions + context to Sentinel's hot tier \u2014 the big cost lever."
+      },
+      {
+        "block": "AI-SecOps",
+        "tagline": "AI-Enabled Security Operations",
+        "what": "AI embedded across triage, investigation, hunting and response \u2014 ASTRO enabling analysts, not replacing them, over pipeline-clean data + context.",
+        "withSentinel": "ASTRO auto-triages and reasons; results flow back to Sentinel incidents via playbooks, Copilot and MCP."
+      }
+    ]
+  },
+  "deploymentModes": [
+    {
+      "id": "destination",
+      "name": "Abstract \u2192 Sentinel (destination)",
+      "mechanism": "Azure Monitor Logs Ingestion API (DCE/DCR) into AbstractEventLogs_CL",
+      "artifacts": [
+        "templates/destinations/sentinel-destination.azuredeploy.json",
+        "solution/connector/abstract-connector-definition.json"
+      ],
+      "useWhen": "Sentinel is a destination for Abstract-normalized findings + context."
+    },
+    {
+      "id": "api-pull",
+      "name": "Abstract \u2192 Sentinel (insights API pull)",
+      "mechanism": "Scheduled Logic App pulls insights/verdicts into AbstractInsights_CL via the Log Analytics Data Collector API",
+      "artifacts": [
+        "solution/connector/abstract-insights-pull.json"
+      ],
+      "useWhen": "Sentinel is NOT the raw-telemetry destination but you still want Abstract insights/detections in Sentinel for side-by-side comparison."
+    },
+    {
+      "id": "loop-back",
+      "name": "Sentinel \u2192 Abstract (API loop-back)",
+      "mechanism": "SOAR playbooks call the Abstract API (verdict, search, tune-at-source) + Security Copilot plugin/agent + MCP",
+      "artifacts": [
+        "solution/playbooks/",
+        "solution/copilot/",
+        "solution/mcp/"
+      ],
+      "useWhen": "Triage in Sentinel and act on the pipeline in Abstract (bidirectional)."
+    }
+  ],
+  "valueProps": [
+    {
+      "title": "Cut SIEM cost at the source",
+      "detail": "Abstract aggregates, dedupes, filters and routes upstream \u2014 the SIEM bill is volume-driven, so cutting volume before ingest cuts the bill. Demo: ~34:1 aggregation and ~99.6% volume routed away from the SIEM."
+    },
+    {
+      "title": "Shift-left detection",
+      "detail": "Six in-stream detections (verdict fusion, IOC blast-match, beaconing/C2, ATO\u2194C2 bridge, lateral/exfil, campaign clustering) fire in ~0.5s \u2014 before data lands \u2014 vs. SIEM ingest+schedule latency."
+    },
+    {
+      "title": "100% enrichment, upstream",
+      "detail": "A 5-step in-stream chain (identity/asset resolution, geo/ASN, TI/AIG IOC match, 29+ OSINT adapters, verdict fusion) enriches every event before it lands. The SIEM receives conclusions, not raw noise."
+    },
+    {
+      "title": "ASTRO \u2014 the AI SOC engine",
+      "detail": "ASTRO is Abstract's AI security engineer, embedded natively in the platform \u2014 not a generic chatbot. It runs agentic triage, investigation and detection-tuning over pipeline-clean, correlated, enriched data and full case context: a grounded verdict + recommended actions before an analyst opens the case (e.g. Verdict, IP Threat Intelligence) \u2014 and considerably more."
+    },
+    {
+      "title": "Compliance handled in-stream",
+      "detail": "Abstract states it detects and redacts PII in-stream (GDPR/HIPAA/PCI) before data lands anywhere, and normalizes to OCSF, ECS or Splunk CIM \u2014 so the same clean data fits any destination and sensitive fields never hit the SIEM."
+    },
+    {
+      "title": "Destination- & source-agnostic \u2014 less lock-in",
+      "detail": "Normalize once to OCSF/ACS (473 fields); route the same events, detections and findings to Sentinel, Splunk, any SIEM, Event Hub, or LakeVilla. Pick destinations per-cost, not per-capability."
+    },
+    {
+      "title": "Retroactive hunts without rehydration",
+      "detail": "Full-fidelity telemetry lives in LakeVilla, always query-ready; replay a new IOC through live detections across 90+ days to find historical victims \u2014 no SIEM archive rehydration cost."
+    },
+    {
+      "title": "Microsoft is validating the model",
+      "detail": "Microsoft's own moves \u2014 Auxiliary/Basic logs tiers, the Sentinel data lake, and Defender XDR correlation \u2014 validate cheap tiered storage and pre-SIEM curation. Abstract does it upstream and vendor-agnostic, so the savings and the detections travel with you across SIEMs, not just within one."
+    }
+  ],
+  "capabilityGap": [
+    {
+      "dimension": "Primary role",
+      "sentinel": "Cloud-native SIEM/SOAR \u2014 detect, investigate, respond over *ingested* data.",
+      "abstract": "Security data pipeline \u2014 normalize, enrich, correlate, detect and route *before* ingest (shift-left).",
+      "whyItMatters": "They occupy different layers: a pipeline in front of a SIEM is complementary, not a like-for-like swap."
+    },
+    {
+      "dimension": "Cost model",
+      "sentinel": "Priced per GB ingested + retention; cost scales with raw volume (unified Analytics ~$4.30/GB PAYG, East US; commitment tiers save up to 52%).",
+      "abstract": "Reduce/aggregate/route before ingest; Abstract reports 70\u201380% volume reduction (demo here: ~34:1 aggregation, ~99.6% routed off the SIEM).",
+      "whyItMatters": "The SIEM bill is a volume bill. Cutting volume at the source is the largest, most durable cost lever."
+    },
+    {
+      "dimension": "Volume handling",
+      "sentinel": "Ingests what you send; limited native dedup/aggregation.",
+      "abstract": "Aggregation, dedupe, filtering and down-sampling in-stream (aggregation_count on every record).",
+      "whyItMatters": "Most SIEM volume is repetitive/benign; collapsing it upstream is pure savings + less analyst noise."
+    },
+    {
+      "dimension": "Storage & retention",
+      "sentinel": "Tiered: Analytics ~$4.30/GB, Basic $0.50/GB, Auxiliary $0.05/GB (+$0.10 processing), and the data lake (GA Oct 2025) ~$0.05/GB ingest + $0.026/GB-mo \u2014 but tiering + retention are managed inside the SIEM, per source.",
+      "abstract": "LakeVilla full-fidelity cold tier, always query-ready; replay with no rehydration, decided upstream and independent of any SIEM.",
+      "whyItMatters": "Keep everything affordably and still hunt it retroactively \u2014 and your tiering decision isn't locked to one SIEM's pricing."
+    },
+    {
+      "dimension": "Normalization",
+      "sentinel": "ASIM, applied post-ingest with per-source parsers.",
+      "abstract": "OCSF + Abstract Common Schema (473 fields), normalized once in-stream before landing.",
+      "whyItMatters": "Normalize-once means the same detections/queries work across any vendor's data."
+    },
+    {
+      "dimension": "Detections",
+      "sentinel": "Scheduled analytics rules over already-ingested data.",
+      "abstract": "Six shift-left in-stream detections at ~0.5s (verdict fusion, IOC blast-match, beaconing, ATO\u2194C2, lateral/exfil, campaign clustering).",
+      "whyItMatters": "Detecting before ingest shortens time-to-detect and avoids paying to store what you were going to alert on anyway."
+    },
+    {
+      "dimension": "Enrichment",
+      "sentinel": "TI/enrichment via connectors + playbooks, post-ingest.",
+      "abstract": "5-step in-stream enrichment (identity/asset, geo/ASN, TI/AIG, 29+ OSINT adapters, verdict fusion) \u2014 100% coverage.",
+      "whyItMatters": "Enriched-at-landing data means higher-fidelity detections and less swivel-chair during triage."
+    },
+    {
+      "dimension": "Identity & entity model",
+      "sentinel": "UEBA add-on; entities scoped per incident.",
+      "abstract": "Cross-source identity/entity graph (10 entity types) with cumulative risk scoring across products.",
+      "whyItMatters": "Cross-product identity risk is a signal a per-incident SIEM view rarely assembles on its own."
+    },
+    {
+      "dimension": "AI SOC",
+      "sentinel": "Security Copilot \u2014 a prompt-based assistant (add-on) layered on the SIEM.",
+      "abstract": "ASTRO \u2014 an AI security engineer embedded in the platform \u2014 auto-triages, investigates and tunes detections over pipeline data + case context (Verdict, IP Threat Intelligence, and more).",
+      "whyItMatters": "Auto-triage + recommended actions reach the analyst with the case, not after they start digging."
+    },
+    {
+      "dimension": "Insights vs. raw alerts",
+      "sentinel": "Raw alerts \u2192 incidents; analysts triage the noise.",
+      "abstract": "Correlated, verdicted insights (finding + context); noise collapsed upstream.",
+      "whyItMatters": "Fewer, richer, decision-ready items lowers alert fatigue and mean-time-to-decision."
+    },
+    {
+      "dimension": "Noise tuning",
+      "sentinel": "Tune rules post-ingest \u2014 you still pay to ingest the noise.",
+      "abstract": "rule-tuning-filters down-sample the pattern *upstream* (tune-at-source loop).",
+      "whyItMatters": "A false-positive disposition permanently lowers *future* ingest AND future incidents \u2014 not just this one."
+    },
+    {
+      "dimension": "Source & destination agnostic",
+      "sentinel": "Microsoft-centric; strongest with Microsoft sources.",
+      "abstract": "OCSF pipeline routes the same model to Sentinel, Splunk, any SIEM, Event Hub, LakeVilla.",
+      "whyItMatters": "Heterogeneous / M&A estates get one model; destinations become a per-cost choice."
+    },
+    {
+      "dimension": "Vendor lock-in",
+      "sentinel": "Data + detections live in the SIEM; switching = re-onboarding sources and rewriting content.",
+      "abstract": "Pipeline decouples sources from the SIEM; portable normalization + detections; SIEM is a swappable destination.",
+      "whyItMatters": "Decoupling protects negotiating leverage and makes future platform changes low-risk."
+    },
+    {
+      "dimension": "SOAR & automation cost",
+      "sentinel": "Logic Apps playbooks bill per action; automation volume scales with incident/alert volume.",
+      "abstract": "Fewer, higher-fidelity insights + upstream tune-at-source mean fewer incidents to automate against.",
+      "whyItMatters": "Cutting incident volume upstream lowers both SIEM ingest AND downstream automation spend."
+    },
+    {
+      "dimension": "Multi-SIEM / multi-cloud",
+      "sentinel": "One workspace is the destination; multi-SIEM or migration means re-onboarding sources.",
+      "abstract": "Fan out the same normalized events + findings simultaneously \u2014 Abstract lists Sentinel, Splunk, AWS Security Lake, CrowdStrike NG-SIEM, Elastic, Google SecOps, Cortex XSIAM and SentinelOne as destinations.",
+      "whyItMatters": "Run a bake-off, support M&A/mixed estates, or migrate with no source re-onboarding."
+    },
+    {
+      "dimension": "Compliance & PII",
+      "sentinel": "Masking/redaction configured post-ingest or via connectors; sensitive data can land before it's handled.",
+      "abstract": "Abstract states PII is detected and redacted in-stream (GDPR/HIPAA/PCI) before data reaches any destination.",
+      "whyItMatters": "Sensitive fields never hit the SIEM in the clear \u2014 compliance handled upstream, not after landing."
+    },
+    {
+      "dimension": "Onboarding & upkeep",
+      "sentinel": "Per-source connectors + ASIM parser upkeep as sources and schemas change.",
+      "abstract": "Normalize once to OCSF/ACS upstream; new sources map once and every downstream query still works.",
+      "whyItMatters": "Less parser/rule maintenance as the estate changes \u2014 engineering time back to the SOC."
+    },
+    {
+      "dimension": "Deployment relationship",
+      "sentinel": "Terminal destination for data.",
+      "abstract": "Bidirectional: feeds Sentinel (destination) AND reads back via API (verdict, search, tune-at-source).",
+      "whyItMatters": "Transparent two-way integration \u2014 augment today, rebalance later, on your timeline."
+    }
+  ],
+  "migrationLadder": [
+    {
+      "stage": "Stage 1 \u2014 Augment (this solution)",
+      "detail": "Keep Sentinel exactly as-is. Route Abstract findings + enriched context in via the destination connector; pull insights/verdicts back via the API connector. Immediate fidelity + AI-SOC uplift, zero disruption."
+    },
+    {
+      "stage": "Stage 2 \u2014 Optimize cost",
+      "detail": "Send only convictions + supporting context to Sentinel; route full-fidelity telemetry to LakeVilla. Volume-based ingest drops sharply (demo: ~99.6%) while retention/hunt coverage stays complete."
+    },
+    {
+      "stage": "Stage 3 \u2014 Rebalance / decide",
+      "detail": "With normalization + detections living in the pipeline, the SIEM becomes a swappable, per-cost destination. Evaluate augment-vs-replace on real numbers \u2014 using the TCO panels in this solution."
+    }
+  ],
+  "decisionGuide": {
+    "leanTogetherWhen": [
+      "Microsoft-heavy estate \u2014 Defender XDR, Entra, M365 already correlate in Sentinel.",
+      "Compliance, reporting and IR runbooks are standardized in Sentinel today.",
+      "The team is fluent in KQL and Sentinel content and wants uplift, not change.",
+      "Goal is higher fidelity + AI-SOC (ASTRO) + cost relief with zero disruption.",
+      "You want a fast, reversible win to prove value before any bigger decision."
+    ],
+    "leanWithoutWhen": [
+      "SIEM spend is the pain \u2014 a volume-driven bill growing faster than the security value.",
+      "Multi-SIEM / multi-cloud / vendor-neutral mandate; avoiding lock-in is strategic.",
+      "Retention-heavy (long compliance windows) \u2014 hot-tier-everything doesn't scale.",
+      "Noisy high-volume sources (firewall, DNS, proxy, flow) dominate ingestion.",
+      "Migrating off a legacy or over-priced SIEM \u2014 you want a durable pipeline layer first."
+    ],
+    "useCases": [
+      {
+        "useCase": "Microsoft-centric SOC, Sentinel is home",
+        "posture": "together",
+        "why": "Route Abstract findings + context into Sentinel; add ASTRO verdicts and tune-at-source. Keep everything you have, raise fidelity, trim noise."
+      },
+      {
+        "useCase": "Runaway SIEM ingest cost",
+        "posture": "hybrid",
+        "why": "Send convictions + context to Sentinel, full fidelity to LakeVilla. Volume-based bill drops sharply (demo: ~99.6%) with no loss of hunt coverage."
+      },
+      {
+        "useCase": "Multi-SIEM / M&A / vendor-neutral",
+        "posture": "rebalance",
+        "why": "Normalize once, fan out to Sentinel, Splunk, any SIEM simultaneously. Run a bake-off or consolidate without re-onboarding sources."
+      },
+      {
+        "useCase": "Long-retention compliance",
+        "posture": "hybrid",
+        "why": "Keep multi-year full-fidelity in an always-queryable cold tier with replay; send only what the SIEM needs to the hot tier."
+      },
+      {
+        "useCase": "Legacy/over-priced SIEM migration",
+        "posture": "rebalance",
+        "why": "Stand up the pipeline first; detections + normalization live in Abstract, so the SIEM becomes a swappable, per-cost destination and migration is low-risk."
+      },
+      {
+        "useCase": "Building an AI/agentic SOC",
+        "posture": "together",
+        "why": "Feed agents decision-ready insights + an entity graph via API/MCP; Sentinel + Copilot and ASTRO operate on signal, not raw log soup."
+      }
+    ]
+  },
+  "citedIndustryStats": [
+    {
+      "stat": "79%",
+      "label": "of MITRE ATT&CK techniques enterprise SIEMs miss",
+      "soWhat": "You pay to ingest data that never becomes a detection \u2014 CardinalOps found the data already ingested could cover 90%+. Abstract turns telemetry into detections in-stream.",
+      "source": "CardinalOps, 5th Annual State of SIEM Detection Risk, 2025",
+      "url": "https://www.prnewswire.com/news-releases/enterprise-siems-miss-79-of-mitre-attck-techniques-used-by-adversaries-according-to-cardinalops-5th-annual-report-302473779.html"
+    },
+    {
+      "stat": "83%",
+      "label": "of SOC alerts are false positives",
+      "soWhat": "Abstract collapses repetitive/benign events upstream and auto-triages with ASTRO \u2014 analysts see signal, not noise.",
+      "source": "Vectra AI, 2023 State of Threat Detection (n=2,000 analysts)",
+      "url": "https://www.vectra.ai/resources/2023-state-of-threat-detection"
+    },
+    {
+      "stat": "67%",
+      "label": "of daily alerts go unaddressed",
+      "soWhat": "Fewer, higher-fidelity insights mean the queue is workable \u2014 not a backlog nobody can clear.",
+      "source": "Vectra AI, 2023 State of Threat Detection",
+      "url": "https://www.vectra.ai/resources/2023-state-of-threat-detection"
+    },
+    {
+      "stat": "4,484",
+      "label": "alerts hit the average SOC per day",
+      "soWhat": "Pipeline aggregation/dedupe (demo ~34:1) cuts the raw flood before it becomes alerts.",
+      "source": "Vectra AI, 2023 State of Threat Detection",
+      "url": "https://www.vectra.ai/resources/2023-state-of-threat-detection"
+    },
+    {
+      "stat": "14 days",
+      "label": "median attacker dwell time",
+      "soWhat": "Shift-left detection (~0.5s) shrinks time-to-detect vs. ingest-then-schedule SIEM latency.",
+      "source": "Mandiant / Google Cloud, M-Trends 2026 (2025 data)",
+      "url": "https://cloud.google.com/blog/topics/threat-intelligence/m-trends-2026"
+    },
+    {
+      "stat": "29 min",
+      "label": "average eCrime breakout time (fastest 27 sec)",
+      "soWhat": "When lateral movement takes minutes, detecting after ingest+schedule is too slow \u2014 detect in-stream.",
+      "source": "CrowdStrike, 2026 Global Threat Report",
+      "url": "https://www.crowdstrike.com/en-us/global-threat-report/"
+    },
+    {
+      "stat": "$4.44M",
+      "label": "average cost of a data breach \u2014 241 days to identify + contain",
+      "soWhat": "Cost falls when you detect and contain faster; IBM attributes the 2025 drop to AI-driven defenses. Shift-left detection + ASTRO triage shrink that window.",
+      "source": "IBM, Cost of a Data Breach 2025",
+      "url": "https://www.ibm.com/reports/data-breach"
+    },
+    {
+      "stat": "4.8M",
+      "label": "global cybersecurity workforce gap",
+      "soWhat": "You can't hire your way out \u2014 reclaim capacity by removing false-positive toil upstream.",
+      "source": "ISC2, 2024 Cybersecurity Workforce Study (latest published gap figure)",
+      "url": "https://www.isc2.org/Insights/2024/09/ISC2-Publishes-2024-Cybersecurity-Workforce-Study-First-Look"
+    },
+    {
+      "stat": "64%",
+      "label": "of analysts spend >half their time on manual work",
+      "soWhat": "Auto-triage + tune-at-source give that time back to real investigation.",
+      "source": "Tines, Voice of the SOC Analyst 2022",
+      "url": "https://www.tines.com/reports/voice-of-the-soc-analyst/"
+    },
+    {
+      "stat": "63%",
+      "label": "of security pros report burnout",
+      "soWhat": "Less noise, less swivel-chair \u2014 a pipeline that lands decision-ready insights protects the team.",
+      "source": "Tines, Voice of the SOC 2023",
+      "url": "https://www.tines.com/reports/voice-of-the-soc-2023/"
+    }
+  ],
+  "abstractOwnClaims": [
+    {
+      "claim": "70\u201380%",
+      "label": "average data-volume reduction Abstract reports",
+      "detail": "By filtering on \u201cactionable relevance and risk,\u201d not blindly dropping events.",
+      "source": "Abstract Security \u2014 Reduce Data Volume & Costs",
+      "url": "https://www.abstract.security/use-cases/reduce-data-volume-costs"
+    },
+    {
+      "claim": "10\u201315%",
+      "label": "of security telemetry actually drives detection & real-time analytics (Abstract)",
+      "detail": "The other ~85\u201390% can live in low-cost, query-ready cold storage (LakeVilla) \u2014 no rehydration, no retrieval fees.",
+      "source": "Abstract Security \u2014 Introducing LakeVilla",
+      "url": "https://www.abstract.security/blog/introducing-abstract-lakevilla-pipeline-powered-analyst-ready-and-efficient-storage"
+    },
+    {
+      "claim": "\u201cdata volume, not data value\u201d",
+      "label": "Abstract's own SIEM-cost framing",
+      "detail": "\u201cYour SIEM bill is driven by data volume, not data value.\u201d \u2014 the case for aligning spend with reduction.",
+      "source": "Abstract Security \u2014 Reduce Data Volume & Costs",
+      "url": "https://www.abstract.security/use-cases/reduce-data-volume-costs"
+    }
+  ],
+  "shippedPortfolio": {
+    "source": "Abstract content-packs portfolio \u2014 internal SE Source Value Guide (Jun 2026)",
+    "items": [
+      {
+        "metric": "141",
+        "label": "supported source content packs"
+      },
+      {
+        "metric": "1,153",
+        "label": "curated, MITRE-mapped detections (maintained as content)"
+      },
+      {
+        "metric": "591",
+        "label": "streaming pipeline functions (shape + reduce in flight)"
+      },
+      {
+        "metric": "27",
+        "label": "pre-built analytic views / dashboards"
+      },
+      {
+        "metric": "~34.5%",
+        "label": "avg data reduction per pack (range 10\u201375%, n=105)"
+      },
+      {
+        "metric": "13 / 13",
+        "label": "MITRE ATT&CK tactics covered out of the box"
+      }
+    ]
+  },
+  "positioningPOV": [
+    {
+      "title": "Speed vs. scale",
+      "detail": "Abstract is pipeline-native and focused \u2014 one hard problem, solved deeply, shipped fast. A hyperscaler bundles the SIEM into a vast platform and ships on platform time; a focused vendor iterates on pipeline economics and detections at startup speed."
+    },
+    {
+      "title": "Incentive alignment",
+      "detail": "A per-GB SIEM earns more the more you ingest \u2014 the opposite of your cost goal. A pipeline earns by making your data smaller and smarter. Align spend with a vendor whose incentive is your reduction, not your volume."
+    },
+    {
+      "title": "Neutral by design",
+      "detail": "Abstract is Switzerland for security data \u2014 it doesn't need you all-in on one cloud or SIEM. That neutrality is the hedge: detections, normalization and history stay portable however the platform market shifts."
+    },
+    {
+      "title": "Focused roadmap",
+      "detail": "Pipeline, cost, fidelity and AI-SOC are the whole roadmap here \u2014 not line items competing with hundreds of other platform priorities. Requests land with the team that owns the problem end to end."
+    },
+    {
+      "title": "Adopt the future without betting the SOC",
+      "detail": "Because it's additive and reversible, put Abstract in front of Sentinel today and decide augment-vs-replace later \u2014 moving as fast as your risk tolerance allows, not as fast as a migration forces."
+    }
+  ],
+  "futureProof": [
+    {
+      "title": "Own your data gravity",
+      "detail": "Normalizing to OCSF upstream means your detections, enrichment and history aren't trapped in one SIEM's schema. When the market shifts \u2014 new SIEM, new tier, new owner \u2014 your security logic travels with you instead of being rewritten."
+    },
+    {
+      "title": "AI-ready by construction",
+      "detail": "Agentic SOC needs clean, correlated, enriched, entity-resolved data \u2014 not raw log soup. Abstract lands decision-ready insights + a queryable entity graph, and exposes them to agents via API/MCP, so ASTRO and your own AI stack operate on signal, not noise."
+    },
+    {
+      "title": "Ride Microsoft's own roadmap without the lock-in",
+      "detail": "Microsoft's own Sentinel data lake (GA Oct 2025) and Basic/Auxiliary tiers price cheap storage at ~$0.05/GB vs. ~$4.30/GB for Analytics \u2014 proof of the pre-SIEM-curation thesis Abstract already delivers. Abstract lets you apply that economics upstream and across every SIEM you run, not just inside one."
+    },
+    {
+      "title": "Retention economics that scale with regulation",
+      "detail": "As retention mandates grow, hot-tier-everything doesn't scale. Full-fidelity in an always-queryable cold tier (LakeVilla) with replay lets you satisfy multi-year retention and still hunt it \u2014 without multiplying SIEM ingest."
+    },
+    {
+      "title": "One model across a consolidating estate",
+      "detail": "M&A, multi-cloud and tool consolidation are constant. A vendor- and destination-agnostic pipeline lets you absorb new sources and route to new destinations without re-onboarding or rewriting content each time."
+    }
+  ],
+  "abstractCapabilities": {
+    "astroWorkflows": [
+      "Verdict",
+      "IP Threat Intelligence"
+    ],
+    "storage": "LakeVilla full-fidelity cold tier with replay (no rehydration)",
+    "normalization": "OCSF + Abstract Common Schema (473 fields)",
+    "shiftLeftDetections": [
+      "verdict fusion",
+      "IOC blast-match",
+      "beaconing/C2",
+      "ATO\u2194C2 bridge",
+      "lateral movement/exfil",
+      "campaign clustering"
+    ],
+    "reductionLevers": [
+      "aggregation",
+      "deduplication",
+      "filtering",
+      "down-sampling",
+      "rule-tuning-filters (tune-at-source)"
+    ],
+    "enrichment": [
+      "identity/asset resolution",
+      "geo/ASN",
+      "TI/AIG IOC match",
+      "29+ OSINT adapters",
+      "verdict fusion"
+    ],
+    "measuredDemo": {
+      "aggregationRatio": "~34:1",
+      "siemVolumeCut": "~99.6%",
+      "enrichmentCoverage": "100%"
+    }
+  },
+  "apiEndpoints": {
+    "auth": "GET /v2/auth/",
+    "acsFields": "GET /v1/acs/fields",
+    "listInsights": "GET /v1/insights/ (paginated page_number/page_size; filters incl. severity, status, verdict, keyword, sort \u2014 powers the pull connector)",
+    "readInsight": "GET /v1/insights/{id}",
+    "getVerdict": "GET /v1/insights/{id}/verdict  \u00b7  Upsert/Delete Verdict",
+    "insightFindings": "GET /v1/insights/{id}/findings  \u00b7  Get Resources Summary",
+    "searchEvents": "POST /v1/streamviewer/search (v1 + v2)",
+    "workflows": "Verdict \u00b7 Summary \u00b7 Describe Events \u00b7 Describe Rule \u00b7 Create Rule \u00b7 Automapper (ASTRO agentic workflows)",
+    "detectionEffectiveness": "Calculate Detection Effectiveness (+ history) \u2014 detection-quality metrics",
+    "tuningFilters": "GET/POST/PUT/DELETE tuning filters (tune-at-source)",
+    "note": "Endpoints confirmed against the Abstract Security API Postman collection; auth = Bearer accessToken + X-AS-Vendor-Account-ID header. Base URL https://api.abstractsecurity.app."
+  },
+  "validateBeforeClaiming": [
+    "Insights list API endpoint (the pull connector path is parameterized; confirm against your OpenAPI spec).",
+    "LakeVilla replay-through-live-detections semantics and retention limits.",
+    "Detection-as-code / Sigma authoring format (not documented in this repo).",
+    "Stateful cross-stream correlation window + persistent entity store durability.",
+    "Licensing, quotas, and Azure Government parity."
+  ],
+  "disclaimer": "Quantitative $/% figures are demo-measured or modeled from parameters, not vendor benchmarks. Capability statements draw on the Abstract solution content in this repository plus well-known Microsoft Sentinel product facts. Product capabilities and pricing tiers on both sides change \u2014 validate against your environment and each vendor's current docs before external use."
+}
