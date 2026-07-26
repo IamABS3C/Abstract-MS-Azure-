@@ -37,7 +37,7 @@ Buttons target **`IamABS3C/Abstract-MS-Azure-`** on `main`. The repo must be **p
 | --- | --- | --- | --- |
 | **Event Hub Destination** — namespace, destination hub, Send SAS rule | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json) | Wizard: basics → destination hub → auth → networking |
 | **Azure Sentinel Destination** — LAW + Sentinel + DCE + DCR + custom table + RBAC | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json) | Wizard: workspace → ingestion (DCE/DCR/table) → auth & RBAC. **Create the Entra app first** (see [Destinations](#destinations)) |
-| **Sentinel Destination — one-click incl. app registration** *(advanced)* | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json) | Also creates the Entra app via a deploymentScript, secret → Key Vault. **Needs a user-assigned identity with Application Administrator** — see [Automate the app registration](#automate-the-app-registration--roles) |
+| **Sentinel Destination — one-click incl. app registration** *(advanced)* | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.createUiDefinition.json) | [![Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.createUiDefinition.json) | Guided wizard (workspace → ingestion → app registration & Key Vault). Also creates the Entra app via a deploymentScript, secret → Key Vault. **Needs a user-assigned identity with Application Administrator** — see [Automate the app registration](#automate-the-app-registration--roles) |
 
 > **Button URL format:** `https://portal.azure.com/#create/Microsoft.Template/uri/<URL-encoded raw azuredeploy.json>[/createUIDefinitionUri/<URL-encoded raw createUiDefinition.json>]` — URL-encode the `raw.githubusercontent.com` link (`:` → `%3A`, `/` → `%2F`). If you fork or rename, replace `IamABS3C/Abstract-MS-Azure-` throughout (and in `docs/index.html`).
 >
@@ -81,7 +81,11 @@ Buttons target **`IamABS3C/Abstract-MS-Azure-`** on `main`. The repo must be **p
 ├── scripts/
 │   ├── Deploy-AbstractEventHub.ps1  # guided deploy / credentials / delete (source only)
 │   ├── new-abstract-sentinel-app.sh    # create Entra app + SP + secret, grant DCR roles (bash)
-│   └── New-AbstractSentinelApp.ps1     # same, PowerShell 7 / Az
+│   ├── New-AbstractSentinelApp.ps1     # same, PowerShell 7 / Az
+│   └── gen-sentinel-schema.py          # all_fields.json → Log Analytics tableColumns params
+├── solution/
+│   └── schema/
+│       └── all_fields.json             # canonical Abstract ACS field catalog (from GET /v1/acs/fields)
 ├── templates/
 │   ├── subscription/
 │   │   ├── activitylog.bicep         # Activity Log → hub (subscription scope)
@@ -89,7 +93,7 @@ Buttons target **`IamABS3C/Abstract-MS-Azure-`** on `main`. The repo must be **p
 │   └── destinations/
 │       ├── eventhub-destination.bicep / .azuredeploy.json / .createUiDefinition.json
 │       ├── sentinel-destination.bicep / .azuredeploy.json / .createUiDefinition.json
-│       └── sentinel-destination-with-app.bicep / .azuredeploy.json  # one-click + app reg (deploymentScript → Key Vault)
+│       └── sentinel-destination-with-app.bicep / .azuredeploy.json / .createUiDefinition.json  # one-click + app reg (deploymentScript → Key Vault)
 └── .github/workflows/validate.yml   # CI: JSON parse + Bicep compile/drift + arm-ttk
 ```
 
@@ -257,13 +261,14 @@ az deployment group create -g rg-abstract-sentinel \
   --parameters parameters/sentinel-destination.parameters.json \
   --parameters principalId=<spn-object-id>
 
-# full per-field ACS schema (explicit columns) — use the shipped starter and
-# expand it from Abstract's all_fields.json:
+# full per-field ACS schema (explicit columns) — generated from the real catalog:
 az deployment group create -g rg-abstract-sentinel \
   --template-file templates/destinations/sentinel-destination.azuredeploy.json \
   --parameters parameters/sentinel-destination.full-schema.parameters.json \
   --parameters principalId=<spn-object-id>
 ```
+
+The full-schema params file is **generated from the canonical Abstract Common Schema** — [`solution/schema/all_fields.json`](solution/schema/all_fields.json) (1,872 fields: 473 static + the `ext.*` vendor namespace, sourced from the Abstract API's `GET /v1/acs/fields`). Regenerate or re-tune it with [`scripts/gen-sentinel-schema.py`](scripts/gen-sentinel-schema.py), which maps Abstract types → Log Analytics types, flattens dotted ACS names to underscores, and collapses `ext.*` into one dynamic column (474 columns; `--static-only` or `--explode-ext` to change coverage).
 
 > **Existing workspace in another region?** In *Existing* mode the DCE/DCR must sit in the workspace's region. Pass `existingWorkspaceLocation=<region>` (or set it in the wizard's "Existing workspace region" field) so they are created there.
 

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "18339276958255611624"
+      "templateHash": "1375202228767846839"
     }
   },
   "parameters": {
@@ -205,6 +205,27 @@
       "metadata": {
         "description": "Safe Mode guardrails for external SaaS delivery (Abstract):\n  true  -> public network access stays ON, the IP allowlist is ignored, and the\n           firewall default action stays Allow so Abstract can always deliver.\n  false -> disablePublicNetwork / allowedIpRanges are honored exactly as set.\nShip customers safeMode=true for onboarding; harden later.\n"
       }
+    },
+    "enableDiagnostics": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable diagnostic settings on the destination namespace so you can monitor the health of the delivery pipeline itself."
+      }
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Resource ID of the Log Analytics workspace for namespace diagnostics."
+      }
+    },
+    "diagnosticsStorageAccountId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional storage account resource ID for diagnostics archive."
+      }
     }
   },
   "variables": {
@@ -348,6 +369,32 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-pe', parameters('namespaceName')))]"
+      ]
+    },
+    {
+      "condition": "[and(parameters('enableDiagnostics'), or(not(empty(parameters('logAnalyticsWorkspaceId'))), not(empty(parameters('diagnosticsStorageAccountId')))))]",
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "scope": "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]",
+      "name": "[format('{0}-diagnostics', parameters('namespaceName'))]",
+      "properties": {
+        "workspaceId": "[if(empty(parameters('logAnalyticsWorkspaceId')), null(), parameters('logAnalyticsWorkspaceId'))]",
+        "storageAccountId": "[if(empty(parameters('diagnosticsStorageAccountId')), null(), parameters('diagnosticsStorageAccountId'))]",
+        "logs": [
+          {
+            "categoryGroup": "allLogs",
+            "enabled": true
+          }
+        ],
+        "metrics": [
+          {
+            "category": "AllMetrics",
+            "enabled": true
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]"
       ]
     }
   ],

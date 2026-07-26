@@ -47,6 +47,16 @@
             "name": "cw-text",
             "type": "Microsoft.Common.TextBlock",
             "options": { "text": "Installs the Abstract Security data connector tile (live ingestion-status graph) and the Pipeline Overview workbook (volume, coverage, and a reduction/cost estimate)." }
+          },
+          {
+            "name": "cw-ingestion-text",
+            "type": "Microsoft.Common.TextBlock",
+            "options": { "text": "This wizard installs the in-workspace content (connector tile, workbook, analytics, hunts, playbooks). Deploy the Abstract ingestion stack (Data Collection Endpoint + Data Collection Rule + AbstractEventLogs_CL) separately with the Sentinel Destination template — the one-click 'Deploy to Azure' variant in the solution repo provisions the DCE and DCR this connector and workbook read from." }
+          },
+          {
+            "name": "cw-rbac-info",
+            "type": "Microsoft.Common.InfoBox",
+            "options": { "icon": "Warning", "text": "Enterprise prerequisite — Entra app registration (RBAC): Abstract publishes events to the Sentinel DCR through an Entra ID app registration and its service principal. Azure Resource Manager cannot create the app registration, so create it in Entra ID first, then grant its service principal BOTH 'Monitoring Metrics Publisher' AND 'Monitoring Contributor' scoped to the Data Collection Rule — not the subscription or resource group. Scoping both roles to the DCR is the least-privilege posture: it is the only identity the pipeline needs, and it can do nothing beyond publishing to that rule. Store the client secret in Azure Key Vault." }
           }
         ]
       },

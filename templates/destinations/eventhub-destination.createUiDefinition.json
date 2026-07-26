@@ -255,6 +255,55 @@
             "defaultValue": true
           }
         ]
+      },
+      {
+        "name": "monitoring",
+        "label": "Monitoring",
+        "elements": [
+          {
+            "name": "monitoringInfo",
+            "type": "Microsoft.Common.InfoBox",
+            "options": {
+              "icon": "Info",
+              "text": "Optionally stream the namespace's own diagnostic logs and metrics to Log Analytics (and/or archive them to a storage account) so you can watch the health of the delivery pipeline itself. Leave this off to skip - it can always be added later by redeploying."
+            }
+          },
+          {
+            "name": "enableDiagnostics",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Send namespace diagnostics to Log Analytics",
+            "defaultValue": false,
+            "toolTip": "Creates a diagnostic setting on the Event Hubs namespace (allLogs + AllMetrics). Diagnostics are only provisioned when a workspace or storage account is supplied below."
+          },
+          {
+            "name": "logAnalyticsWorkspaceId",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Log Analytics workspace resource ID",
+            "toolTip": "Full ARM resource ID of the workspace: Portal > Log Analytics workspace > Settings > Properties > Resource ID. Optional - a checked box with no target simply creates nothing.",
+            "placeholder": "/subscriptions/.../resourceGroups/.../providers/Microsoft.OperationalInsights/workspaces/...",
+            "defaultValue": "",
+            "constraints": {
+              "required": false,
+              "regex": "^$|^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.OperationalInsights/workspaces/[^/]+$",
+              "validationMessage": "Leave blank, or paste the full Log Analytics workspace resource ID (/subscriptions/.../workspaces/...)."
+            },
+            "visible": "[steps('monitoring').enableDiagnostics]"
+          },
+          {
+            "name": "diagnosticsStorageAccountId",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Diagnostics archive storage account resource ID (optional)",
+            "toolTip": "Full ARM resource ID of a storage account to archive diagnostics to. Leave blank to use Log Analytics only.",
+            "placeholder": "/subscriptions/.../resourceGroups/.../providers/Microsoft.Storage/storageAccounts/...",
+            "defaultValue": "",
+            "constraints": {
+              "required": false,
+              "regex": "^$|^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.Storage/storageAccounts/[^/]+$",
+              "validationMessage": "Leave blank, or paste the full storage account resource ID (/subscriptions/.../storageAccounts/...)."
+            },
+            "visible": "[steps('monitoring').enableDiagnostics]"
+          }
+        ]
       }
     ],
     "outputs": {
@@ -279,7 +328,10 @@
       "enablePrivateEndpoint": "[or(equals(steps('network').profile, 'PrivateOnly'), equals(steps('network').profile, 'Hybrid'))]",
       "subnetId": "[coalesce(steps('network').subnetId, '')]",
       "privateDnsZoneId": "[coalesce(steps('network').privateDnsZoneId, '')]",
-      "safeMode": "[equals(steps('network').profile, 'SafeMode')]"
+      "safeMode": "[equals(steps('network').profile, 'SafeMode')]",
+      "enableDiagnostics": "[coalesce(steps('monitoring').enableDiagnostics, false)]",
+      "logAnalyticsWorkspaceId": "[coalesce(steps('monitoring').logAnalyticsWorkspaceId, '')]",
+      "diagnosticsStorageAccountId": "[coalesce(steps('monitoring').diagnosticsStorageAccountId, '')]"
     }
   }
 }
