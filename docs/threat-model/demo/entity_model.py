@@ -139,6 +139,31 @@ def predict(state, model=None, cves=None) -> dict:
                             "survives_restore": sum(1 for r in model["entities"] if r["survives_restore"])}}
 
 
+def forecast(state, entity, horizon_days: int = 7) -> dict:
+    """Linear risk-trajectory forecast for one entity. Recomputes the slope itself from the last
+    two trajectory points — it never trusts state.scores[entity]['trend'] (hardcoded 0 on the
+    live path). Pure stdlib; degrades to an empty projection when history is insufficient."""
+    from datetime import timedelta
+    sc = state.scores.get(entity) or {}
+    hist = [(t, float(v)) for t, v in (sc.get("trajectory") or [])]
+    if len(hist) < 2:
+        return {"entity": entity, "history": hist, "projected": [],
+                "slope_per_day": 0.0, "note": "insufficient history"}
+    (t0, v0), (t1, v1) = hist[-2], hist[-1]
+    try:                                        # datetime trajectory (normal case)
+        span = max((t1 - t0).total_seconds() / 86400.0, 1e-6)
+        step, base = timedelta(days=1), t1
+    except Exception:                           # non-datetime ts → unit spacing
+        span, step, base = 1.0, None, None
+    slope = (v1 - v0) / span
+    projected = []
+    for i in range(1, horizon_days + 1):
+        pv = round(max(0.0, min(100.0, v1 + slope * i)), 1)
+        projected.append(((base + step * i) if base is not None else i, pv))
+    return {"entity": entity, "history": hist, "projected": projected,
+            "slope_per_day": round(slope, 3)}
+
+
 def threat_model(state) -> dict:
     """ATT&CK-aligned kill-chain threat model derived from the campaign graph + findings."""
     # map observed event sources → kill-chain stages
@@ -222,6 +247,8 @@ def selftest():
     assert tm["kill_chain"] and "stage" in tm["kill_chain"][0]
     ev = evaluate(m)
     assert ev["entities"] == m["n"] and 0 <= ev["signal_coverage_pct"] <= 100
+    fc = forecast(st, m["entities"][0]["entity"])
+    assert "projected" in fc and "slope_per_day" in fc
     opt = optimize(m, st)
     assert abs(sum(opt["weights"].values()) - 1.0) < 0.01
     ab = to_abstract(m)

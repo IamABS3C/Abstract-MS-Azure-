@@ -232,6 +232,30 @@ def risk_panel(state) -> str:
     return _fig_html(fig)
 
 
+def forecast_chart(state, entity, horizon_days: int = 7) -> str:
+    """Risk-trajectory forecast for one entity: solid history + dashed projection from
+    entity_model.forecast(). Degrades to an HTML notice when plotly is absent or history is thin."""
+    if not _plotly_ok():
+        return "<div style='color:#8a8a99'>forecast chart needs plotly — see the forecast table.</div>"
+    import plotly.graph_objects as go
+    import entity_model as EM
+    fc = EM.forecast(state, entity, horizon_days)
+    hist, proj = fc["history"], fc["projected"]
+    if not hist:
+        return f"<div style='color:#8a8a99'>no risk trajectory recorded for {entity}.</div>"
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[t for t, _ in hist], y=[v for _, v in hist],
+                             mode="lines+markers", name="history", line=dict(color=brand.TEAL)))
+    if proj:
+        fig.add_trace(go.Scatter(x=[t for t, _ in proj], y=[v for _, v in proj],
+                                 mode="lines+markers", name=f"+{horizon_days}d projection",
+                                 line=dict(color=brand.PINK, dash="dash")))
+    fig.update_layout(template="plotly_dark", paper_bgcolor=brand.BG, plot_bgcolor=brand.BG,
+                      title=f"Risk forecast — {entity} (slope {fc['slope_per_day']}/day)",
+                      height=340, margin=dict(l=48, r=20, t=48, b=36), yaxis=dict(range=[0, 100]))
+    return _fig_html(fig)
+
+
 def timeline(state) -> str:
     if not _plotly_ok():
         return "<div>timeline needs plotly</div>"
@@ -536,6 +560,7 @@ def selftest():
         out = fn(st)
         assert "<" in out, fn.__name__
     assert "<" in risk_radar(st, ent)
+    assert "<" in forecast_chart(st, ent)
     assert ent in entity_detail_html(st, ent)
     cg = cytoscape_graph(st)
     assert cg is None or hasattr(cg, "graph")     # ipycytoscape widget when installed

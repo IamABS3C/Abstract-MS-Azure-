@@ -90,6 +90,79 @@ class MicrosoftSentinel(Integration):
         return self.search(f'search "{value}" | take 5')
 
 
+# ── Microsoft Sentinel incidents via Azure Resource Manager (WRITE-back) ────────────
+class MicrosoftSentinelIncidents(Integration):
+    """ARM-scope Sentinel writeback — incidents + bookmarks: the two-way half of the Sentinel
+    console. Different auth (management.azure.com bearer) and env vars than the Log-Analytics
+    READ side; same bare-urllib pattern, no azure-identity dependency. Get a short-lived token:
+    `az account get-access-token --resource https://management.azure.com`."""
+    name = "Microsoft Sentinel Incidents (ARM)"
+    kind = "siem-write"     # not swept by lookup_all() — driven directly from the Phase-4 panel
+    env = ["SENTINEL_SUBSCRIPTION_ID", "SENTINEL_RESOURCE_GROUP",
+           "SENTINEL_WORKSPACE_NAME", "SENTINEL_ARM_TOKEN"]
+    note = "ARM bearer (management.azure.com). Incidents list/get/comment/update + bookmark create."
+    API = "2024-03-01"
+
+    def _base(self) -> str:
+        return ("https://management.azure.com/subscriptions/"
+                f"{os.environ['SENTINEL_SUBSCRIPTION_ID']}/resourceGroups/"
+                f"{os.environ['SENTINEL_RESOURCE_GROUP']}/providers/Microsoft.OperationalInsights/"
+                f"workspaces/{os.environ['SENTINEL_WORKSPACE_NAME']}"
+                "/providers/Microsoft.SecurityInsights")
+
+    def _hdr(self) -> dict:
+        return {"Authorization": f"Bearer {os.environ['SENTINEL_ARM_TOKEN']}",
+                "Content-Type": "application/json"}
+
+    def list_incidents(self, top: int = 10) -> dict:
+        if not self.configured():
+            return {"configured": False, "needs": self.env}
+        r = _http("GET", f"{self._base()}/incidents?api-version={self.API}&$top={top}", headers=self._hdr())
+        if not r.get("ok"):
+            return {"configured": True, "error": r.get("error") or r.get("status")}
+        vals = (r.get("data") or {}).get("value") or []
+        return {"configured": True, "count": len(vals),
+                "incidents": [{"name": v.get("name"), **{k: (v.get("properties") or {}).get(k)
+                              for k in ("title", "severity", "status", "incidentNumber")}} for v in vals]}
+
+    def get_incident(self, incident_id: str) -> dict:
+        if not self.configured():
+            return {"configured": False, "needs": self.env}
+        return _http("GET", f"{self._base()}/incidents/{incident_id}?api-version={self.API}", headers=self._hdr())
+
+    def add_comment(self, incident_id: str, text: str) -> dict:
+        if not self.configured():
+            return {"configured": False, "needs": self.env}
+        import uuid
+        cid = uuid.uuid4().hex
+        return _http("PUT", f"{self._base()}/incidents/{incident_id}/comments/{cid}?api-version={self.API}",
+                     headers=self._hdr(), body={"properties": {"message": text}})
+
+    def update_incident(self, incident_id: str, **fields) -> dict:
+        if not self.configured():
+            return {"configured": False, "needs": self.env}
+        cur = self.get_incident(incident_id)          # ARM PUT needs the full properties + etag
+        data = cur.get("data") or {} if cur.get("ok") else {}
+        props = dict((data.get("properties") or {}))
+        props.update(fields)
+        body = {"properties": props}
+        if data.get("etag"):
+            body["etag"] = data["etag"]
+        return _http("PUT", f"{self._base()}/incidents/{incident_id}?api-version={self.API}",
+                     headers=self._hdr(), body=body)
+
+    def create_bookmark(self, payload: dict) -> dict:
+        if not self.configured():
+            return {"configured": False, "needs": self.env}
+        import uuid
+        bid = uuid.uuid4().hex
+        return _http("PUT", f"{self._base()}/bookmarks/{bid}?api-version={self.API}",
+                     headers=self._hdr(), body={"properties": payload})
+
+    def lookup(self, value, kind=""):
+        return {"configured": self.configured(), "note": "writeback client — use the Phase-4 Sentinel panel"}
+
+
 # ── Splunk (REST oneshot export) ───────────────────────────────────────────────────
 class Splunk(Integration):
     name = "Splunk"
@@ -191,6 +264,14 @@ class GenericMCP(Integration):
         s["endpoint"] = os.environ.get(self._env_url, "(unset)")
         return s
 
+    def list_tools(self) -> list:
+        from mcp_client import client_for
+        return client_for(self._env_url).list_tools()
+
+    def call(self, tool, **kwargs) -> dict:
+        from mcp_client import client_for
+        return client_for(self._env_url).call(tool, **kwargs)
+
 
 class AbstractREST(Integration):
     name = "Abstract REST"
@@ -204,6 +285,7 @@ REGISTRY = [
     AbstractREST(),
     AbstractMCPIntegration(),
     MicrosoftSentinel(),
+    MicrosoftSentinelIncidents(),
     GenericMCP("Microsoft Sentinel MCP", "SENTINEL_MCP_URL"),
     GenericMCP("Security Copilot MCP", "SECURITY_COPILOT_MCP_URL"),
     Splunk(),
@@ -241,10 +323,17 @@ def lookup_all(value: str, kind: str = "", kinds=("siem", "mcp")) -> dict:
 def selftest():
     st = registry_status()
     names = {s["name"] for s in st}
-    assert {"Microsoft Sentinel (Log Analytics)", "Splunk", "Elastic / OpenSearch",
-            "Abstract REST", "Abstract MCP", "Microsoft Sentinel MCP"} <= names
+    assert {"Microsoft Sentinel (Log Analytics)", "Microsoft Sentinel Incidents (ARM)", "Splunk",
+            "Elastic / OpenSearch", "Abstract REST", "Abstract MCP", "Microsoft Sentinel MCP"} <= names
     # unconfigured siem returns configured:False (no network)
     assert MicrosoftSentinel().search("x | take 1")["configured"] in (False, True)
+    # ARM incidents writeback client: unconfigured → configured:False, methods present
+    inc = get("Microsoft Sentinel Incidents (ARM)")
+    assert inc.list_incidents()["configured"] in (False, True)
+    assert all(callable(getattr(inc, m)) for m in ("add_comment", "update_incident", "create_bookmark"))
+    # generic MCP now has a real call/list_tools path (unset URL → not-ready, never bundled)
+    gmcp = get("Microsoft Sentinel MCP")
+    assert callable(gmcp.call) and callable(gmcp.list_tools)
     assert get("Splunk").configured() in (False, True)
     # Abstract MCP is always "configured" (bundled)
     assert get("Abstract MCP").configured() is True

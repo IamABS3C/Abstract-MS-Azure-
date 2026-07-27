@@ -31,6 +31,21 @@ otherwise:
   KEV · NVD + keyless pivots) + annotations.
 - **Actions** tab: **dry-run → confirm → apply** write-back to the tenant.
 
+The interactive building blocks below the console add four more sections:
+
+- **🧠 Ask ASTRO** — a free-form NL prompt console: it extracts IOCs from your question,
+  enriches them (keyless), then answers via your configured LLM (Claude / OpenAI / Gemini /
+  Azure OpenAI / Bedrock) or a grounded offline synthesis when no key is set.
+- **🔮 Predictive & data-science** — unsupervised anomaly ranking (PyOD), model risk ranking,
+  escalation watch + predicted next targets, and a per-entity **risk forecast** (dashed projection).
+- **⚙️ Detection · verdict · insight workflows** — author a detection from an editable
+  field/op/value condition (dry-run → create **disabled**), set an analyst **verdict** on a live
+  insight, and update an insight.
+- **🔷 Sentinel & Azure-MS two-way console** — **read** from Microsoft Sentinel (Log Analytics
+  KQL) and **write back** the finding as an Abstract insight *or* a Sentinel incident
+  comment/bookmark (ARM), plus discover tools on the Sentinel / Security-Copilot **MCP**. Every
+  write is gated by an explicit authorize step; all panes degrade to "set these env vars" offline.
+
 Export a standalone branded report and an ATT&CK Navigator layer:
 
 ```bash

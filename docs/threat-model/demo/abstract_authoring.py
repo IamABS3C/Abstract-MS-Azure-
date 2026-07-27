@@ -217,6 +217,37 @@ def apply(client, authored, *, enabled=False) -> dict:
             "status": res.get("status"), "simulated": res.get("simulated", False)}
 
 
+def verdict_preview(nanoid, verdict, **extra) -> dict:
+    """Dry-run for setting an analyst verdict on an existing insight (no tenant write)."""
+    return {"method": "set_insight_verdict", "nanoid": nanoid, "verdict": verdict,
+            "payload": {"verdict": verdict, **extra},
+            "diff": f"SET verdict={verdict} on insight {nanoid or '(none)'}"}
+
+
+def apply_verdict(client, nanoid, verdict, **extra) -> dict:
+    """Apply an analyst verdict via client.set_insight_verdict. Offline clients simulate."""
+    if not client or not nanoid:
+        return {"applied": False, "note": "connect a tenant and pick an insight first"}
+    res = client.set_insight_verdict(nanoid, verdict, **extra)
+    return {"applied": bool(res.get("ok")), "status": res.get("status"),
+            "simulated": res.get("simulated", False), "verdict": verdict, "nanoid": nanoid}
+
+
+def insight_update_preview(nanoid, **fields) -> dict:
+    """Dry-run for updating fields on an existing insight (no tenant write)."""
+    return {"method": "update_insight", "nanoid": nanoid, "payload": fields,
+            "diff": f"PATCH insight {nanoid or '(none)'} ← " + ", ".join(f"{k}={v}" for k, v in fields.items())}
+
+
+def apply_insight_update(client, nanoid, **fields) -> dict:
+    """Apply an insight update via client.update_insight. Offline clients simulate."""
+    if not client or not nanoid:
+        return {"applied": False, "note": "connect a tenant and pick an insight first"}
+    res = client.update_insight(nanoid, fields)
+    return {"applied": bool(res.get("ok")), "status": res.get("status"),
+            "simulated": res.get("simulated", False), "nanoid": nanoid}
+
+
 def review(client=None, state=None) -> dict:
     """Evaluate the existing posture and propose concrete optimizations. Uses the live tenant
     when a connected client is supplied; otherwise reviews the modeled estate."""
@@ -270,7 +301,7 @@ def selftest():
         assert "payload" in a and "diff" in a, k
         built[k] = a
     assert built["Detection rule"]["method"] == "create_rule"
-    assert built["Identity model"]["method"] == "create_insight" and "model" in built["Identity model"]
+    assert built["Identity model"]["method"] == "create_model" and built["Identity model"]["payload"]
     assert built["Parser"]["live_capable"] is False
 
     off = AbstractClient("offline")
@@ -278,6 +309,13 @@ def selftest():
     assert r_view["applied"] is True and r_view.get("simulated")
     r_parser = apply(off, built["Parser"])             # export only
     assert r_parser["applied"] is False and r_parser["exported"].endswith(".json")
+
+    # verdict + insight-update workflow helpers (offline client simulates the writes)
+    assert verdict_preview("abc123", "MALICIOUS")["diff"].startswith("SET verdict=MALICIOUS")
+    assert apply_verdict(off, "abc123", "MALICIOUS")["applied"] is True
+    assert apply_verdict(None, None, "MALICIOUS")["applied"] is False
+    assert insight_update_preview("abc123", severity="high")["payload"] == {"severity": "high"}
+    assert apply_insight_update(off, "abc123", severity="high")["applied"] is True
 
     rev = review(state=st)
     assert "recommendations" in rev and "model_eval" in rev
