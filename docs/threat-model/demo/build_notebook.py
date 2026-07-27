@@ -227,6 +227,63 @@ _enr.on_click(_ent_enrich); _xrf.on_click(_ent_xref); _ent_detail()
 display(W.VBox([_efind, W.HBox([_esel, _enr, _xrf]), _eout]))
 """)
 
+# ── bidirectional Sentinel / Azure-MS MCP console ────────────────────────────────────
+section("🔷 Sentinel &amp; Azure-MS — two-way console", "Phase 3 · Investigate",
+        "**◀ Read** from Microsoft Sentinel (Log Analytics KQL) · **▶ write back** the finding as an Abstract insight *or* a Sentinel incident comment/bookmark · **🔌 call** the Sentinel / Security-Copilot MCP. The focused entity seeds the query.",
+        "close the loop both ways between Abstract and Microsoft Sentinel — read evidence, push verdicts/notes, discover MCP tools. (Large result sets are truncated in-cell.)")
+code("""
+# Two-way bridge: READ (KQL) ←→ WRITE (Abstract insight · Sentinel incident/bookmark) ←→ MCP.
+# Degrades offline — with no keys each pane shows exactly which env vars to set; Abstract dry-runs.
+_sent_read  = IN.get("Microsoft Sentinel (Log Analytics)")
+_sent_write = IN.get("Microsoft Sentinel Incidents (ARM)")
+def _seed_kql():
+    ent = (_focus.get("k") or "").split(":", 1)[-1]
+    return (f'search "{ent}"\\n| take 20') if ent else "AbstractEventLogs_CL\\n| take 20"
+_kql     = W.Textarea(value=_seed_kql(), description="KQL:", layout=W.Layout(width="660px", height="80px"))
+_kql_btn = W.Button(description="◀ Read from Sentinel", button_style="info")
+_kql_out = W.Output()
+_kql_btn.on_click(lambda *_: _act(_kql_out, "Sentinel KQL", lambda: _pre(_sent_read.search(_kql.value))))
+
+# ▶ write-back → Abstract (Sentinel evidence becomes an Abstract insight; dry-run → apply)
+_ta_dry = W.Button(description="▶ Draft Abstract insight")
+_ta_app = W.Button(description="▶ Create in Abstract", button_style="danger", disabled=(client is None))
+_ta_out = W.Output()
+def _to_abstract(apply_it):
+    def work():
+        built = AA.build("Insight", state=state)
+        return _pre(built if not apply_it else (AA.apply(client, built) if client else {"note": "connect a tenant first"}))
+    _act(_ta_out, "insight " + ("apply" if apply_it else "dry-run"), work)
+_ta_dry.on_click(lambda *_: _to_abstract(False)); _ta_app.on_click(lambda *_: _to_abstract(True))
+
+# ▶ write-back → Sentinel incident (ARM); an explicit authorize checkbox gates the write
+_inc_list = W.Button(description="▶ List incidents")
+_inc_id   = W.Text(placeholder="incident name/id", description="Incident:", layout=W.Layout(width="340px"))
+_inc_txt  = W.Text(placeholder="comment to write back…", description="Comment:", layout=W.Layout(width="440px"))
+_inc_ok   = W.Checkbox(value=False, description="authorize write to Sentinel")
+_inc_btn  = W.Button(description="▶ Add comment", button_style="danger")
+_inc_out  = W.Output()
+_inc_list.on_click(lambda *_: _act(_inc_out, "list incidents", lambda: _pre(_sent_write.list_incidents())))
+def _inc_comment(*_):
+    if not _inc_ok.value:
+        _act(_inc_out, "authorize", lambda: "<b style='color:#f5c61e'>tick ‘authorize’ first</b>"); return
+    _act(_inc_out, "add comment", lambda: _pre(_sent_write.add_comment(_inc_id.value, _inc_txt.value)))
+_inc_btn.on_click(_inc_comment)
+
+# 🔌 Azure / MS MCP — discover tools on the Sentinel MCP / Security Copilot MCP
+_mcp_pick  = W.Dropdown(options=["Microsoft Sentinel MCP", "Security Copilot MCP"], description="MCP:")
+_mcp_btn   = W.Button(description="🔌 List MCP tools")
+_mcp_out   = W.Output()
+_mcp_btn.on_click(lambda *_: _act(_mcp_out, "MCP tools", lambda: pd.DataFrame(IN.get(_mcp_pick.value).list_tools())))
+
+display(W.VBox([
+    W.HTML("<b style='color:#01e69d'>◀ Read — Microsoft Sentinel (Log Analytics KQL)</b>"), _kql, _kql_btn, _kql_out,
+    W.HTML("<b style='color:#FF216B'>▶ Write back → Abstract insight</b>"), W.HBox([_ta_dry, _ta_app]), _ta_out,
+    W.HTML("<b style='color:#FF216B'>▶ Write back → Sentinel incident (ARM)</b>"),
+    _inc_list, W.HBox([_inc_id, _inc_txt]), W.HBox([_inc_ok, _inc_btn]), _inc_out,
+    W.HTML("<b style='color:#8a8a99'>🔌 Azure / MS MCP</b>"), W.HBox([_mcp_pick, _mcp_btn]), _mcp_out,
+]))
+""")
+
 # ── interactive hunt runner ──────────────────────────────────────────────────────────
 section("🎯 Threat-hunt runner", "Phase 4 · Hunt",
         "run the **whole catalog** or a single hunt against the current estate; results table shows entity · severity · technique · why.",
@@ -303,6 +360,68 @@ _ai_sum.on_click(lambda *_: _ai("summarize")); _ai_tri.on_click(lambda *_: _ai("
 display(W.VBox([W.HBox([_ai_sum, _ai_tri, _ai_rev]), _ai_out]))
 """)
 
+# ── Ask ASTRO — free-form NL console ──────────────────────────────────────────────────
+section("🧠 Ask ASTRO", "Phase 5 · Model &amp; AI",
+        "type a question in plain English → ASTRO gathers tool context (extracts IOCs → keyless intel) then answers via your configured LLM (Claude/OpenAI/Gemini/Azure/Bedrock) or a grounded offline synthesis.",
+        "ask the investigation anything — 'who's most at risk and why', 'what do I contain first', 'is 52.20.10.5 known-bad' — and get an analyst-grade answer.")
+code("""
+import ai_agents as AI
+_astro_q   = W.Text(placeholder="e.g. which identities are most at risk and why? what do I contain first?",
+                    description="Ask ASTRO:", continuous_update=False, layout=W.Layout(width="720px"))
+_astro_btn = W.Button(description="🧠 Ask", button_style="info")
+_astro_out = W.Output()
+def _astro(*_):
+    q = _astro_q.value.strip()
+    if not q:
+        return
+    def work():
+        iocs = RS.extract_iocs(q)
+        if isinstance(iocs, dict):
+            flat = [v for vs in iocs.values() if isinstance(vs, (list, tuple)) for v in vs]
+        else:
+            flat = list(iocs) if isinstance(iocs, (list, tuple)) else []
+        extra = ""
+        for ioc in flat[:3]:                                  # agentic: enrich the IOCs the question implies
+            extra += f"\\n[intel {ioc}] " + _json.dumps(EN.enrich_entity(ioc), default=str)[:400]
+        r = AI.answer_question(state, q, extra_context=extra)
+        note = (f"<div style='color:#8a8a99;font-size:11px'>tool context: {len(flat)} IOC(s) enriched</div>"
+                if flat else "")
+        return (f"<div><b style='color:#01e69d'>[{r.get('provider','?')}]</b></div>"
+                f"<pre style='white-space:pre-wrap'>{r['text']}</pre>{note}")
+    _act(_astro_out, f"ASTRO · {q[:40]}", work)
+_astro_btn.on_click(_astro); _astro_q.observe(lambda ch: _astro(), "value")
+display(W.VBox([W.HBox([_astro_q, _astro_btn]), _astro_out]))
+""")
+
+# ── predictive & data-science ─────────────────────────────────────────────────────────
+section("🔮 Predictive &amp; data-science", "Phase 5 · Model &amp; AI",
+        "unsupervised **anomaly ranking** (PyOD) · model risk ranking · **escalation watch** + predicted next targets · a per-entity **risk forecast** (dashed projection). No keys required.",
+        "surface the entities the weighted score alone misses, and see where risk is heading next.")
+code("""
+_pm      = EM.build_entity_model(state, vips=getattr(state, "vips", set()))
+_pv_ent  = W.Dropdown(options=[r["entity"] for r in _pm["entities"]] or ["(none)"],
+                      description="Entity:", layout=W.Layout(width="520px"))
+_pv_fc   = W.Button(description="🔮 Forecast risk", button_style="info")
+_pv_an   = W.Button(description="📈 Anomalies + prediction")
+_pv_out  = W.Output()
+_pv_fc.on_click(lambda *_: _act(_pv_out, "forecast", lambda: VI.forecast_chart(state, _pv_ent.value)))
+def _pv_anoms(*_):
+    def work():
+        rows = sorted(_pm["entities"], key=lambda r: -r.get("anomaly", 0))[:12]
+        pred = EM.predict(state, _pm); sit = pred["situational"]
+        head = (f"<div style='color:#01e69d'>principals {sit['principals']} · high-risk {sit['high_risk']} · "
+                f"survives-restore {sit['survives_restore']}</div>"
+                f"<div style='color:#8a8a99;font-size:12px'>escalation watch: "
+                f"{', '.join(e.split(':',1)[-1] for e in pred['escalation_watch'][:6]) or 'none'} · "
+                f"predicted next: {', '.join(p.split(':',1)[-1] for p in pred['predicted_next_targets']) or 'none'}</div>")
+        df = pd.DataFrame([{"entity": r["entity"], "kind": r["kind"], "model_score": r["model_score"],
+                            "anomaly": r.get("anomaly", 0), "survives_restore": r["survives_restore"]} for r in rows])
+        return head + (df.to_html(index=False) if not df.empty else "<i>no entities</i>")
+    _act(_pv_out, "anomalies + prediction", work)
+_pv_an.on_click(_pv_anoms)
+display(W.VBox([W.HBox([_pv_ent, _pv_fc, _pv_an]), _pv_out]))
+""")
+
 # ── authoring (dry-run → apply) ──────────────────────────────────────────────────────
 section("✍️ Author Abstract objects", "Phase 6 · Act",
         "pick an object (view · detection · insight · **data model** · **identity model** · tuning filter) → **Dry-run** → **Apply to tenant** (enabled when connected live).",
@@ -319,6 +438,51 @@ def _a_apply(*_):
          lambda: _pre(AA.apply(client, AA.build(_akind.value, state=state)) if client else {"note": "connect a tenant first"}))
 _adry.on_click(_a_dry); _aapp.on_click(_a_apply)
 display(W.VBox([W.HBox([_akind, _adry, _aapp]), _aout]))
+""")
+
+# ── detection · verdict · insight workflows ──────────────────────────────────────────
+section("⚙️ Detection · verdict · insight workflows", "Phase 6 · Act",
+        "author a **detection** from an editable field/op/value condition → **dry-run → create (DISABLED)**; set an analyst **verdict** on a live insight; **update** an insight. Writes enable only when connected to a tenant.",
+        "turn a hunt result into a real detection and record the analyst decision back on the tenant's insight — safely, dry-run first.")
+code("""
+# --- detection from an editable condition (dry-run → create DISABLED) ---
+_wf_field = W.Text(value="severity", description="Field:", layout=W.Layout(width="230px"))
+_wf_op    = W.Dropdown(options=["EQUALS", "NOT_EQUALS", "CONTAINS", "GREATER_THAN", "LESS_THAN"], description="Op:")
+_wf_val   = W.Text(value="critical", description="Value:", layout=W.Layout(width="230px"))
+_wf_dry   = W.Button(description="Dry-run detection", button_style="info")
+_wf_app   = W.Button(description="Create (disabled) in tenant", button_style="danger", disabled=(client is None))
+_wf_out   = W.Output()
+def _wf_detect(apply_it):
+    def work():
+        built = AA.build("Detection rule", state=state,
+                         conditions=[(_wf_field.value, _wf_op.value, _wf_val.value)])
+        return _pre(built if not apply_it else (AA.apply(client, built) if client else {"note": "connect a tenant first"}))
+    _act(_wf_out, "detection " + ("apply" if apply_it else "dry-run"), work)
+_wf_dry.on_click(lambda *_: _wf_detect(False)); _wf_app.on_click(lambda *_: _wf_detect(True))
+
+# --- verdict on a live insight (nanoids present only when connected) ---
+_live_ins = [i.get("nanoid") or i.get("id") for i in (getattr(state, "insights", None) or []) if isinstance(i, dict)]
+_vi_sel   = W.Dropdown(options=_live_ins or ["(no live insights — connect a tenant)"],
+                       description="Insight:", layout=W.Layout(width="420px"))
+_vi_verd  = W.Combobox(placeholder="verdict (tenant-specific)", ensure_option=False, description="Verdict:",
+                       options=["MALICIOUS", "BENIGN", "SUSPICIOUS", "FALSE_POSITIVE"])
+_vi_dry   = W.Button(description="Dry-run verdict")
+_vi_app   = W.Button(description="Set verdict", button_style="danger", disabled=(client is None or not _live_ins))
+_vi_out   = W.Output()
+def _vi(apply_it):
+    nid = _vi_sel.value if _live_ins else None
+    def work():
+        return _pre(AA.verdict_preview(nid, _vi_verd.value) if not apply_it
+                    else AA.apply_verdict(client, nid, _vi_verd.value))
+    _act(_vi_out, "verdict " + ("apply" if apply_it else "dry-run"), work)
+_vi_dry.on_click(lambda *_: _vi(False)); _vi_app.on_click(lambda *_: _vi(True))
+
+display(W.VBox([
+    W.HTML("<b style='color:#01e69d'>Author a detection (editable condition)</b>"),
+    W.HBox([_wf_field, _wf_op, _wf_val]), W.HBox([_wf_dry, _wf_app]), _wf_out,
+    W.HTML("<b style='color:#01e69d'>Set an analyst verdict on a live insight</b>"),
+    W.HBox([_vi_sel, _vi_verd]), W.HBox([_vi_dry, _vi_app]), _vi_out,
+]))
 """)
 
 # ── report export + MCP ───────────────────────────────────────────────────────────────

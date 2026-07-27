@@ -99,6 +99,11 @@ class AbstractMCP:
             return {"ready": True, "transport": "streamable-http", "target": self.url}
         if self.cmd:
             return {"ready": True, "transport": "stdio", "target": self.cmd}
+        if not self.bundled:
+            # no bundled fallback (e.g. a client_for(...) endpoint whose URL/CMD var is unset)
+            ev = getattr(self, "_endpoint_env", None)
+            return {"ready": False, "reason": f"set {ev} to a streamable-HTTP MCP endpoint"
+                    if ev else "no MCP endpoint configured"}
         if not os.path.exists(self.bundled):
             return {"ready": False, "reason": f"bundled server not found at {self.bundled}; "
                     "set ABSTRACT_MCP_URL or ABSTRACT_MCP_CMD"}
@@ -142,6 +147,20 @@ class AbstractMCP:
             return {"ok": False, "tool": tool, "error": str(e)[:300]}
 
 
+def client_for(url_env: str, cmd_env: str = None) -> "AbstractMCP":
+    """Build an MCP client aimed at a NAMED endpoint var (e.g. SENTINEL_MCP_URL or
+    SECURITY_COPILOT_MCP_URL) instead of the hardcoded ABSTRACT_MCP_URL/CMD. There is NO bundled
+    fallback — an unset var reports 'not ready' rather than silently talking to Abstract's bundled
+    server. Same list_tools()/call() API as AbstractMCP."""
+    m = AbstractMCP.__new__(AbstractMCP)
+    m.url = os.environ.get(url_env)
+    m.cmd = os.environ.get(cmd_env) if cmd_env else None
+    m.bundled = None                    # disable bundled fallback (see status() guard)
+    m.transport = "url" if m.url else ("cmd" if m.cmd else "none")
+    m._endpoint_env = url_env
+    return m
+
+
 def selftest() -> dict:
     m = AbstractMCP()
     st = m.status()
@@ -150,6 +169,10 @@ def selftest() -> dict:
         tools = m.list_tools()
         out["tools"] = [t.get("name") for t in tools if "name" in t]
         out["tool_count"] = len(out["tools"])
+    # client_for with an unset endpoint var must report not-ready (never the bundled fallback)
+    unset = client_for("SENTINEL_MCP_URL_DEFINITELY_UNSET")
+    assert unset.status().get("ready") is False and unset.bundled is None
+    out["client_for_guard"] = "ok"
     return out
 
 

@@ -214,6 +214,28 @@ def triage(state, provider=None) -> dict:
     return {"provider": p.name, "text": r.get("text") or r.get("error", "error")}
 
 
+def answer_question(state, question: str, extra_context: str = "", provider=None) -> dict:
+    """ASTRO-style free-form Q&A: answer an analyst's question from the investigation context
+    (plus any tool-gathered extra_context the caller assembled). Same provider/offline-fallback
+    pattern as summarize_investigation/triage."""
+    ctx = _context(state)
+    if extra_context:
+        ctx += "\n\nAdditional gathered context:\n" + extra_context
+    prompt = ("Answer the SOC analyst's question using ONLY the investigation context below. Be "
+              "concise, technical, and name the specific entities/findings involved; if the context "
+              "is insufficient, say what to pull next.\n\n"
+              f"QUESTION: {question}\n\nCONTEXT:\n" + ctx)
+    p = _provider(provider)
+    if not p:
+        return {"provider": "local",
+                "text": (f"Q: {question}\n\n(No AI provider key set — local synthesis from the "
+                         "investigation context.)\n\n" + _local_summary(ctx))}
+    r = p.complete(prompt)
+    if r.get("ok"):
+        return {"provider": p.name, "text": r["text"]}
+    return {"provider": p.name, "text": _local_summary(ctx), "error": r.get("error")}
+
+
 def selftest():
     from live_data import build_state
     st = build_state(None)
@@ -225,8 +247,10 @@ def selftest():
     try:
         s = summarize_investigation(st)
         t = triage(st)
+        a = answer_question(st, "what happened and who is highest risk?")
         assert s["provider"] == "local" and s["text"]
         assert t["provider"] == "local" and "verdict" in t["text"].lower()
+        assert a["provider"] == "local" and "what happened" in a["text"].lower()
     finally:
         for k, v in saved.items():
             if v is not None:
