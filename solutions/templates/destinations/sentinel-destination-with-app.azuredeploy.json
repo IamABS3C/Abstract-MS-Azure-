@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "17215277588790305391"
+      "templateHash": "4945363395078865899"
     }
   },
   "parameters": {
@@ -57,6 +57,20 @@
       "defaultValue": "2.60.0",
       "metadata": {
         "description": "Azure CLI version for the deployment script container."
+      }
+    },
+    "secretName": {
+      "type": "string",
+      "defaultValue": "abstract-sentinel-client-secret",
+      "metadata": {
+        "description": "Name of the Key Vault secret holding the client secret."
+      }
+    },
+    "forceSecretRotation": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Force a NEW client secret even when the vault already holds a valid one.\n\nLeave false. The script now rotates only when no secret exists or the existing one\nexpires within 30 days, which makes re-running this template safe - the previous\nbehaviour minted a fresh secret on every deployment, so a re-run silently created a\nnew Key Vault version while Abstract kept using the old value.\n\nSet true only for a deliberate rotation, and update Abstract with the new value.\n"
       }
     },
     "keyVaultName": {
@@ -145,6 +159,7 @@
     }
   },
   "variables": {
+    "$fxv#0": "#!/usr/bin/env bash\n# =============================================================================\n#  Abstract Security - Sentinel destination identity, hardened deploymentScript\n#\n#  Runs inside Microsoft.Resources/deploymentScripts (AzureCLI) as a\n#  user-assigned managed identity holding Application.ReadWrite.All.\n#\n#  Replaces the original 16-line inline script in\n#  templates/destinations/sentinel-destination-with-app.bicep. Same job, but it\n#  survives the three failure modes the inline version did not:\n#\n#    1. SECRET CHURN. The original called `az ad app credential reset --append`\n#       on EVERY deployment. Re-run the template and you got a brand-new secret\n#       and a new Key Vault version while the value already configured in\n#       Abstract kept working - until someone assumed the newest version was\n#       correct. Now: only mint a secret when the vault holds none with more than\n#       30 days left.\n#    2. SILENT PARTIAL SUCCESS. Every step was unguarded, so an app created\n#       without a service principal still reported success and the DCR role\n#       assignment failed later with an opaque PrincipalNotFound.\n#    3. NO OUTPUT VERIFICATION. Nothing read back what it had created.\n#\n#  Note this app needs NO Graph API permissions and NO admin consent - unlike the\n#  per-subscription collection apps. It is purely an identity that receives DCR\n#  RBAC (Monitoring Metrics Publisher + Monitoring Contributor), which the\n#  template assigns. That is why there is no consent logic here.\n#\n#  Environment (set by the template):\n#    APP_NAME       app display name - ALSO the idempotency key\n#    KV_NAME        Key Vault that receives the secret\n#    VAULT_URI      vault URI, for the returned secret reference\n#    SECRET_NAME    secret name in the vault\n#    SECRET_YEARS   secret lifetime in years\n#    FORCE_ROTATE   'true' to mint a new secret regardless of the existing one\n# =============================================================================\nset -euo pipefail\n\nlog()  { printf '==> %s\\n' \"$*\"; }\nok()   { printf '    + %s\\n' \"$*\"; }\nwarn() { printf '    ! %s\\n' \"$*\"; }\ndie()  { printf '    X %s\\n' \"$*\" >&2; exit 1; }\n\n: \"${APP_NAME:?APP_NAME not set}\"\n: \"${KV_NAME:?KV_NAME not set}\"\n: \"${SECRET_NAME:?SECRET_NAME not set}\"\n: \"${SECRET_YEARS:=1}\"\n: \"${FORCE_ROTATE:=false}\"\n\nTENANT_ID=$(az account show --query tenantId -o tsv) || die \"cannot read tenant - is the script identity attached?\"\nok \"tenant $TENANT_ID\"\n\n# --- App registration (idempotent by display name) ------------------------\nlog \"Ensuring app registration '$APP_NAME'\"\nAPP_ID=$(az ad app list --filter \"displayName eq '${APP_NAME}'\" --query '[0].appId' -o tsv 2>/dev/null || true)\nif [ -z \"$APP_ID\" ] || [ \"$APP_ID\" = \"None\" ]; then\n  APP_ID=$(az ad app create --display-name \"$APP_NAME\" --sign-in-audience AzureADMyOrg --query appId -o tsv) \\\n    || die \"app creation failed - does the script identity hold Application.ReadWrite.All with admin consent?\"\n  ok \"created app $APP_ID\"\n  sleep 15   # directory replication before the SP create\nelse\n  ok \"reusing existing app $APP_ID\"\nfi\n[ -z \"$APP_ID\" ] && die \"app id resolved empty\"\nAPP_OBJ_ID=$(az ad app show --id \"$APP_ID\" --query id -o tsv) || die \"cannot read app object id for $APP_ID\"\n\n# --- Service principal ----------------------------------------------------\n# The DCR role assignments target the SP object id, so if this is skipped the\n# template's own roleAssignments fail with PrincipalNotFound.\nlog \"Ensuring service principal\"\nSP_ID=$(az ad sp show --id \"$APP_ID\" --query id -o tsv 2>/dev/null || true)\nif [ -z \"$SP_ID\" ] || [ \"$SP_ID\" = \"None\" ]; then\n  SP_ID=$(az ad sp create --id \"$APP_ID\" --query id -o tsv) || die \"service principal creation failed\"\n  ok \"created SP $SP_ID\"\n  # Longer wait here on purpose: the template assigns DCR RBAC to this object id\n  # immediately afterwards, and RBAC on a freshly created SP is the classic\n  # PrincipalNotFound race.\n  sleep 30\nelse\n  ok \"reusing SP $SP_ID\"\nfi\n[ -z \"$SP_ID\" ] && die \"service principal id resolved empty\"\n\n# --- Secret: rotate only when necessary ----------------------------------\nlog \"Checking for a usable secret in $KV_NAME\"\nNEED_SECRET=true\nif [ \"$FORCE_ROTATE\" = \"true\" ]; then\n  warn \"FORCE_ROTATE=true - minting a new secret. Update Abstract with the new value.\"\nelse\n  if EXP=$(az keyvault secret show --vault-name \"$KV_NAME\" --name \"$SECRET_NAME\" \\\n             --query 'attributes.expires' -o tsv 2>/dev/null); then\n    if [ -n \"$EXP\" ] && [ \"$EXP\" != \"None\" ]; then\n      if python3 -c \"\nimport sys, datetime\nexp = datetime.datetime.fromisoformat('$EXP'.replace('Z', '+00:00'))\nnow = datetime.datetime.now(datetime.timezone.utc)\nsys.exit(0 if (exp - now).days > 30 else 1)\"; then\n        NEED_SECRET=false\n        ok \"existing secret valid for >30 days - NOT rotating (re-running this template is safe)\"\n      else\n        warn \"existing secret expires within 30 days - rotating\"\n      fi\n    fi\n  else\n    ok \"no existing secret in the vault\"\n  fi\nfi\n\nif [ \"$NEED_SECRET\" = true ]; then\n  log \"Generating a client secret (${SECRET_YEARS} year(s))\"\n  SECRET=$(az ad app credential reset --id \"$APP_ID\" --append \\\n    --display-name \"$SECRET_NAME\" --years \"$SECRET_YEARS\" --query password -o tsv) \\\n    || die \"secret generation failed\"\n  [ -z \"$SECRET\" ] && die \"secret generation returned empty\"\n  END=$(python3 -c \"\nimport datetime\nprint((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365*int('$SECRET_YEARS'))).strftime('%Y-%m-%dT%H:%M:%SZ'))\")\n  az keyvault secret set --vault-name \"$KV_NAME\" --name \"$SECRET_NAME\" \\\n    --value \"$SECRET\" --expires \"$END\" -o none \\\n    || die \"could not write the secret to $KV_NAME - is Key Vault Secrets Officer granted to the script identity?\"\n  unset SECRET\n  ok \"secret stored at ${KV_NAME}/${SECRET_NAME}, expires ${END}\"\n  ok \"never emitted to deployment outputs or logs\"\nfi\n\n# --- Verify what we actually created -------------------------------------\nlog \"Verifying\"\naz ad app show --id \"$APP_ID\" --query displayName -o tsv >/dev/null || die \"app not readable after creation\"\naz ad sp show --id \"$APP_ID\" --query id -o tsv >/dev/null || die \"service principal not readable after creation\"\naz keyvault secret show --vault-name \"$KV_NAME\" --name \"$SECRET_NAME\" --query id -o tsv >/dev/null \\\n  || die \"secret not present in $KV_NAME after creation\"\nok \"app, service principal and secret all verified\"\n\ncat > \"$AZ_SCRIPTS_OUTPUT_PATH\" <<JSON\n{\n  \"appId\": \"${APP_ID}\",\n  \"appObjectId\": \"${APP_OBJ_ID}\",\n  \"spObjectId\": \"${SP_ID}\",\n  \"tenantId\": \"${TENANT_ID}\",\n  \"keyVaultSecretUri\": \"${VAULT_URI:-https://${KV_NAME}.vault.azure.net/}secrets/${SECRET_NAME}\",\n  \"secretRotated\": ${NEED_SECRET},\n  \"verified\": true\n}\nJSON\nok \"done\"\n",
     "autoWorkspaceName": "[format('abstract-sentinel-{0}', uniqueString(resourceGroup().id))]",
     "effectiveWorkspaceName": "[if(parameters('createWorkspace'), if(empty(parameters('workspaceName')), variables('autoWorkspaceName'), parameters('workspaceName')), parameters('workspaceName'))]",
     "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('effectiveWorkspaceName'))]",
@@ -152,7 +167,6 @@
     "effectiveKeyVaultName": "[if(empty(parameters('keyVaultName')), format('abstract-kv-{0}', uniqueString(resourceGroup().id)), parameters('keyVaultName'))]",
     "streamName": "[format('Custom-{0}', parameters('customTableName'))]",
     "logAnalyticsDestinationName": "abstractSentinelWorkspace",
-    "secretName": "abstract-sentinel-client-secret",
     "monitoringMetricsPublisherRoleId": "3913510d-42f4-4e42-8a64-420c390055eb",
     "monitoringContributorRoleId": "749f88d5-cbae-40b8-bcfc-e573ddc772fa",
     "keyVaultSecretsOfficerRoleId": "b86a8fe4-44ce-4948-aee5-eccb2c155cd6",
@@ -238,14 +252,18 @@
           },
           {
             "name": "SECRET_NAME",
-            "value": "[variables('secretName')]"
+            "value": "[parameters('secretName')]"
           },
           {
             "name": "SECRET_YEARS",
             "value": "[string(parameters('secretValidityYears'))]"
+          },
+          {
+            "name": "FORCE_ROTATE",
+            "value": "[string(parameters('forceSecretRotation'))]"
           }
         ],
-        "scriptContent": "set -euo pipefail\n# Reuse an existing app of the same display name, else create it (single-tenant).\nappId=$(az ad app list --display-name \"$APP_NAME\" --query '[0].appId' -o tsv)\nif [ -z \"$appId\" ] || [ \"$appId\" = \"None\" ]; then\n  appId=$(az ad app create --display-name \"$APP_NAME\" --sign-in-audience AzureADMyOrg --query appId -o tsv)\nfi\n# Service principal (idempotent).\nspId=$(az ad sp show --id \"$appId\" --query id -o tsv 2>/dev/null || true)\nif [ -z \"$spId\" ] || [ \"$spId\" = \"None\" ]; then\n  spId=$(az ad sp create --id \"$appId\" --query id -o tsv)\n  sleep 20   # allow directory replication before downstream role assignment\nfi\n# Client secret -> Key Vault only (never emitted as an output).\nsecret=$(az ad app credential reset --id \"$appId\" --append --display-name \"$SECRET_NAME\" --years \"$SECRET_YEARS\" --query password -o tsv)\naz keyvault secret set --vault-name \"$KV_NAME\" --name \"$SECRET_NAME\" --value \"$secret\" -o none\ntenantId=$(az account show --query tenantId -o tsv)\nkvUri=\"${VAULT_URI}secrets/${SECRET_NAME}\"\necho \"{\\\"appId\\\":\\\"$appId\\\",\\\"spObjectId\\\":\\\"$spId\\\",\\\"tenantId\\\":\\\"$tenantId\\\",\\\"keyVaultSecretUri\\\":\\\"$kvUri\\\"}\" > \"$AZ_SCRIPTS_OUTPUT_PATH\"\n"
+        "scriptContent": "[variables('$fxv#0')]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.KeyVault/vaults', variables('effectiveKeyVaultName'))]",
@@ -438,7 +456,7 @@
     },
     "abstractModalHint": {
       "type": "string",
-      "value": "[format('Client Secret Value = read secret \"{0}\" from Key Vault \"{1}\"; all other fields are in the outputs above.', variables('secretName'), variables('effectiveKeyVaultName'))]"
+      "value": "[format('Client Secret Value = read secret \"{0}\" from Key Vault \"{1}\"; all other fields are in the outputs above.', parameters('secretName'), variables('effectiveKeyVaultName'))]"
     }
   }
 }

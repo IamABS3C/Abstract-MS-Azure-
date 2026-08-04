@@ -333,7 +333,7 @@ corroboration** of the firewall/WildFire verdict (same sha256 = the controls agr
 ```
 
 **Azure Activity / Sign-in:** the Entra sign-in (§5) plus resource Activity Log (this repo's
-[activitylog template](../../templates/subscription/activitylog.bicep) streams it). GCP: Cloud
+[activitylog template](../../solutions/templates/subscription/activitylog.bicep) streams it). GCP: Cloud
 Audit Logs `protoPayload` with `authenticationInfo.principalEmail` + `requestMetadata.callerIp`.
 **Yields:** `Account` + `IP` + cloud resource → exfil/persistence in cloud, same identity key.
 

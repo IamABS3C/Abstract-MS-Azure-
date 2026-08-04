@@ -19,8 +19,8 @@ Two design choices make this an Abstract model rather than a generic SIEM projec
 2. **Destination-agnostic by construction.** The model is built on **OCSF + an entity graph**,
    not on any one SIEM's table layout. So the *same* normalized events, the *same* detections,
    and the *same* enriched findings route to Sentinel (this repo's
-   [Sentinel destination](../../templates/destinations/sentinel-destination.bicep)), to Splunk,
-   to an Event Hub ([Event Hub destination](../../templates/destinations/eventhub-destination.bicep)),
+   [Sentinel destination](../../solutions/templates/destinations/sentinel-destination.bicep)), to Splunk,
+   to an Event Hub ([Event Hub destination](../../solutions/templates/destinations/eventhub-destination.bicep)),
    and to **LakeVilla** simultaneously. Pick destinations per-cost, not per-capability.
 
 ```
@@ -94,7 +94,7 @@ OCSF target classes used: **Detection Finding, File System Activity, Process Act
 Activity, DNS Activity, HTTP Activity, Authentication, Account Change, API Activity.** (Confirm
 class UIDs against the OCSF version your pipeline targets — names are stable, UIDs version.)
 
-For Sentinel specifically, this repo's [Sentinel destination](../../templates/destinations/sentinel-destination.bicep)
+For Sentinel specifically, this repo's [Sentinel destination](../../solutions/templates/destinations/sentinel-destination.bicep)
 ships a custom `*_CL` table; populate `tableColumns` from Abstract's `all_fields.json` so the
 full normalized schema (not just `Message`) lands — see the [README](../../README.md#destinations).
 
@@ -242,7 +242,7 @@ to LakeVilla** → SIEM ingest drops sharply while investigative completeness ri
 ## 10. Build & prove sequence
 
 1. **Land the data path** — deploy this repo's [Event Hub source](../../README.md#deploy-to-azure)
-   + a destination ([Sentinel](../../templates/destinations/sentinel-destination.bicep) or Event
+   + a destination ([Sentinel](../../solutions/templates/destinations/sentinel-destination.bicep) or Event
    Hub); point PAN/Strata + identity + EDR + email at it. (Splunk/other = swap the destination,
    model unchanged.)
 2. **Normalize + map** — §2 mappings to OCSF; load full schema into the Sentinel `_CL` table.

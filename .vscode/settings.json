@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "/Users/mherbert/.vscode/extensions/ms-security.ms-sentinel-2.2.0/python",
+        "/Users/mherbert/.vscode/extensions/ms-security.ms-sentinel-2.3.0/python"
+    ],
+    "chat.useClaudeHooks": true
+}

@@ -68,6 +68,21 @@ param secretReaderObjectId string = ''
 @description('Azure CLI version for the deployment script container.')
 param azCliVersion string = '2.60.0'
 
+@description('Name of the Key Vault secret holding the client secret.')
+param secretName string = 'abstract-sentinel-client-secret'
+
+@description('''
+Force a NEW client secret even when the vault already holds a valid one.
+
+Leave false. The script now rotates only when no secret exists or the existing one
+expires within 30 days, which makes re-running this template safe - the previous
+behaviour minted a fresh secret on every deployment, so a re-run silently created a
+new Key Vault version while Abstract kept using the old value.
+
+Set true only for a deliberate rotation, and update Abstract with the new value.
+''')
+param forceSecretRotation bool = false
+
 // ---------------------------------------------------------------------------
 // Key Vault
 // ---------------------------------------------------------------------------
@@ -121,7 +136,8 @@ var effectiveLocation = createWorkspace ? location : (empty(existingWorkspaceLoc
 var effectiveKeyVaultName = empty(keyVaultName) ? 'abstract-kv-${uniqueString(resourceGroup().id)}' : keyVaultName
 var streamName = 'Custom-${customTableName}'
 var logAnalyticsDestinationName = 'abstractSentinelWorkspace'
-var secretName = 'abstract-sentinel-client-secret'
+// secretName is now a PARAMETER (it was hardcoded here) so more than one Abstract
+// secret can live in the same vault.
 
 var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
 var monitoringContributorRoleId = '749f88d5-cbae-40b8-bcfc-e573ddc772fa'
@@ -199,27 +215,9 @@ resource appScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'VAULT_URI', value: keyVault.properties.vaultUri }
       { name: 'SECRET_NAME', value: secretName }
       { name: 'SECRET_YEARS', value: string(secretValidityYears) }
+      { name: 'FORCE_ROTATE', value: string(forceSecretRotation) }
     ]
-    scriptContent: '''
-set -euo pipefail
-# Reuse an existing app of the same display name, else create it (single-tenant).
-appId=$(az ad app list --display-name "$APP_NAME" --query '[0].appId' -o tsv)
-if [ -z "$appId" ] || [ "$appId" = "None" ]; then
-  appId=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADMyOrg --query appId -o tsv)
-fi
-# Service principal (idempotent).
-spId=$(az ad sp show --id "$appId" --query id -o tsv 2>/dev/null || true)
-if [ -z "$spId" ] || [ "$spId" = "None" ]; then
-  spId=$(az ad sp create --id "$appId" --query id -o tsv)
-  sleep 20   # allow directory replication before downstream role assignment
-fi
-# Client secret -> Key Vault only (never emitted as an output).
-secret=$(az ad app credential reset --id "$appId" --append --display-name "$SECRET_NAME" --years "$SECRET_YEARS" --query password -o tsv)
-az keyvault secret set --vault-name "$KV_NAME" --name "$SECRET_NAME" --value "$secret" -o none
-tenantId=$(az account show --query tenantId -o tsv)
-kvUri="${VAULT_URI}secrets/${SECRET_NAME}"
-echo "{\"appId\":\"$appId\",\"spObjectId\":\"$spId\",\"tenantId\":\"$tenantId\",\"keyVaultSecretUri\":\"$kvUri\"}" > "$AZ_SCRIPTS_OUTPUT_PATH"
-'''
+    scriptContent: loadTextContent('scripts/sentinel-app-deploymentscript.sh')
   }
   dependsOn: [
     kvOfficerAssignment
