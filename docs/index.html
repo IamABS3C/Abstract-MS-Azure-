@@ -3,615 +3,645 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Abstract Security · Azure Deployment Console</title>
-<meta name="description" content="Deploy the Azure infrastructure for Abstract Security source and destination integrations — Event Hub, Event Hub Destination, and Microsoft Sentinel — from one interactive console. Pick a direction, an integration, a cloud, and deploy." />
+<title>Abstract Security — Microsoft Azure &amp; Sentinel integration · Deployment Console</title>
+<meta name="description" content="Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations." />
+<meta name="color-scheme" content="dark light" />
+<meta property="og:title" content="Abstract Security — Microsoft Azure &amp; Sentinel integration" />
+<meta property="og:description" content="Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations." />
+<meta property="og:type" content="website" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;1,500&amp;family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet" />
+<!--
+  GENERATED FILE - do not hand-edit.
+  Source of truth : solutions/solution.manifest.json
+  Generator       : solutions/scripts/gen-pages.py
+  Regenerate      : python3 solutions/scripts/gen-pages.py
+  CI fails if this file is stale, so edits here would be reverted anyway.
+-->
 <style>
   :root{
     --pink:#FF216B; --mid:#E8005D; --deep:#C2004C;
     --teal:#01e69d; --amber:#f5c61e; --blue:#2e9bf0;
-    --bg:#060608; --bg2:#0b0b10;
-    --panel:#101016; --panel2:#15151d; --line:#24242f; --line2:#33333f;
-    --text:#f4f4f7; --muted:#9c9caa; --dim:#6c6c79;
-    --pink-soft:rgba(255,33,107,.14); --teal-soft:rgba(1,230,157,.12);
-    --ease:cubic-bezier(.22,.61,.36,1);
     --display:"Barlow Semi Condensed",system-ui,sans-serif;
     --body:"Barlow",system-ui,sans-serif;
     --mono:"JetBrains Mono",ui-monospace,monospace;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --radius:14px;
   }
+  /* Dark is the default (brand), light is a first-class alternative - the old site
+     was dark-only and unreadable when projected in a lit room. */
+  :root, :root[data-theme="dark"]{
+    --bg:#060608; --bg2:#0b0b10; --panel:#101016; --panel2:#15151d;
+    --line:#24242f; --line2:#33333f;
+    --text:#f4f4f7; --muted:#a4a4b2; --dim:#74748a;
+    --shadow:0 18px 50px rgba(0,0,0,.55);
+    --code-bg:rgba(1,230,157,.08);
+  }
+  :root[data-theme="light"]{
+    --bg:#fbfbfd; --bg2:#f3f3f7; --panel:#ffffff; --panel2:#f7f7fb;
+    --line:#e3e3ec; --line2:#cfcfdd;
+    --text:#14141a; --muted:#55555f; --dim:#7b7b88;
+    --shadow:0 14px 40px rgba(20,20,40,.10);
+    --code-bg:rgba(0,120,80,.08);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme]){
+      --bg:#fbfbfd; --bg2:#f3f3f7; --panel:#ffffff; --panel2:#f7f7fb;
+      --line:#e3e3ec; --line2:#cfcfdd;
+      --text:#14141a; --muted:#55555f; --dim:#7b7b88;
+      --shadow:0 14px 40px rgba(20,20,40,.10);
+      --code-bg:rgba(0,120,80,.08);
+    }
+  }
+
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0; background:var(--bg); color:var(--text);
-    font-family:var(--body); line-height:1.6; overflow-x:hidden;
-    -webkit-font-smoothing:antialiased;
+    font-family:var(--body); line-height:1.62; -webkit-font-smoothing:antialiased;
   }
-  a{color:var(--teal); text-decoration:none}
+  h1,h2,h3,h4{font-family:var(--display); font-weight:700; letter-spacing:.3px; line-height:1.08; margin:0}
+  a{color:var(--pink); text-decoration:none}
   a:hover{text-decoration:underline}
-  h1,h2,h3{font-family:var(--display); font-weight:700; letter-spacing:.4px; line-height:1.04; margin:0}
+  code{font-family:var(--mono); font-size:.9em; color:var(--teal); background:var(--code-bg); padding:1px 6px; border-radius:5px}
+  :root[data-theme="light"] code{color:#00694a}
+  @media (prefers-color-scheme: light){ :root:not([data-theme]) code{color:#00694a} }
+  pre{margin:0; overflow-x:auto}
+  pre code{display:block; padding:12px 14px; background:var(--panel2); color:var(--text);
+    border:1px solid var(--line); border-radius:10px; font-size:12.5px; line-height:1.7}
   ::selection{background:var(--pink); color:#fff}
-  code{font-family:var(--mono); font-size:.92em; color:var(--teal); background:rgba(1,230,157,.08); padding:1px 6px; border-radius:5px}
+  /* Visible focus everywhere - keyboard users were previously stranded. */
+  a:focus-visible, button:focus-visible, summary:focus-visible{
+    outline:2px solid var(--teal); outline-offset:3px; border-radius:6px}
+  .skip{position:absolute; left:-9999px}
+  .skip:focus{left:12px; top:12px; z-index:100; background:var(--panel);
+    padding:10px 16px; border:1px solid var(--pink); border-radius:8px}
 
-  /* ---- ambient background layers ---- */
-  .bg{position:fixed; inset:0; z-index:-3; background:
-      radial-gradient(1200px 600px at var(--mx,78%) -6%, rgba(255,33,107,.20), transparent 60%),
-      radial-gradient(900px 520px at 4% 8%, rgba(1,230,157,.13), transparent 55%),
-      linear-gradient(180deg,var(--bg),var(--bg2));}
-  .grid{position:fixed; inset:0; z-index:-2; opacity:.5;
-      background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
-      background-size:54px 54px;
-      -webkit-mask-image:radial-gradient(circle at 50% 18%,#000 0%,transparent 78%);
-      mask-image:radial-gradient(circle at 50% 18%,#000 0%,transparent 78%);}
-  .grain{position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.05; mix-blend-mode:overlay;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 22px}
 
-  .wrap{max-width:1140px; margin:0 auto; padding:0 24px}
+  header.site{
+    position:sticky; top:0; z-index:50;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(12px); border-bottom:1px solid var(--line);
+  }
+  .bar{display:flex; align-items:center; gap:16px; height:62px}
+  .wordmark{font-family:var(--display); font-weight:700; font-size:19px; letter-spacing:2.2px;
+    text-transform:uppercase; color:var(--text); white-space:nowrap}
+  .wordmark b{color:var(--pink)}
+  .bar nav{margin-left:auto; display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+  .bar nav a{font-family:var(--mono); font-size:12px; color:var(--muted); padding:7px 11px;
+    border-radius:8px; white-space:nowrap}
+  .bar nav a:hover{color:var(--text); background:var(--panel2); text-decoration:none}
+  .theme{font-family:var(--mono); font-size:12px; cursor:pointer;
+    background:var(--panel2); color:var(--muted); border:1px solid var(--line2);
+    padding:7px 12px; border-radius:8px}
+  .theme:hover{color:var(--text); border-color:var(--pink)}
 
-  /* ---- nav ---- */
-  nav{position:sticky; top:0; z-index:50; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
-      background:rgba(6,6,8,.62); border-bottom:1px solid var(--line);}
-  .nav-in{max-width:1140px; margin:0 auto; padding:13px 24px; display:flex; align-items:center; gap:26px}
-  .nav-in img{height:30px}
-  .brand{display:inline-flex; align-items:center; gap:10px}
-  .brand:hover{text-decoration:none}
-  .brand img{display:block; border-radius:8px}
-  .wordmark{font-family:var(--display); font-weight:700; font-size:20px; letter-spacing:2px;
-      color:var(--text); line-height:1}
-  .nav-links{display:flex; gap:24px; margin-left:auto; font-size:14px; font-weight:500}
-  .nav-links a{color:var(--muted)}
-  .nav-links a:hover{color:var(--text); text-decoration:none}
-  .nav-cta{font-family:var(--mono); font-size:12px; border:1px solid var(--line2); color:var(--text);
-      padding:8px 14px; border-radius:8px}
-  .nav-cta:hover{border-color:var(--pink); text-decoration:none; color:#fff}
-  @media(max-width:760px){.nav-links{display:none}}
+  .hero{padding:76px 0 44px; border-bottom:1px solid var(--line);
+    background:radial-gradient(1000px 420px at 12% -12%, rgba(255,33,107,.13), transparent 62%),
+               radial-gradient(760px 340px at 88% -18%, rgba(1,230,157,.09), transparent 60%)}
+  .eyebrow{font-family:var(--mono); font-size:11.5px; letter-spacing:2.6px; text-transform:uppercase;
+    color:var(--teal); margin-bottom:16px}
+  .hero h1{font-size:clamp(36px,6.4vw,68px); max-width:20ch}
+  .hero h1 em{font-style:normal; color:var(--pink)}
+  .lede{font-size:clamp(16px,1.7vw,19.5px); color:var(--muted); max-width:66ch; margin:20px 0 0}
+  .stats{display:flex; gap:36px; flex-wrap:wrap; margin-top:34px}
+  .stat b{display:block; font-family:var(--display); font-size:34px; color:var(--text); line-height:1}
+  .stat span{font-family:var(--mono); font-size:11px; letter-spacing:1.6px; text-transform:uppercase; color:var(--dim)}
 
-  /* ---- buttons ---- */
-  .btn{display:inline-flex; align-items:center; gap:9px; font-family:var(--body); font-weight:600;
-      font-size:15px; padding:13px 22px; border-radius:11px; border:1px solid transparent; cursor:pointer;
-      transition:transform .15s var(--ease), box-shadow .25s, background .2s; text-decoration:none}
-  .btn:hover{text-decoration:none; transform:translateY(-2px)}
-  .btn-primary{background:linear-gradient(135deg,var(--pink),#ff5e92); color:#fff; box-shadow:0 10px 30px -8px rgba(255,33,107,.6)}
-  .btn-primary:hover{box-shadow:0 16px 44px -8px rgba(255,33,107,.75)}
-  .btn-ghost{border-color:var(--line2); color:var(--text); background:rgba(255,255,255,.02)}
-  .btn-ghost:hover{border-color:var(--teal); color:#fff}
+  .filters{display:flex; gap:8px; flex-wrap:wrap; padding:26px 0 4px; align-items:center}
+  .filters .lbl{font-family:var(--mono); font-size:11px; letter-spacing:1.6px;
+    text-transform:uppercase; color:var(--dim); margin-right:4px}
+  .chip{font-family:var(--mono); font-size:12px; cursor:pointer;
+    background:transparent; color:var(--muted); border:1px solid var(--line2);
+    padding:7px 13px; border-radius:999px; transition:all .18s var(--ease)}
+  .chip:hover{color:var(--text); border-color:var(--pink)}
+  .chip[aria-pressed="true"]{background:var(--pink); border-color:var(--pink); color:#fff}
 
-  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--teal)}
-  .eyebrow.pink{color:var(--pink)}
+  .cat{padding:44px 0 8px}
+  .cat-head{margin-bottom:24px; max-width:78ch}
+  .cat-head h2{font-size:clamp(24px,3vw,33px)}
+  .cat-head .tagline{font-family:var(--body); font-weight:400; font-size:.56em;
+    color:var(--dim); letter-spacing:0; margin-left:10px}
+  .cat-head p{color:var(--muted); margin:10px 0 0; font-size:15px}
 
-  /* ---- hero ---- */
-  header.hero{padding:78px 0 30px; text-align:center}
-  .hero .logo{height:78px; margin-bottom:26px; filter:drop-shadow(0 8px 30px rgba(255,33,107,.35))}
-  .hero h1{font-size:clamp(40px,7.5vw,90px); letter-spacing:.5px}
-  .hero h1 .g{background:linear-gradient(115deg,var(--pink),var(--teal)); -webkit-background-clip:text; background-clip:text; color:transparent}
-  .hero p.lead{max-width:660px; margin:20px auto 0; color:var(--muted); font-size:19px}
-  .hero .cta{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:34px}
-  .stats{display:flex; gap:34px; justify-content:center; flex-wrap:wrap; margin-top:46px; color:var(--dim); font-family:var(--mono); font-size:12.5px; letter-spacing:1px}
-  .stats b{display:block; font-family:var(--display); font-size:30px; color:var(--text); letter-spacing:0}
+  .grid{display:grid; gap:20px; grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px; display:flex; flex-direction:column; gap:12px;
+    transition:transform .2s var(--ease), border-color .2s var(--ease), box-shadow .2s var(--ease)}
+  .card:hover{transform:translateY(-3px); border-color:var(--line2); box-shadow:var(--shadow)}
+  .card h3{font-size:20px}
+  .card-badges{display:flex; gap:6px; flex-wrap:wrap}
+  .badge{font-family:var(--mono); font-size:10px; letter-spacing:1.1px; text-transform:uppercase;
+    padding:3px 9px; border-radius:999px; border:1px solid var(--line2); color:var(--muted)}
+  .badge.rec{background:var(--pink); border-color:var(--pink); color:#fff}
+  .badge.first{background:rgba(1,230,157,.14); border-color:var(--teal); color:var(--teal)}
+  .badge.ui{color:var(--blue); border-color:rgba(46,155,240,.4)}
+  .badge.scope-tenant, .badge.scope-managementGroup{color:var(--amber); border-color:rgba(245,198,30,.4)}
+  .summary{color:var(--muted); font-size:14.5px; margin:0}
+  .card .note, .card .prereq, .card .outs{
+    font-size:13px; margin:0; color:var(--dim); border-left:2px solid var(--line2); padding-left:11px}
+  .card .prereq{border-left-color:var(--amber)}
+  .card .prereq strong{color:var(--amber); display:block; font-size:10.5px;
+    font-family:var(--mono); letter-spacing:1.1px; text-transform:uppercase}
+  .card .outs strong{color:var(--teal); display:block; font-size:10.5px;
+    font-family:var(--mono); letter-spacing:1.1px; text-transform:uppercase}
 
-  /* staggered reveal on load */
-  .rise{opacity:0; transform:translateY(22px); animation:rise .9s var(--ease) forwards}
-  @keyframes rise{to{opacity:1; transform:none}}
-  .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.27s}.d4{animation-delay:.4s}.d5{animation-delay:.55s}.d6{animation-delay:.7s}
+  .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:auto; padding-top:6px}
+  .btn{font-family:var(--mono); font-size:12px; padding:9px 15px; border-radius:9px;
+    border:1px solid var(--line2); color:var(--text); transition:all .18s var(--ease)}
+  .btn:hover{text-decoration:none}
+  .btn.primary{background:var(--pink); border-color:var(--pink); color:#fff; font-weight:500}
+  .btn.primary:hover{background:var(--mid); border-color:var(--mid)}
+  .btn.ghost:hover{border-color:var(--pink); color:var(--pink)}
+  details.cli{margin-top:2px}
+  details.cli summary{font-family:var(--mono); font-size:11.5px; color:var(--dim);
+    cursor:pointer; padding:4px 0}
+  details.cli summary:hover{color:var(--text)}
+  details.cli pre{margin-top:8px}
+  details.cli .specnote{font-size:12.5px; color:var(--dim); margin:10px 0 0; line-height:1.55}
 
-  /* ---- pipeline ---- */
-  .pipe{margin:64px auto 8px; max-width:980px; position:relative}
-  .pipe-grid{display:grid; grid-template-columns:1fr auto 1fr auto 1fr; align-items:center; gap:0}
-  .node{border:1px solid var(--line2); background:linear-gradient(180deg,var(--panel),var(--panel2)); border-radius:14px;
-      padding:18px 16px; text-align:center; position:relative; z-index:2}
-  .node .lbl{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim)}
-  .node .ttl{font-family:var(--display); font-weight:600; font-size:18px; margin-top:5px}
-  .node.core{border-color:var(--pink); box-shadow:0 0 0 1px rgba(255,33,107,.4),0 14px 50px -14px rgba(255,33,107,.55)}
-  .node.core .ttl{color:var(--pink)}
-  .node.azure .ttl{color:var(--teal)}
-  .conduit{position:relative; height:3px; background:linear-gradient(90deg,var(--line2),var(--line2)); border-radius:3px; overflow:visible; margin:0 -2px}
-  .conduit::before{content:""; position:absolute; inset:0; border-radius:3px;
-      background:linear-gradient(90deg,transparent,var(--teal),transparent); opacity:.0}
-  .packet{position:absolute; top:50%; width:9px; height:9px; border-radius:50%; transform:translateY(-50%);
-      background:var(--teal); box-shadow:0 0 12px var(--teal); }
-  .conduit.to-core .packet{background:var(--teal); box-shadow:0 0 12px 2px rgba(1,230,157,.8); animation:flowR 2.4s linear infinite}
-  .conduit.from-core .packet{background:var(--pink); box-shadow:0 0 12px 2px rgba(255,33,107,.8); animation:flowR 2.4s linear infinite}
-  .conduit .packet:nth-child(2){animation-delay:.8s}
-  .conduit .packet:nth-child(3){animation-delay:1.6s}
-  @keyframes flowR{0%{left:-4%; opacity:0}10%{opacity:1}90%{opacity:1}100%{left:104%; opacity:0}}
-  .pipe-cap{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; color:var(--dim); margin-top:14px; letter-spacing:1px}
-  @media(max-width:720px){.pipe-grid{grid-template-columns:1fr; gap:14px}.conduit{height:26px; width:3px; margin:0 auto; justify-self:center}
-    .conduit .packet{top:auto; left:50%!important; transform:translateX(-50%); animation:flowD 2.4s linear infinite!important}
-    @keyframes flowD{0%{top:-10%;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:110%;opacity:0}}}
+  .band{border-top:1px solid var(--line); background:var(--bg2); padding:52px 0}
+  .band h2{font-size:clamp(22px,2.6vw,30px); margin-bottom:8px}
+  .band > .wrap > p{color:var(--muted); max-width:74ch}
+  .docs{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); margin-top:26px}
+  .doc{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px; color:var(--text); transition:all .2s var(--ease)}
+  .doc:hover{border-color:var(--pink); transform:translateY(-2px); text-decoration:none}
+  .doc h4{font-size:17px; margin-bottom:8px}
+  .doc p{color:var(--muted); font-size:14px; margin:0}
 
-  /* ---- sections ---- */
-  section{padding:64px 0; position:relative}
-  .sec-head{max-width:680px; margin-bottom:38px}
-  .sec-head h2{font-size:clamp(28px,4.4vw,46px); margin-top:10px}
-  .sec-head p{color:var(--muted); font-size:17px; margin:14px 0 0}
-  .reveal{opacity:0; transform:translateY(28px); transition:opacity .7s var(--ease), transform .7s var(--ease)}
-  .reveal.in{opacity:1; transform:none}
+  table{width:100%; border-collapse:collapse; margin-top:22px; font-size:14px}
+  th,td{text-align:left; padding:11px 12px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{font-family:var(--mono); font-size:10.5px; letter-spacing:1.4px; text-transform:uppercase; color:var(--dim)}
+  td:first-child{white-space:nowrap}
+  .tablewrap{overflow-x:auto}
 
-  /* steps */
-  .steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px}
-  .step{border:1px solid var(--line); border-radius:16px; padding:24px; background:linear-gradient(180deg,var(--panel),transparent)}
-  .step .n{font-family:var(--mono); font-size:13px; color:var(--pink); border:1px solid var(--line2); width:38px; height:38px;
-      display:grid; place-items:center; border-radius:10px; margin-bottom:16px}
-  .step h3{font-size:20px; margin-bottom:8px}
-  .step p{color:var(--muted); font-size:14.5px; margin:0}
+  .callout{border:1px solid var(--line2); border-left:3px solid var(--amber);
+    background:var(--panel); border-radius:10px; padding:18px 20px; margin-top:24px}
+  .callout h4{font-size:15px; margin-bottom:8px; color:var(--amber)}
+  .callout p{color:var(--muted); font-size:14px; margin:0 0 8px}
+  .callout p:last-child{margin-bottom:0}
 
-  /* ---- gallery ---- */
-  .tabs{display:inline-flex; padding:5px; border:1px solid var(--line2); border-radius:12px; background:var(--panel); gap:4px; margin-bottom:26px}
-  .tab{font-family:var(--mono); font-size:13px; letter-spacing:.5px; padding:9px 18px; border-radius:8px; cursor:pointer; color:var(--muted); border:none; background:none; transition:.2s}
-  .tab[aria-selected="true"]{background:linear-gradient(135deg,var(--pink),#ff5e92); color:#fff}
-  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:18px}
-  .card{border:1px solid var(--line); border-radius:18px; padding:24px; background:linear-gradient(180deg,var(--panel),var(--panel2));
-      display:flex; flex-direction:column; transition:border-color .25s, transform .25s; position:relative; overflow:hidden}
-  .card::after{content:""; position:absolute; inset:0; border-radius:18px; padding:1px; pointer-events:none;
-      background:linear-gradient(135deg,transparent 40%,rgba(255,33,107,.5));
-      -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-      mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-      -webkit-mask-composite:xor; mask-composite:exclude; opacity:0; transition:opacity .25s}
-  .card:hover{transform:translateY(-4px)}
-  .card:hover::after{opacity:1}
-  .badge{align-self:flex-start; font-family:var(--mono); font-size:10.5px; letter-spacing:1.4px; text-transform:uppercase;
-      padding:4px 10px; border-radius:999px; border:1px solid var(--line2); color:var(--muted); margin-bottom:14px}
-  .badge.src{color:var(--teal); border-color:rgba(1,230,157,.4)}
-  .badge.dst{color:var(--pink); border-color:rgba(255,33,107,.4)}
-  .card h3{font-size:22px}
-  .card .sub{font-family:var(--mono); font-size:12px; color:var(--dim); margin:4px 0 12px}
-  .card p{color:var(--muted); font-size:14px; flex:1; margin:0 0 16px}
-  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px}
-  .chip{font-size:11.5px; font-family:var(--mono); color:var(--muted); background:rgba(255,255,255,.03);
-      border:1px solid var(--line); border-radius:6px; padding:4px 8px}
-  .card-actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-  .link-sm{font-family:var(--mono); font-size:12px; color:var(--muted)}
+  ol.steps{counter-reset:s; list-style:none; padding:0; margin:26px 0 0; display:grid; gap:14px}
+  ol.steps li{counter-increment:s; position:relative; padding-left:46px; color:var(--muted); font-size:14.5px}
+  ol.steps li::before{content:counter(s); position:absolute; left:0; top:-2px;
+    width:30px; height:30px; border-radius:50%; display:grid; place-items:center;
+    font-family:var(--mono); font-size:12px; color:var(--pink);
+    border:1px solid var(--pink); background:var(--panel)}
+  ol.steps strong{color:var(--text); display:block; font-size:15px}
 
-  /* ---- builder ---- */
-  .builder{border:1px solid var(--line2); border-radius:22px; background:
-      radial-gradient(900px 400px at 100% 0%, rgba(255,33,107,.08), transparent 60%),
-      linear-gradient(180deg,var(--panel),var(--panel2)); overflow:hidden}
-  .builder-grid{display:grid; grid-template-columns:1.05fr 1fr}
-  @media(max-width:880px){.builder-grid{grid-template-columns:1fr}}
-  .b-config{padding:30px; border-right:1px solid var(--line)}
-  @media(max-width:880px){.b-config{border-right:none; border-bottom:1px solid var(--line)}}
-  .b-step{margin-bottom:26px}
-  .b-step .k{font-family:var(--mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:11px; display:flex; gap:8px; align-items:center}
-  .b-step .k b{color:var(--pink); font-weight:700}
-  .seg{display:inline-flex; border:1px solid var(--line2); border-radius:11px; padding:4px; gap:4px; background:var(--bg)}
-  .seg button{font-family:var(--body); font-weight:600; font-size:14px; padding:9px 16px; border-radius:8px; border:none; background:none; color:var(--muted); cursor:pointer; transition:.2s}
-  .seg button[aria-pressed="true"]{color:#fff}
-  .seg.dir button[aria-pressed="true"][data-v="source"]{background:linear-gradient(135deg,#019a6c,var(--teal)); color:#04140e}
-  .seg.dir button[aria-pressed="true"][data-v="destination"]{background:linear-gradient(135deg,var(--pink),#ff5e92)}
-  .seg.cloud button[aria-pressed="true"]{background:#222}
-  .opts{display:flex; flex-direction:column; gap:10px}
-  .opt{display:flex; gap:13px; align-items:flex-start; border:1px solid var(--line2); border-radius:13px; padding:14px 16px; cursor:pointer; transition:.2s; background:var(--bg)}
-  .opt:hover{border-color:var(--line2); background:#0e0e14}
-  .opt[aria-checked="true"]{border-color:var(--pink); box-shadow:0 0 0 1px rgba(255,33,107,.35) inset; background:#120c10}
-  .opt .dot{width:18px; height:18px; border-radius:50%; border:2px solid var(--line2); margin-top:2px; flex:none; transition:.2s}
-  .opt[aria-checked="true"] .dot{border-color:var(--pink); background:radial-gradient(circle,var(--pink) 42%,transparent 46%)}
-  .opt .o-ttl{font-weight:600; font-size:15px}
-  .opt .o-sub{font-family:var(--mono); font-size:11.5px; color:var(--dim); margin-top:2px}
+  footer.site{border-top:1px solid var(--line); padding:34px 0; color:var(--dim); font-size:13px}
+  footer.site .row{display:flex; gap:18px; flex-wrap:wrap; align-items:center}
+  footer.site .row > :last-child{margin-left:auto}
 
-  /* output panel */
-  .b-out{padding:30px; display:flex; flex-direction:column; gap:18px; min-width:0}
-  .out-head{display:flex; align-items:center; gap:12px}
-  .out-head h3{font-size:24px}
-  .out-scope{font-family:var(--mono); font-size:11px; color:var(--dim)}
-  .deploy-row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-  .deploy-row img{height:42px}
-  .field-block{border:1px solid var(--line); border-radius:12px; background:var(--bg); overflow:hidden}
-  .field-block .fb-h{display:flex; justify-content:space-between; align-items:center; padding:10px 13px; border-bottom:1px solid var(--line);
-      font-family:var(--mono); font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--dim)}
-  .copy{font-family:var(--mono); font-size:11px; color:var(--teal); background:none; border:1px solid var(--line2); border-radius:6px; padding:4px 9px; cursor:pointer; transition:.2s}
-  .copy:hover{border-color:var(--teal)}
-  .copy.done{color:var(--bg); background:var(--teal); border-color:var(--teal)}
-  .field-block pre{margin:0; padding:13px; font-family:var(--mono); font-size:12px; color:#d6d6e0; overflow-x:auto; white-space:pre; line-height:1.7}
-  .field-block .url{font-family:var(--mono); font-size:11.5px; color:var(--muted); padding:12px 13px; word-break:break-all; line-height:1.6}
-  .needs{border:1px solid var(--line); border-left:3px solid var(--pink); border-radius:10px; padding:14px 16px; background:var(--panel)}
-  .needs h4{font-family:var(--display); font-size:15px; margin:0 0 8px}
-  .needs ul{margin:0; padding-left:18px; color:var(--muted); font-size:13px}
-  .needs.none{border-left-color:var(--teal); color:var(--muted); font-size:13px}
-  .map{width:100%; border-collapse:collapse; font-size:13px}
-  .map td{padding:7px 0; border-bottom:1px solid var(--line); vertical-align:top}
-  .map td:first-child{color:var(--text); font-weight:500; width:46%; padding-right:12px}
-  .map td:last-child{color:var(--muted); font-family:var(--mono); font-size:11.5px}
-
-  /* ---- timeline ---- */
-  .timeline{position:relative; margin-left:8px; padding-left:30px; border-left:2px solid var(--line2)}
-  .tl{position:relative; padding:0 0 26px}
-  .tl::before{content:""; position:absolute; left:-39px; top:2px; width:16px; height:16px; border-radius:50%;
-      background:var(--bg); border:2px solid var(--pink); box-shadow:0 0 0 4px rgba(255,33,107,.12)}
-  .tl h4{font-family:var(--display); font-size:18px; margin:0 0 5px}
-  .tl p{margin:0; color:var(--muted); font-size:14px}
-  .tl code{font-family:var(--mono); font-size:12px; color:var(--teal); background:rgba(1,230,157,.08); padding:1px 6px; border-radius:5px}
-
-  /* ---- footer ---- */
-  footer{border-top:1px solid var(--line); margin-top:40px; padding:40px 0 64px; color:var(--dim); font-size:13.5px}
-  .foot-in{display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; align-items:center}
-  .foot-in img{height:26px; opacity:.9}
-  .foot-links{display:flex; gap:20px; flex-wrap:wrap}
-  .foot-links a{color:var(--muted)}
-
-  @media(prefers-reduced-motion:reduce){
-    *{animation-duration:.001s!important; animation-iteration-count:1!important; transition-duration:.001s!important}
-    .reveal{opacity:1; transform:none}
+  @media (max-width:720px){
+    .bar{height:auto; padding:12px 0; flex-wrap:wrap}
+    .bar nav{width:100%; margin-left:0}
+    .hero{padding:52px 0 34px}
+    .stats{gap:24px}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important}
+    html{scroll-behavior:auto}
   }
 </style>
 </head>
-<body id="top">
-<div class="bg" id="bg"></div><div class="grid"></div><div class="grain"></div>
+<body>
+<a class="skip" href="#main">Skip to content</a>
 
-<nav>
-  <div class="nav-in">
-    <a class="brand" href="#top" aria-label="Abstract Security">
-      <img src="abstract-mark.svg" alt="" width="30" height="30" />
-      <span class="wordmark">ABSTRACT</span>
-    </a>
-    <div class="nav-links">
-      <a href="#how">How it works</a>
-      <a href="#integrations">Integrations</a>
-      <a href="#builder">Deploy</a>
-      <a href="#sentinel-prereqs">Sentinel setup</a>
-    </div>
-    <a class="nav-cta" href="https://github.com/IamABS3C/Abstract-MS-Azure-" target="_blank" rel="noopener">GitHub ↗</a>
+<header class="site">
+  <div class="wrap bar">
+    <span class="wordmark">Abstract<b>.</b>Security</span>
+    <nav aria-label="Sections">
+      <a href="#source">Sources</a>
+      <a href="#governance">Governance</a>
+      <a href="#identity">Identity</a>
+      <a href="#destination">Destinations</a>
+      <a href="#how">How to deploy</a>
+      <a href="#docs">Docs</a>
+      <button class="theme" id="theme" type="button" aria-label="Toggle light and dark theme">◐ Theme</button>
+    </nav>
   </div>
-</nav>
+</header>
 
-<div class="wrap">
-  <!-- ===================== HERO ===================== -->
-  <header class="hero">
-    <img class="logo rise d1" src="abstract-logo.svg" alt="Abstract Security" width="130" height="130" />
-    <div class="eyebrow rise d2">Azure Deployment Console</div>
-    <h1 class="rise d3">Pipe Azure into Abstract.<br /><span class="g">And back out again.</span></h1>
-    <p class="lead rise d4">The Security Data Pipeline Platform. Stand up every Azure <strong>source</strong> and <strong>destination</strong> integration — Event Hub, Activity Log, and Microsoft Sentinel — from one console. Pick a direction, pick an integration, pick a cloud, and deploy.</p>
-    <div class="cta rise d5">
-      <a class="btn btn-primary" href="#builder">⚡ Build your deployment</a>
-      <a class="btn btn-ghost" href="#how">See how it works</a>
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Azure &amp; Microsoft Sentinel · v4.0.0</p>
+    <h1>Deploy Abstract into Azure, <em>properly</em>.</h1>
+    <p class="lede">Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations.</p>
+    <div class="stats">
+      <div class="stat"><b>9</b><span>Templates</span></div>
+      <div class="stat"><b>4</b><span>Deployment scopes</span></div>
+      <div class="stat"><b>100%</b><span>With a portal wizard</span></div>
+      <div class="stat"><b>ARM + Bicep</b><span>Every template</span></div>
     </div>
-    <div class="stats rise d6">
-      <div><b>4</b> integrations</div>
-      <div><b>2</b> clouds · Public + Gov</div>
-      <div><b>0</b> secrets in outputs</div>
-      <div><b>1</b>-click portal deploy</div>
+  </div>
+</section>
+
+<main id="main">
+  <div class="wrap">
+    <div class="filters" role="group" aria-label="Filter templates by scope">
+      <span class="lbl">Filter by scope</span>
+      <button class="chip" type="button" data-filter="all" aria-pressed="true">All</button>
+      <button class="chip" type="button" data-filter="resourceGroup" aria-pressed="false">Resource group</button>
+      <button class="chip" type="button" data-filter="subscription" aria-pressed="false">Subscription</button>
+      <button class="chip" type="button" data-filter="managementGroup" aria-pressed="false">Management group</button>
+      <button class="chip" type="button" data-filter="tenant" aria-pressed="false">Tenant</button>
     </div>
 
-    <!-- animated pipeline -->
-    <div class="pipe rise d6" aria-hidden="true">
-      <div class="pipe-grid">
-        <div class="node azure"><div class="lbl">Azure</div><div class="ttl">Log Sources</div></div>
-        <div class="conduit to-core"><span class="packet"></span><span class="packet"></span><span class="packet"></span></div>
-        <div class="node core"><div class="lbl">Pipeline</div><div class="ttl">Abstract</div></div>
-        <div class="conduit from-core"><span class="packet"></span><span class="packet"></span><span class="packet"></span></div>
-        <div class="node azure"><div class="lbl">Azure</div><div class="ttl">Destinations</div></div>
-      </div>
-      <div class="pipe-cap"><span>↳ ingest · reduce · enrich</span><span>route anywhere ↲</span></div>
-    </div>
-  </header>
-
-  <!-- ===================== HOW IT WORKS ===================== -->
-  <section id="how">
-    <div class="sec-head reveal">
-      <div class="eyebrow">The flow</div>
-      <h2>Two directions. One pipeline.</h2>
-      <p>Abstract decouples your security data from your tools. These templates provision the Azure side of that pipeline — whichever way the data needs to move.</p>
-    </div>
-    <div class="steps">
-      <div class="step reveal"><div class="n">01</div><h3>Choose a direction</h3><p><b style="color:var(--teal)">Source</b> = Abstract reads <em>from</em> Azure. <b style="color:var(--pink)">Destination</b> = Abstract writes <em>to</em> Azure.</p></div>
-      <div class="step reveal"><div class="n">02</div><h3>Pick the integration</h3><p>Event Hub, Activity Log export, Event Hub Destination, or Microsoft Sentinel — each is a focused, self-contained template.</p></div>
-      <div class="step reveal"><div class="n">03</div><h3>Deploy from the portal</h3><p>The console builds the exact Azure portal deep-link and a matching CLI command. One click launches the guided wizard.</p></div>
-      <div class="step reveal"><div class="n">04</div><h3>Wire up Abstract</h3><p>The deployment <b>Outputs</b> tab is a field-for-field answer key for the Abstract integration modal — copy and paste.</p></div>
-    </div>
-  </section>
-
-  <!-- ===================== INTEGRATIONS GALLERY ===================== -->
-  <section id="integrations">
-    <div class="sec-head reveal">
-      <div class="eyebrow pink">Catalog</div>
-      <h2>Choose your integration</h2>
-      <p>Every card deploys one self-contained ARM template with its own guided wizard. Send any of them straight to the builder.</p>
-    </div>
-    <div class="tabs reveal" role="tablist">
-      <button class="tab" role="tab" aria-selected="true" data-filter="all">All</button>
-      <button class="tab" role="tab" aria-selected="false" data-filter="source">Sources →</button>
-      <button class="tab" role="tab" aria-selected="false" data-filter="destination">→ Destinations</button>
-    </div>
-    <div class="cards" id="gallery"></div>
-  </section>
-
-  <!-- ===================== BUILDER ===================== -->
-  <section id="builder">
-    <div class="sec-head reveal">
-      <div class="eyebrow">Deployment builder</div>
-      <h2>Configure &amp; deploy</h2>
-      <p>Select a direction, an integration and a cloud — the console assembles your portal deep-link, CLI command, prerequisites and the Abstract field map in real time.</p>
-    </div>
-    <div class="builder reveal">
-      <div class="builder-grid">
-        <div class="b-config">
-          <div class="b-step">
-            <div class="k"><b>01</b> Direction</div>
-            <div class="seg dir" id="seg-dir">
-              <button data-v="source" aria-pressed="true">Source →</button>
-              <button data-v="destination" aria-pressed="false">→ Destination</button>
-            </div>
-          </div>
-          <div class="b-step">
-            <div class="k"><b>02</b> Integration</div>
-            <div class="opts" id="b-opts"></div>
-          </div>
-          <div class="b-step">
-            <div class="k"><b>03</b> Cloud</div>
-            <div class="seg cloud" id="seg-cloud">
-              <button data-v="public" aria-pressed="true">Azure Public</button>
-              <button data-v="gov" aria-pressed="false">Azure Government</button>
-            </div>
-          </div>
+    <section class="cat" id="source">
+      <header class="cat-head">
+        <h2>Sources <span class="tagline">Abstract reads <em>from</em> Azure</span></h2>
+        <p>Get Microsoft telemetry into the pipeline. Deploy the Event Hub source first — every other source template consumes its outputs.</p>
+      </header>
+      <div class="grid">
+      <article class="card" data-category="source" data-scope="resourceGroup">
+        <div class="card-badges"><span class="badge first">Deploy first</span><span class="badge scope-resourceGroup">Resource group</span><span class="badge ui">Wizard</span></div>
+        <h3>Event Hub (Source)</h3>
+        <p class="summary">Everything Abstract needs to READ from Azure: Event Hubs namespace, one hub per log source, consumer group, the checkpoint storage account + private blob container the Abstract consumer requires, SAS and/or Entra RBAC auth, networking guardrails.</p>
+        <p class="outs"><strong>Outputs you need next</strong> <code>abstractDiagnosticsAuthRuleId</code>, <code>eventHubNames</code></p><p class="note">Deploy this first — every other source template consumes its outputs. Azure Policy never creates hubs, so hub names you pass elsewhere must exist here.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsource%2Feventhub-source.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsource%2Feventhub-source.createUiDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsource%2Feventhub-source.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsource%2Feventhub-source.createUiDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/source/eventhub-source.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
         </div>
-        <div class="b-out" id="b-out"><!-- rendered --></div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment group create -g &lt;rg&gt; \
+  --template-file solutions/templates/source/eventhub-source.bicep</code></pre>
+        </details>
+      </article>
+      <article class="card" data-category="source" data-scope="subscription">
+        <div class="card-badges"><span class="badge scope-subscription">Subscription</span><span class="badge ui">Form&nbsp;view</span></div>
+        <h3>Activity Log export (single subscription)</h3>
+        <p class="summary">Streams ONE subscription&#x27;s Azure Activity Log to the Abstract Event Hub. For a whole estate, use the log-stream governance pack instead.</p>
+        <p class="note">Subscription scope, so it uses a Form view — createUiDefinition cannot bind a portal deployment to a subscription.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsubscription%2Factivitylog.uiFormDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsubscription%2Factivitylog.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fsubscription%2Factivitylog.uiFormDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/subscription/activitylog.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment sub create -l &lt;region&gt; \
+  --template-file solutions/templates/subscription/activitylog.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name activitylog --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/subscription/activitylog.azuredeploy.json \
+  --ui-form-definition solutions/templates/subscription/activitylog.uiFormDefinition.json</code></pre>
+        </details>
+      </article>
+      <article class="card" data-category="source" data-scope="tenant">
+        <div class="card-badges"><span class="badge scope-tenant">Tenant</span><span class="badge ui">Form&nbsp;view</span></div>
+        <h3>Microsoft Entra ID log streams</h3>
+        <p class="summary">Tenant-wide Entra ID diagnostic setting: sign-ins (interactive, non-interactive, SP, MI), directory audit, provisioning, Identity Protection risk, and Microsoft Graph activity.</p>
+        <p class="note">No Azure Policy can manage this — Entra diagnostic settings are tenant-level, so there is no per-subscription object to evaluate. Expect up to three days for the first records.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Ftenant%2Fentra-diagnostics.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Ftenant%2Fentra-diagnostics.uiFormDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Ftenant%2Fentra-diagnostics.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Ftenant%2Fentra-diagnostics.uiFormDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/tenant/entra-diagnostics.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment tenant create -l &lt;region&gt; \
+  --template-file solutions/templates/tenant/entra-diagnostics.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name entra-diagnostics --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/tenant/entra-diagnostics.azuredeploy.json \
+  --ui-form-definition solutions/templates/tenant/entra-diagnostics.uiFormDefinition.json</code></pre>
+        </details>
+      </article>
+      </div>
+    </section>
+    <section class="cat" id="governance">
+      <header class="cat-head">
+        <h2>Governance <span class="tagline">Onboard the whole estate</span></h2>
+        <p>Stop configuring diagnostic settings one subscription at a time. Assign once at a management group; current and future subscriptions onboard themselves.</p>
+      </header>
+      <div class="grid">
+      <article class="card" data-category="governance" data-scope="managementGroup">
+        <div class="card-badges"><span class="badge scope-managementGroup">Management group</span><span class="badge ui">Form&nbsp;view</span></div>
+        <h3>Log streams at scale (Azure Policy)</h3>
+        <p class="summary">Assign once at a management group and every subscription in it — current and future — streams Activity Log, resource logs, SQL auditing and Defender for Cloud to the Abstract Event Hub, and self-heals if a setting is deleted.</p>
+        <p class="note">Three gotchas decide whether this works: the region rule (one namespace per region), remediation is not optional, and new subscriptions must land in the right management group. See docs/azure-log-streams.md.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.uiFormDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.uiFormDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/policy/abstract-logstreams-policy.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment mg create -m &lt;mg-id&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/policy/abstract-logstreams-policy.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name abstract-logstreams-policy --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/policy/abstract-logstreams-policy.azuredeploy.json \
+  --ui-form-definition solutions/templates/policy/abstract-logstreams-policy.uiFormDefinition.json</code></pre>
+        </details>
+      </article>
+      </div>
+    </section>
+    <section class="cat" id="identity">
+      <header class="cat-head">
+        <h2>Identity <span class="tagline">App registrations for Graph &amp; M365</span></h2>
+        <p>Event Hub collection needs no app registration. These cover the other source set: Microsoft Graph and the Microsoft 365 unified audit log.</p>
+      </header>
+      <div class="grid">
+      <article class="card" data-category="identity" data-scope="resourceGroup">
+        <div class="card-badges"><span class="badge rec">Recommended</span><span class="badge scope-resourceGroup">Resource group</span><span class="badge ui">Wizard</span></div>
+        <h3>App registrations (event-driven)</h3>
+        <p class="summary">One central Logic App creates an Entra app + service principal per subscription, grants AND VERIFIES admin consent, writes the client secret to Key Vault, and assigns Azure RBAC on the target subscription.</p>
+        <p class="prereq"><strong>Prerequisite</strong> scripts/Deploy-AbstractAppReg.sh -a Bootstrap (Global Administrator, once per tenant)</p><p class="note">Recommended over the policy variant: one tier-0 identity in one place, one run history as the audit trail, no per-subscription compute. Live-tested end to end.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fautomation%2Fabstract-appreg-automation.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fautomation%2Fabstract-appreg-automation.createUiDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fautomation%2Fabstract-appreg-automation.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fautomation%2Fabstract-appreg-automation.createUiDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/automation/abstract-appreg-automation.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment group create -g &lt;rg&gt; \
+  --template-file solutions/templates/automation/abstract-appreg-automation.bicep</code></pre>
+        </details>
+      </article>
+      <article class="card" data-category="identity" data-scope="managementGroup">
+        <div class="card-badges"><span class="badge scope-managementGroup">Management group</span><span class="badge ui">Form&nbsp;view</span></div>
+        <h3>App registrations (Azure Policy)</h3>
+        <p class="summary">Same outcome as the event-driven path, delivered through Azure Policy: a DeployIfNotExists policy deploys a deploymentScript container into each subscription which then calls Graph.</p>
+        <p class="prereq"><strong>Prerequisite</strong> scripts/Deploy-AbstractAppReg.sh -a Bootstrap (Global Administrator, once per tenant)</p><p class="note">Only when governance mandates Azure Policy. It spawns a privileged container in every subscription, needs Owner on each, and cannot see the Entra app it created.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-appreg-policy.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-appreg-policy.uiFormDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-appreg-policy.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-appreg-policy.uiFormDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/policy/abstract-appreg-policy.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment mg create -m &lt;mg-id&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/policy/abstract-appreg-policy.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name abstract-appreg-policy --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/policy/abstract-appreg-policy.azuredeploy.json \
+  --ui-form-definition solutions/templates/policy/abstract-appreg-policy.uiFormDefinition.json</code></pre>
+        </details>
+      </article>
+      </div>
+    </section>
+    <section class="cat" id="destination">
+      <header class="cat-head">
+        <h2>Destinations <span class="tagline">Abstract writes <em>to</em> Azure</span></h2>
+        <p>Send enriched, normalized, reduced output back into Azure.</p>
+      </header>
+      <div class="grid">
+      <article class="card" data-category="destination" data-scope="resourceGroup">
+        <div class="card-badges"><span class="badge scope-resourceGroup">Resource group</span><span class="badge ui">Wizard</span></div>
+        <h3>Event Hub Destination</h3>
+        <p class="summary">Where Abstract WRITES processed events: namespace, destination hub, least-privilege Send SAS rule, optional Entra ID (RBAC) delivery, Safe Mode networking.</p>
+        <p class="note">Keys are never emitted in deployment outputs — fetch the Send connection string from the portal or CLI.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Feventhub-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Feventhub-destination.createUiDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/destinations/eventhub-destination.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment group create -g &lt;rg&gt; \
+  --template-file solutions/templates/destinations/eventhub-destination.bicep</code></pre>
+        </details>
+      </article>
+      <article class="card" data-category="destination" data-scope="resourceGroup">
+        <div class="card-badges"><span class="badge scope-resourceGroup">Resource group</span><span class="badge ui">Wizard</span></div>
+        <h3>Microsoft Sentinel Destination</h3>
+        <p class="summary">Abstract writes to Sentinel via the Logs Ingestion API: Log Analytics workspace, Sentinel onboarding, Data Collection Endpoint, custom _CL table, Data Collection Rule, and the DCR role assignments.</p>
+        <p class="prereq"><strong>Prerequisite</strong> Create the Entra app first — scripts/New-AbstractSentinelApp.ps1</p><p class="note">Use the with-app variant to create the app registration in the same deployment.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination.createUiDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/destinations/sentinel-destination.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment group create -g &lt;rg&gt; \
+  --template-file solutions/templates/destinations/sentinel-destination.bicep</code></pre>
+        </details>
+      </article>
+      <article class="card" data-category="destination" data-scope="resourceGroup">
+        <div class="card-badges"><span class="badge scope-resourceGroup">Resource group</span><span class="badge ui">Wizard</span></div>
+        <h3>Sentinel Destination + app registration</h3>
+        <p class="summary">The Sentinel destination plus the Entra app registration, created in one deployment via a deploymentScript, with the client secret written to Key Vault.</p>
+        <p class="prereq"><strong>Prerequisite</strong> A user-assigned managed identity holding Application.ReadWrite.All</p><p class="note">Re-running is safe: the script rotates a secret only when none exists or the current one expires within 30 days. This app needs no Graph permissions and no admin consent — it only receives DCR RBAC.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.createUiDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fdestinations%2Fsentinel-destination-with-app.createUiDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/destinations/sentinel-destination-with-app.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment group create -g &lt;rg&gt; \
+  --template-file solutions/templates/destinations/sentinel-destination-with-app.bicep</code></pre>
+        </details>
+      </article>
+      </div>
+    </section>
+  </div>
+
+  <section class="band" id="how">
+    <div class="wrap">
+      <h2>How to deploy</h2>
+      <p>The shortest path from nothing to Azure telemetry flowing into Abstract. Every step
+         has a button above and a CLI equivalent on each card.</p>
+      <ol class="steps">
+        <li><strong>Event Hub estate, first</strong>
+            Everything else consumes its outputs — note <code>abstractDiagnosticsAuthRuleId</code>
+            and <code>eventHubNames</code>. One namespace per region that holds regional resources.</li>
+        <li><strong>Onboard the estate in report-only mode</strong>
+            The governance pack starts as <code>AuditIfNotExists</code>: it changes nothing and
+            tells you exactly which subscriptions and resources would be collected.</li>
+        <li><strong>Grant, then backfill</strong>
+            Give the policy identities access to the hub, then run a remediation task —
+            <code>DeployIfNotExists</code> never touches resources you already own.</li>
+        <li><strong>Identity telemetry</strong>
+            One tenant-scope command covers the whole organisation. No Azure Policy can reach
+            Entra ID, because there is no per-subscription object to evaluate.</li>
+        <li><strong>Then destinations</strong>
+            Route Abstract's enriched output to Sentinel, an Event Hub, or both.</li>
+      </ol>
+
+      <div class="callout">
+        <h4>Three things that decide whether this works</h4>
+        <p><strong>The region rule.</strong> Azure Monitor rejects a diagnostic setting whose
+          Event Hub is in a different region from the monitored resource. One namespace per
+          region. Activity Log, Defender for Cloud and Entra ID are exempt — they are not regional.</p>
+        <p><strong>Remediation is not optional.</strong> Policy fires on create or update, so your
+          existing estate stays dark until a remediation task backfills it.</p>
+        <p><strong>New subscriptions must land in the right management group.</strong> They default
+          to Tenant Root, not your group — set the tenant's default management group or they
+          silently miss the policy.</p>
       </div>
     </div>
   </section>
 
-  <!-- ===================== SENTINEL PREREQS ===================== -->
-  <section id="sentinel-prereqs">
-    <div class="sec-head reveal">
-      <div class="eyebrow pink">Before you deploy · Sentinel only</div>
-      <h2>Create the Entra app first</h2>
-      <p>ARM can't create app registrations, so the standard Sentinel Destination template needs an Entra app first. Skip the click-through — run the operator script (recommended), or use the one-click template that registers the app for you. The manual steps are below if you'd rather.</p>
-    </div>
-
-    <!-- RECOMMENDED · operator script -->
-    <div class="reveal needs none" style="border-left:3px solid var(--teal); padding:22px 24px; margin-bottom:18px; font-size:inherit; color:inherit">
-      <h4 style="font-family:var(--display); font-size:18px; margin:0 0 8px; color:var(--text)">✓ Recommended · one command</h4>
-      <p style="color:var(--muted); font-size:14.5px; margin:0 0 15px">The operator script creates the app, service principal and client secret for you. Add <code>--deploy</code>&nbsp;/&nbsp;<code>-Deploy</code> and it also runs the Sentinel Destination template, so the service principal lands <b>both</b> DCR roles — <code>Monitoring Metrics Publisher</code> and <code>Monitoring Contributor</code> — then prints the exact Abstract modal values. The secret is shown once (or pushed to Key Vault) and never written to disk.</p>
-      <div class="field-block"><div class="fb-h"><span>bash · Azure CLI</span></div><pre>./scripts/new-abstract-sentinel-app.sh --deploy</pre></div>
-      <div class="field-block" style="margin-top:10px"><div class="fb-h"><span>PowerShell 7 · Az</span></div><pre>./scripts/New-AbstractSentinelApp.ps1 -Deploy</pre></div>
-    </div>
-
-    <!-- ADVANCED · one-click ARM with-app -->
-    <div class="reveal needs" style="padding:22px 24px; margin-bottom:26px">
-      <h4 style="font-family:var(--display); font-size:18px; margin:0 0 8px; color:var(--text)">Advanced · one-click ARM that creates the app for you</h4>
-      <p style="color:var(--muted); font-size:14.5px; margin:0 0 15px">A single template that registers the app via an Azure <code>deploymentScript</code> and stores the client secret in <b>Key Vault</b> — never in outputs. No app registration needed beforehand.</p>
-      <div class="deploy-row" id="withapp-deploy"><!-- button injected by builder --></div>
-      <div class="needs" style="border-left-color:var(--amber); margin-top:16px">
-        <h4>Prerequisite</h4>
-        <ul>
-          <li>A user-assigned managed identity that already holds <b>Application Administrator</b>, passed as <code>managedIdentityResourceId</code>.</li>
-          <li>Deployer needs <b>Owner</b>, or <b>Contributor</b> + <b>User Access Administrator</b>, on the resource group.</li>
-        </ul>
+  <section class="band" id="docs">
+    <div class="wrap">
+      <h2>Deep references</h2>
+      <p>Both documents distinguish what was <em>tested against a live tenant</em> from what was
+         read in documentation, and name the bugs that testing exposed.</p>
+      <div class="docs">
+        <a class="doc" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/docs/azure-log-streams.md" target="_blank" rel="noopener">
+          <h4>Azure log streams at scale</h4>
+          <p>Every Microsoft log stream, how each reaches an Event Hub, and which ones Azure Policy can onboard automatically — with the region rule and the two constraints that decide the architecture.</p>
+        </a>
+        <a class="doc" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/docs/azure-app-registrations.md" target="_blank" rel="noopener">
+          <h4>Per-subscription app registrations</h4>
+          <p>Both automation paths with their real trade-offs, the verified Graph permission catalogue, and the four bugs live testing exposed.</p>
+        </a>
       </div>
-    </div>
 
-    <div class="reveal">
-      <div class="eyebrow" style="margin-bottom:16px; display:block">Or do it manually</div>
-      <div class="timeline">
-        <div class="tl"><h4>1 · Register the app</h4><p>Entra ID → App registrations → <b>New registration</b> (e.g. <code>Abstract-Sentinel-App</code>, single tenant). Save the <b>Application (client) ID</b> and <b>Directory (tenant) ID</b>.</p></div>
-        <div class="tl"><h4>2 · Add a client secret</h4><p>Certificates &amp; secrets → <b>New client secret</b>. Copy the <b>Value</b> immediately — it's shown once.</p></div>
-        <div class="tl"><h4>3 · Grab the service principal object ID</h4><p>Entra ID → Enterprise applications → your app → <code>Object ID</code>. This goes in the wizard so the template grants it <code>Monitoring Metrics Publisher</code> + <code>Monitoring Contributor</code> on the DCR.</p></div>
-        <div class="tl"><h4>4 · Deploy</h4><p>Run the <b>Sentinel Destination</b> template below. It builds the workspace, Sentinel, DCE, custom table, DCR and the role assignments.</p></div>
-        <div class="tl"><h4>5 · Paste into Abstract</h4><p>Client ID, Client Secret, Tenant ID, plus the deployment's <b>DCR Immutable ID</b>, <b>DCE URL</b> and <b>Stream Name</b> outputs.</p></div>
+      <h2 style="margin-top:44px">Scripts</h2>
+      <p>The parts no template can do — and the guardrails that keep the templates honest.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">Script</th><th scope="col">What it does</th></tr></thead>
+          <tbody>
+          <tr>
+            <td><code>scripts/Deploy-AbstractLogStreams.sh</code></td>
+            <td>Deploy / Grant / Remediate / Status for the log-stream policy pack. Remediation is not optional — DeployIfNotExists never touches what you already own.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/Deploy-AbstractAppReg.sh</code></td>
+            <td>Bootstrap / DeployA / DeployB / Grant / Onboard / Remediate / Verify / Status. Bootstrap is the one step no template can do.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/Deploy-AbstractEventHub.ps1</code></td>
+            <td>Menu-driven deployment of the Event Hub source stack, with preview and credential retrieval.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/New-AbstractSentinelApp.ps1</code></td>
+            <td>Creates the Entra app for the Sentinel destination and grants both required DCR roles.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/validate-templates.py</code></td>
+            <td>Enforces what az bicep build cannot see: UI outputs match template parameters, no required parameter is unsupplied, and the UI model matches the deployment scope.</td>
+          </tr>
+          <tr>
+            <td><code>scripts/gen-deploy-links.py</code></td>
+            <td>Regenerates every README table and the Pages site from this manifest, so a repo rename can never leave a stale button behind.</td>
+          </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
-</div>
+</main>
 
-<footer>
-  <div class="wrap foot-in">
-    <a class="brand" href="#top" aria-label="Abstract Security">
-      <img src="abstract-mark.svg" alt="" width="26" height="26" />
-      <span class="wordmark" style="font-size:16px">ABSTRACT</span>
-    </a>
-    <div class="foot-links">
-      <a href="https://abstract.security" target="_blank" rel="noopener">Website ↗</a>
-      <a href="https://docs.abstractsecurity.app" target="_blank" rel="noopener">Docs ↗</a>
-      <a href="https://github.com/IamABS3C/Abstract-MS-Azure-" target="_blank" rel="noopener">Repo ↗</a>
-      <a href="https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/SandboxBlade" target="_blank" rel="noopener">Wizard sandbox ↗</a>
-    </div>
-    <div>© <span id="yr"></span> Abstract Security · repo must be public for buttons to resolve</div>
+<footer class="site">
+  <div class="wrap row">
+    <span>Abstract Security — the security data pipeline platform.</span>
+    <a href="https://github.com/IamABS3C/Abstract-MS-Azure-" target="_blank" rel="noopener">Repository</a>
+    <a href="https://docs.abstractsecurity.app" target="_blank" rel="noopener">Documentation</a>
+    <a href="https://abstract.security" target="_blank" rel="noopener">abstract.security</a>
   </div>
 </footer>
 
 <script>
-(function(){
-  "use strict";
-  var REPO = {owner:"IamABS3C", repo:"Abstract-MS-Azure-", branch:"main"};
-  var RAW = "https://raw.githubusercontent.com/"+REPO.owner+"/"+REPO.repo+"/"+REPO.branch+"/";
-  var CLOUDS = {
-    public:{label:"Azure Public", portal:"https://portal.azure.com"},
-    gov:{label:"Azure Government", portal:"https://portal.azure.us"}
-  };
+  // Theme: honour the OS by default, remember an explicit choice.
+  (function () {
+    var KEY = 'abstract-theme';
+    var root = document.documentElement;
+    try {
+      var saved = localStorage.getItem(KEY);
+      if (saved) root.setAttribute('data-theme', saved);
+    } catch (e) { /* private browsing - fall back to prefers-color-scheme */ }
 
-  var INTEGRATIONS = [
-    {
-      id:"eh-source", dir:"source", name:"Event Hub", kind:"Source",
-      sub:"Abstract reads ← Event Hub", scope:"Resource group",
-      blurb:"Namespace, one hub per log source, the abstract consumer group, the required checkpoint storage, and SAS and/or Service Principal auth — with Safe Mode networking so onboarding never breaks.",
-      tmpl:"azuredeploy.json", ui:"createUiDefinition.json",
-      chips:["Namespace","Hub / source","Consumer group","Checkpoint storage","SAS + RBAC","Safe Mode"],
-      cli:["az deployment group create -g rg-abstract \\","  --template-file azuredeploy.json \\","  --parameters parameters/abstract-recommended.parameters.json \\","  --parameters namespaceName=abs-eh001"],
-      needs:[],
-      map:[["Event Hub Name","output: eventHubNames"],["Consumer Group","abstract"],["Blob Container Name","abstract-checkpoints"],["Fully Qualified Namespace","output: namespaceFqdn"],["Storage Account URL","output: storageAccountUrl"]],
-      docs:"https://docs.abstractsecurity.app/docs/integrations/source-integrations/azure-event-hub/"
-    },
-    {
-      id:"activity", dir:"source", name:"Activity Log Export", kind:"Source",
-      sub:"Subscription → Hub", scope:"Subscription",
-      blurb:"A subscription-scope diagnostic setting that streams the Azure Activity Log into your Abstract hub. Deploy once per subscription, after the Event Hub source stack.",
-      tmpl:"templates/subscription/activitylog.azuredeploy.json", ui:null,
-      chips:["Subscription scope","8 log categories","Send auth rule"],
-      cli:["az deployment sub create --location eastus \\","  --template-file templates/subscription/activitylog.azuredeploy.json \\","  --parameters eventHubAuthorizationRuleId=<abstractDiagnosticsAuthRuleId> \\","               eventHubName=evh-abstract-activity"],
-      needs:["The Event Hub source stack deployed first (for the hub + abstractDiagnosticsAuthRuleId output)"],
-      map:[["Streams to","your Activity Log hub"],["Auth rule","abstract-diagnostics-send (Send)"],["Scope","one per subscription"]],
-      docs:"https://docs.abstractsecurity.app/docs/pipeline/#route-node"
-    },
-    {
-      id:"eh-dest", dir:"destination", name:"Event Hub Destination", kind:"Destination",
-      sub:"Abstract writes → Event Hub", scope:"Resource group",
-      blurb:"Namespace + destination hub + a least-privilege Send SAS rule for the connection string (keys never appear in outputs), with optional Entra ID delivery and networking guardrails.",
-      tmpl:"templates/destinations/eventhub-destination.azuredeploy.json", ui:"templates/destinations/eventhub-destination.createUiDefinition.json",
-      chips:["Namespace","Destination hub","Send SAS rule","Optional Data Sender RBAC","Safe Mode"],
-      cli:["az deployment group create -g rg-abstract-dest \\","  --template-file templates/destinations/eventhub-destination.azuredeploy.json \\","  --parameters parameters/eventhub-destination.parameters.json \\","  --parameters namespaceName=abs-dest001"],
-      needs:[],
-      map:[["EventHub Name","output: eventHubName"],["EventHub Connection String","namespace → Shared access policies → abstract-send → primary"]],
-      docs:"https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-eventhub-destination/"
-    },
-    {
-      id:"sentinel", dir:"destination", name:"Microsoft Sentinel", kind:"Destination",
-      sub:"Abstract writes → Sentinel", scope:"Resource group",
-      blurb:"The full Logs Ingestion stack: Log Analytics workspace, Microsoft Sentinel, Data Collection Endpoint, a custom _CL table, a Data Collection Rule, and both DCR role assignments (Monitoring Metrics Publisher + Monitoring Contributor) for your Entra app — all in one deployment.",
-      tmpl:"templates/destinations/sentinel-destination.azuredeploy.json", ui:"templates/destinations/sentinel-destination.createUiDefinition.json",
-      chips:["Log Analytics","Sentinel","DCE","Custom _CL table","DCR","Metrics Publisher","Monitoring Contributor"],
-      cli:["az deployment group create -g rg-abstract-sentinel \\","  --template-file templates/destinations/sentinel-destination.azuredeploy.json \\","  --parameters parameters/sentinel-destination.parameters.json \\","  --parameters principalId=<spn-object-id>"],
-      needs:["Entra app registration + client secret (ARM can't create it)","The app's service principal OBJECT id","Rights to assign roles on the DCR (Owner / User Access Administrator)"],
-      map:[["Client ID","your app registration"],["Client Secret Value","your app registration"],["Application Tenant ID","output: tenantId"],["Data Collection Rule ID","output: dataCollectionRuleImmutableId"],["Data Collection Endpoint","output: dataCollectionEndpointUrl"],["Log Stream Name","output: logStreamName (Custom-<table>)"]],
-      docs:"https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/"
-    }
-  ];
-
-  function portalUrl(integ, cloudKey){
-    var base = CLOUDS[cloudKey].portal + "/#create/Microsoft.Template/uri/" + encodeURIComponent(RAW + integ.tmpl);
-    if(integ.ui){ base += "/createUIDefinitionUri/" + encodeURIComponent(RAW + integ.ui); }
-    return base;
-  }
-  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
-  function $(s,r){ return (r||document).querySelector(s); }
-
-  /* ---------- gallery ---------- */
-  function cardHtml(it){
-    var cls = it.dir==="source"?"src":"dst";
-    return '<article class="card" data-dir="'+it.dir+'">'
-      + '<span class="badge '+cls+'">'+it.kind+'</span>'
-      + '<h3>'+esc(it.name)+'</h3>'
-      + '<div class="sub">'+esc(it.sub)+' · '+esc(it.scope)+'</div>'
-      + '<p>'+esc(it.blurb)+'</p>'
-      + '<div class="chips">'+it.chips.map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join('')+'</div>'
-      + '<div class="card-actions">'
-      +   '<button class="btn btn-primary" data-deploy="'+it.id+'" style="padding:10px 16px;font-size:14px">Configure &amp; deploy</button>'
-      +   '<a class="link-sm" href="'+it.docs+'" target="_blank" rel="noopener">Docs ↗</a>'
-      + '</div></article>';
-  }
-  function renderGallery(filter){
-    var g = $("#gallery");
-    g.innerHTML = INTEGRATIONS.filter(function(it){return filter==="all"||it.dir===filter;}).map(cardHtml).join("");
-    g.querySelectorAll("[data-deploy]").forEach(function(b){
-      b.addEventListener("click", function(){ selectIntegration(b.getAttribute("data-deploy"), true); });
+    document.getElementById('theme').addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      if (!current) {
+        current = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      var next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem(KEY, next); } catch (e) { /* ignore */ }
     });
-  }
+  })();
 
-  /* ---------- builder state ---------- */
-  var state = { dir:"source", id:"eh-source", cloud:"public" };
+  // Scope filter. Cards are plain HTML, so with JS disabled everything stays visible.
+  (function () {
+    var chips = Array.prototype.slice.call(document.querySelectorAll('.chip'));
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
+    var cats  = Array.prototype.slice.call(document.querySelectorAll('.cat'));
 
-  function renderOpts(){
-    var box = $("#b-opts");
-    var list = INTEGRATIONS.filter(function(it){return it.dir===state.dir;});
-    if(list.map(function(i){return i.id;}).indexOf(state.id)<0){ state.id = list[0].id; }
-    box.innerHTML = list.map(function(it){
-      var on = it.id===state.id;
-      return '<div class="opt" role="radio" tabindex="0" aria-checked="'+on+'" data-id="'+it.id+'">'
-        + '<span class="dot"></span>'
-        + '<span><span class="o-ttl">'+esc(it.name)+'</span><span class="o-sub">'+esc(it.sub)+' · '+esc(it.scope)+'</span></span>'
-        + '</div>';
-    }).join("");
-    box.querySelectorAll(".opt").forEach(function(o){
-      function pick(){ state.id=o.getAttribute("data-id"); renderOpts(); renderOut(); }
-      o.addEventListener("click", pick);
-      o.addEventListener("keydown", function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pick(); }});
-    });
-  }
-
-  function renderOut(){
-    var it = INTEGRATIONS.filter(function(i){return i.id===state.id;})[0];
-    var url = portalUrl(it, state.cloud);
-    var cli = it.cli.join("\n");
-    var needs = it.needs.length
-      ? '<div class="needs"><h4>What you\'ll need</h4><ul>'+it.needs.map(function(n){return '<li>'+esc(n)+'</li>';}).join('')+'</ul></div>'
-      : '<div class="needs none">✓ No prerequisites — deploy straight away.</div>';
-    var rows = it.map.map(function(m){return '<tr><td>'+esc(m[0])+'</td><td>'+esc(m[1])+'</td></tr>';}).join('');
-    var badgeCls = it.dir==="source"?"src":"dst";
-
-    $("#b-out").innerHTML =
-        '<div class="out-head"><span class="badge '+badgeCls+'" style="margin:0">'+it.kind+'</span>'
-      +   '<h3>'+esc(it.name)+'</h3></div>'
-      + '<div class="out-scope">'+esc(it.scope)+' deployment · '+esc(CLOUDS[state.cloud].label)+(it.ui?' · guided wizard':' · parameters only')+'</div>'
-      + '<div class="deploy-row">'
-      +   '<a href="'+url+'" target="_blank" rel="noopener" title="Open the Azure portal"><img src="https://aka.ms/deploytoazure'+(state.cloud==="gov"?"gov":"")+'button" alt="Deploy to Azure" /></a>'
-      +   '<a class="link-sm" href="'+it.docs+'" target="_blank" rel="noopener">Integration docs ↗</a>'
-      + '</div>'
-      + needs
-      + '<div class="field-block"><div class="fb-h"><span>Portal deep-link</span><button class="copy" data-copy="url">Copy</button></div><div class="url" id="out-url">'+esc(url)+'</div></div>'
-      + '<div class="field-block"><div class="fb-h"><span>Azure CLI</span><button class="copy" data-copy="cli">Copy</button></div><pre id="out-cli">'+esc(cli)+'</pre></div>'
-      + '<div class="field-block"><div class="fb-h"><span>Abstract modal · answer key</span><span style="color:var(--dim)">from Outputs</span></div><div style="padding:6px 13px 12px"><table class="map">'+rows+'</table></div></div>';
-
-    $("#b-out").querySelectorAll(".copy").forEach(function(btn){
-      btn.addEventListener("click", function(){
-        var txt = btn.getAttribute("data-copy")==="url" ? url : cli;
-        navigator.clipboard.writeText(txt).then(function(){
-          btn.textContent="Copied ✓"; btn.classList.add("done");
-          setTimeout(function(){ btn.textContent="Copy"; btn.classList.remove("done"); },1400);
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var want = chip.getAttribute('data-filter');
+        chips.forEach(function (c) {
+          c.setAttribute('aria-pressed', String(c === chip));
+        });
+        cards.forEach(function (card) {
+          var show = want === 'all' || card.getAttribute('data-scope') === want;
+          card.style.display = show ? '' : 'none';
+        });
+        // Hide a category heading when it has nothing left to show.
+        cats.forEach(function (cat) {
+          var visible = cat.querySelectorAll('.card:not([style*="none"])').length;
+          cat.style.display = visible ? '' : 'none';
         });
       });
     });
-  }
-
-  function selectIntegration(id, scroll){
-    var it = INTEGRATIONS.filter(function(i){return i.id===id;})[0];
-    if(!it) return;
-    state.id = id; state.dir = it.dir;
-    $("#seg-dir").querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-v")===state.dir); });
-    renderOpts(); renderOut();
-    if(scroll){ document.getElementById("builder").scrollIntoView({behavior:"smooth"}); }
-  }
-
-  /* ---------- wire segmented controls ---------- */
-  $("#seg-dir").querySelectorAll("button").forEach(function(b){
-    b.addEventListener("click", function(){
-      state.dir=b.getAttribute("data-v");
-      $("#seg-dir").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed", x===b);});
-      renderOpts(); renderOut();
-    });
-  });
-  $("#seg-cloud").querySelectorAll("button").forEach(function(b){
-    b.addEventListener("click", function(){
-      state.cloud=b.getAttribute("data-v");
-      $("#seg-cloud").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed", x===b);});
-      renderOut();
-    });
-  });
-
-  /* ---------- tabs ---------- */
-  document.querySelectorAll(".tab").forEach(function(t){
-    t.addEventListener("click", function(){
-      document.querySelectorAll(".tab").forEach(function(x){x.setAttribute("aria-selected", x===t);});
-      renderGallery(t.getAttribute("data-filter"));
-    });
-  });
-
-  /* ---------- scroll reveal ---------- */
-  var io = new IntersectionObserver(function(entries){
-    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }});
-  }, {threshold:.14});
-  document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
-
-  /* ---------- hero pointer glow ---------- */
-  window.addEventListener("pointermove", function(e){
-    document.getElementById("bg").style.setProperty("--mx", (e.clientX/window.innerWidth*100)+"%");
-  });
-
-  /* ---------- one-click "with app" ARM button (reuses REPO + RAW + portalUrl) ---------- */
-  function renderWithApp(){
-    var el = $("#withapp-deploy");
-    if(!el) return;
-    var withApp = { tmpl:"templates/destinations/sentinel-destination-with-app.azuredeploy.json", ui:null };
-    var pub = portalUrl(withApp, "public"), gov = portalUrl(withApp, "gov");
-    el.innerHTML =
-        '<a href="'+pub+'" target="_blank" rel="noopener" title="Open the Azure portal"><img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" /></a>'
-      + '<a class="link-sm" href="'+gov+'" target="_blank" rel="noopener">Azure Government ↗</a>';
-  }
-
-  /* ---------- init ---------- */
-  $("#yr").textContent = new Date().getFullYear();
-  renderGallery("all");
-  renderOpts();
-  renderOut();
-  renderWithApp();
-})();
+  })();
 </script>
 </body>
 </html>

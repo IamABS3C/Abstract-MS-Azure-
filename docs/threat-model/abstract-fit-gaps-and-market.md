@@ -52,7 +52,7 @@ model as built until these are checked** — they change how much is "configure"
 | 6 | **LakeVilla retro-hunt** — can *current* detections re-run over historical data (replay through live workflows), with schema-on-read for new fields? | §6 retroactive scoping depends on it | Validate replay semantics + schema evolution |
 | 7 | **What is Abstract Canvas?** — not publicly documented; likely an investigation/correlation surface. Is it the entity-graph UI we want for §6/§8? | Could be the ready-made investigation layer — or not | Ask product; demo it |
 | 8 | **MCP server scope** — which tools does it expose (query findings? entities? trigger replays? push IOCs?)? | Defines what agents in §8 can actually do | Enumerate `mcp__abstract-security__*` tools after auth |
-| 9 | **Schema coverage** — does `all_fields.json` represent nested arrays (multiple domains/IPs per WildFire report) cleanly for the Sentinel `_CL` table? | Affects mapping fidelity in [Sentinel dest](../../templates/destinations/sentinel-destination.bicep) | Inspect all_fields.json; test DCR with arrays |
+| 9 | **Schema coverage** — does `all_fields.json` represent nested arrays (multiple domains/IPs per WildFire report) cleanly for the Sentinel `_CL` table? | Affects mapping fidelity in [Sentinel dest](../../solutions/templates/destinations/sentinel-destination.bicep) | Inspect all_fields.json; test DCR with arrays |
 | 10 | **Licensing / quotas / Gov** — feed counts, detection limits, multi-tenant, Azure Gov parity | Scopes a real deployment | Product/commercial |
 
 > Honesty note: the README/samples are a *design*, deliberately written against Abstract's public

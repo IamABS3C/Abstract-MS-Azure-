@@ -1,0 +1,188 @@
+{
+  "$comment": [
+    "SINGLE SOURCE OF TRUTH for this solution.",
+    "",
+    "Everything that has to know the repo coordinates, the template list, the scopes",
+    "or the deploy-button URLs reads THIS file: scripts/gen-deploy-links.py regenerates",
+    "the README tables and the GitHub Pages site from it, and scripts/validate-templates.py",
+    "checks the templates it lists.",
+    "",
+    "TO PORT THIS SOLUTION TO A NEW REPO: change `repo` below and run",
+    "  python3 scripts/gen-deploy-links.py --write",
+    "Nothing else needs editing. Every Deploy-to-Azure URL, Gov URL and docs link is",
+    "derived from these three fields, so there is no second place for them to go stale."
+  ],
+  "schemaVersion": "1.0",
+  "name": "Abstract Security — Microsoft Azure & Sentinel integration",
+  "version": "4.0.0",
+  "description": "Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations.",
+  "repo": {
+    "owner": "IamABS3C",
+    "name": "Abstract-MS-Azure-",
+    "branch": "main",
+    "solutionPath": "solutions",
+    "pagesUrl": "https://iamabs3c.github.io/Abstract-MS-Azure-/"
+  },
+  "portal": {
+    "public": "https://portal.azure.com",
+    "government": "https://portal.azure.us"
+  },
+  "templates": [
+    {
+      "id": "eventhub-source",
+      "title": "Event Hub (Source)",
+      "path": "templates/source/eventhub-source",
+      "scope": "resourceGroup",
+      "ui": "createUiDefinition",
+      "category": "source",
+      "order": 10,
+      "summary": "Everything Abstract needs to READ from Azure: Event Hubs namespace, one hub per log source, consumer group, the checkpoint storage account + private blob container the Abstract consumer requires, SAS and/or Entra RBAC auth, networking guardrails.",
+      "deployFirst": true,
+      "outputsNeededNext": [
+        "abstractDiagnosticsAuthRuleId",
+        "eventHubNames"
+      ],
+      "notes": "Deploy this first — every other source template consumes its outputs. Azure Policy never creates hubs, so hub names you pass elsewhere must exist here."
+    },
+    {
+      "id": "activitylog",
+      "title": "Activity Log export (single subscription)",
+      "path": "templates/subscription/activitylog",
+      "scope": "subscription",
+      "ui": "uiFormDefinition",
+      "category": "source",
+      "order": 20,
+      "summary": "Streams ONE subscription's Azure Activity Log to the Abstract Event Hub. For a whole estate, use the log-stream governance pack instead.",
+      "notes": "Subscription scope, so it uses a Form view — createUiDefinition cannot bind a portal deployment to a subscription."
+    },
+    {
+      "id": "abstract-logstreams-policy",
+      "title": "Log streams at scale (Azure Policy)",
+      "path": "templates/policy/abstract-logstreams-policy",
+      "scope": "managementGroup",
+      "ui": "uiFormDefinition",
+      "category": "governance",
+      "order": 30,
+      "summary": "Assign once at a management group and every subscription in it — current and future — streams Activity Log, resource logs, SQL auditing and Defender for Cloud to the Abstract Event Hub, and self-heals if a setting is deleted.",
+      "driver": "scripts/Deploy-AbstractLogStreams.sh",
+      "notes": "Three gotchas decide whether this works: the region rule (one namespace per region), remediation is not optional, and new subscriptions must land in the right management group. See docs/azure-log-streams.md."
+    },
+    {
+      "id": "entra-diagnostics",
+      "title": "Microsoft Entra ID log streams",
+      "path": "templates/tenant/entra-diagnostics",
+      "scope": "tenant",
+      "ui": "uiFormDefinition",
+      "category": "source",
+      "order": 40,
+      "summary": "Tenant-wide Entra ID diagnostic setting: sign-ins (interactive, non-interactive, SP, MI), directory audit, provisioning, Identity Protection risk, and Microsoft Graph activity.",
+      "notes": "No Azure Policy can manage this — Entra diagnostic settings are tenant-level, so there is no per-subscription object to evaluate. Expect up to three days for the first records."
+    },
+    {
+      "id": "abstract-appreg-automation",
+      "title": "App registrations (event-driven)",
+      "path": "templates/automation/abstract-appreg-automation",
+      "scope": "resourceGroup",
+      "ui": "createUiDefinition",
+      "category": "identity",
+      "order": 50,
+      "recommended": true,
+      "summary": "One central Logic App creates an Entra app + service principal per subscription, grants AND VERIFIES admin consent, writes the client secret to Key Vault, and assigns Azure RBAC on the target subscription.",
+      "driver": "scripts/Deploy-AbstractAppReg.sh",
+      "prerequisite": "scripts/Deploy-AbstractAppReg.sh -a Bootstrap (Global Administrator, once per tenant)",
+      "notes": "Recommended over the policy variant: one tier-0 identity in one place, one run history as the audit trail, no per-subscription compute. Live-tested end to end."
+    },
+    {
+      "id": "abstract-appreg-policy",
+      "title": "App registrations (Azure Policy)",
+      "path": "templates/policy/abstract-appreg-policy",
+      "scope": "managementGroup",
+      "ui": "uiFormDefinition",
+      "category": "identity",
+      "order": 60,
+      "summary": "Same outcome as the event-driven path, delivered through Azure Policy: a DeployIfNotExists policy deploys a deploymentScript container into each subscription which then calls Graph.",
+      "driver": "scripts/Deploy-AbstractAppReg.sh",
+      "prerequisite": "scripts/Deploy-AbstractAppReg.sh -a Bootstrap (Global Administrator, once per tenant)",
+      "notes": "Only when governance mandates Azure Policy. It spawns a privileged container in every subscription, needs Owner on each, and cannot see the Entra app it created."
+    },
+    {
+      "id": "eventhub-destination",
+      "title": "Event Hub Destination",
+      "path": "templates/destinations/eventhub-destination",
+      "scope": "resourceGroup",
+      "ui": "createUiDefinition",
+      "category": "destination",
+      "order": 70,
+      "summary": "Where Abstract WRITES processed events: namespace, destination hub, least-privilege Send SAS rule, optional Entra ID (RBAC) delivery, Safe Mode networking.",
+      "notes": "Keys are never emitted in deployment outputs — fetch the Send connection string from the portal or CLI."
+    },
+    {
+      "id": "sentinel-destination",
+      "title": "Microsoft Sentinel Destination",
+      "path": "templates/destinations/sentinel-destination",
+      "scope": "resourceGroup",
+      "ui": "createUiDefinition",
+      "category": "destination",
+      "order": 80,
+      "summary": "Abstract writes to Sentinel via the Logs Ingestion API: Log Analytics workspace, Sentinel onboarding, Data Collection Endpoint, custom _CL table, Data Collection Rule, and the DCR role assignments.",
+      "prerequisite": "Create the Entra app first — scripts/New-AbstractSentinelApp.ps1",
+      "notes": "Use the with-app variant to create the app registration in the same deployment."
+    },
+    {
+      "id": "sentinel-destination-with-app",
+      "title": "Sentinel Destination + app registration",
+      "path": "templates/destinations/sentinel-destination-with-app",
+      "scope": "resourceGroup",
+      "ui": "createUiDefinition",
+      "category": "destination",
+      "order": 90,
+      "summary": "The Sentinel destination plus the Entra app registration, created in one deployment via a deploymentScript, with the client secret written to Key Vault.",
+      "prerequisite": "A user-assigned managed identity holding Application.ReadWrite.All",
+      "notes": "Re-running is safe: the script rotates a secret only when none exists or the current one expires within 30 days. This app needs no Graph permissions and no admin consent — it only receives DCR RBAC."
+    }
+  ],
+  "docs": [
+    {
+      "path": "docs/azure-log-streams.md",
+      "title": "Azure log streams at scale",
+      "summary": "Every Microsoft log stream, how each reaches an Event Hub, and which ones Azure Policy can onboard automatically — with the region rule and the two constraints that decide the architecture."
+    },
+    {
+      "path": "docs/azure-app-registrations.md",
+      "title": "Per-subscription app registrations",
+      "summary": "Both automation paths with their real trade-offs, the verified Graph permission catalogue, and the four bugs live testing exposed."
+    }
+  ],
+  "scripts": [
+    {
+      "path": "scripts/Deploy-AbstractLogStreams.sh",
+      "title": "Log-stream governance driver",
+      "summary": "Deploy / Grant / Remediate / Status for the log-stream policy pack. Remediation is not optional — DeployIfNotExists never touches what you already own."
+    },
+    {
+      "path": "scripts/Deploy-AbstractAppReg.sh",
+      "title": "App-registration driver",
+      "summary": "Bootstrap / DeployA / DeployB / Grant / Onboard / Remediate / Verify / Status. Bootstrap is the one step no template can do."
+    },
+    {
+      "path": "scripts/Deploy-AbstractEventHub.ps1",
+      "title": "Event Hub deployment (PowerShell)",
+      "summary": "Menu-driven deployment of the Event Hub source stack, with preview and credential retrieval."
+    },
+    {
+      "path": "scripts/New-AbstractSentinelApp.ps1",
+      "title": "Sentinel app registration (PowerShell)",
+      "summary": "Creates the Entra app for the Sentinel destination and grants both required DCR roles."
+    },
+    {
+      "path": "scripts/validate-templates.py",
+      "title": "Template / UI contract validator",
+      "summary": "Enforces what az bicep build cannot see: UI outputs match template parameters, no required parameter is unsupplied, and the UI model matches the deployment scope."
+    },
+    {
+      "path": "scripts/gen-deploy-links.py",
+      "title": "Deploy-link generator",
+      "summary": "Regenerates every README table and the Pages site from this manifest, so a repo rename can never leave a stale button behind."
+    }
+  ]
+}

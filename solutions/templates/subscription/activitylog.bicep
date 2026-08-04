@@ -23,8 +23,8 @@ param settingName string = 'abstract-activity-logs'
 @description('Full resource ID of an Event Hubs namespace authorization rule with Send rights. Use the abstractDiagnosticsAuthRuleId output of the main template.')
 param eventHubAuthorizationRuleId string
 
-@description('Event Hub that receives the Activity Log stream. The main Abstract template creates evh-abstract-activity by default.')
-param eventHubName string = 'evh-abstract-activity'
+@description('Event Hub that receives the Activity Log stream. main.bicep auto-names hubs <hubPrefix>-<environment>-<source>, so the default source stack creates abs-prod-activity.')
+param eventHubName string = 'abs-prod-activity'
 
 @description('Activity Log categories to export. Default = all eight (recommended by Abstract Security).')
 param categories array = [
