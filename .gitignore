@@ -18,6 +18,10 @@ __pycache__/
 .venv/
 
 # OS / editor
+# .vscode holds machine-specific paths (absolute home directories, local extension
+# versions), so it is per-developer state rather than project content.
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
