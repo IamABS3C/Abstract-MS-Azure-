@@ -160,6 +160,7 @@
     cursor:pointer; padding:4px 0}
   details.cli summary:hover{color:var(--text)}
   details.cli pre{margin-top:8px}
+  details.cli .specnote{font-size:12.5px; color:var(--dim); margin:10px 0 0; line-height:1.55}
 
   .band{border-top:1px solid var(--line); background:var(--bg2); padding:52px 0}
   .band h2{font-size:clamp(22px,2.6vw,30px); margin-bottom:8px}
@@ -298,6 +299,10 @@
           <summary>Deploy from the CLI instead</summary>
           <pre><code>az deployment sub create -l &lt;region&gt; \
   --template-file solutions/templates/subscription/activitylog.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name activitylog --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/subscription/activitylog.azuredeploy.json \
+  --ui-form-definition solutions/templates/subscription/activitylog.uiFormDefinition.json</code></pre>
         </details>
       </article>
       <article class="card" data-category="source" data-scope="tenant">
@@ -320,6 +325,10 @@
           <summary>Deploy from the CLI instead</summary>
           <pre><code>az deployment tenant create -l &lt;region&gt; \
   --template-file solutions/templates/tenant/entra-diagnostics.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name entra-diagnostics --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/tenant/entra-diagnostics.azuredeploy.json \
+  --ui-form-definition solutions/templates/tenant/entra-diagnostics.uiFormDefinition.json</code></pre>
         </details>
       </article>
       </div>
@@ -350,6 +359,10 @@
           <summary>Deploy from the CLI instead</summary>
           <pre><code>az deployment mg create -m &lt;mg-id&gt; -l &lt;region&gt; \
   --template-file solutions/templates/policy/abstract-logstreams-policy.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name abstract-logstreams-policy --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/policy/abstract-logstreams-policy.azuredeploy.json \
+  --ui-form-definition solutions/templates/policy/abstract-logstreams-policy.uiFormDefinition.json</code></pre>
         </details>
       </article>
       </div>
@@ -402,6 +415,10 @@
           <summary>Deploy from the CLI instead</summary>
           <pre><code>az deployment mg create -m &lt;mg-id&gt; -l &lt;region&gt; \
   --template-file solutions/templates/policy/abstract-appreg-policy.bicep</code></pre>
+          <p class="specnote">The wizard button uses <code>uiFormDefinitionUri</code> — accepted by the portal but not in Microsoft's documented deploy-button format. The documented route to the same wizard is a template spec:</p>
+          <pre><code>az ts create --name abstract-appreg-policy --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
+  --template-file solutions/templates/policy/abstract-appreg-policy.azuredeploy.json \
+  --ui-form-definition solutions/templates/policy/abstract-appreg-policy.uiFormDefinition.json</code></pre>
         </details>
       </article>
       </div>

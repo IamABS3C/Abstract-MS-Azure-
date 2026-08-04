@@ -130,16 +130,48 @@ Send Abstract's enriched, normalized output back into Azure.
 
 ### The fully documented alternative: template specs
 
-Form-view wizards are *officially* delivered through template specs. Use this when a
-customer's policy requires only documented Microsoft paths:
+<!-- BEGIN GENERATED: template-spec -->
+The buttons above use `uiFormDefinitionUri`, which the portal accepts but which
+Microsoft does **not** document for Deploy-to-Azure links. Template specs are the
+documented delivery path for the identical wizard — use these when a customer's
+policy allows only documented Microsoft flows, or if the button form ever changes:
+
+**Activity Log export (single subscription)** (subscription scope)
 
 ```bash
-az ts create --name abstract-logstreams --version 1.0 \
-  --resource-group rg-abstract --location eastus \
-  --template-file  solutions/templates/policy/abstract-logstreams-policy.azuredeploy.json \
-  --ui-form-definition solutions/templates/policy/abstract-logstreams-policy.uiFormDefinition.json
-# then: portal → Template specs → abstract-logstreams → Deploy (the wizard launches)
+az ts create --name activitylog --version 1.0 -g <rg> -l <region> \
+  --template-file solutions/templates/subscription/activitylog.azuredeploy.json \
+  --ui-form-definition solutions/templates/subscription/activitylog.uiFormDefinition.json
+# then: portal → Template specs → activitylog → Deploy
 ```
+
+**Log streams at scale (Azure Policy)** (management group scope)
+
+```bash
+az ts create --name abstract-logstreams-policy --version 1.0 -g <rg> -l <region> \
+  --template-file solutions/templates/policy/abstract-logstreams-policy.azuredeploy.json \
+  --ui-form-definition solutions/templates/policy/abstract-logstreams-policy.uiFormDefinition.json
+# then: portal → Template specs → abstract-logstreams-policy → Deploy
+```
+
+**Microsoft Entra ID log streams** (tenant scope)
+
+```bash
+az ts create --name entra-diagnostics --version 1.0 -g <rg> -l <region> \
+  --template-file solutions/templates/tenant/entra-diagnostics.azuredeploy.json \
+  --ui-form-definition solutions/templates/tenant/entra-diagnostics.uiFormDefinition.json
+# then: portal → Template specs → entra-diagnostics → Deploy
+```
+
+**App registrations (Azure Policy)** (management group scope)
+
+```bash
+az ts create --name abstract-appreg-policy --version 1.0 -g <rg> -l <region> \
+  --template-file solutions/templates/policy/abstract-appreg-policy.azuredeploy.json \
+  --ui-form-definition solutions/templates/policy/abstract-appreg-policy.uiFormDefinition.json
+# then: portal → Template specs → abstract-appreg-policy → Deploy
+```
+<!-- END GENERATED: template-spec -->
 
 ---
 

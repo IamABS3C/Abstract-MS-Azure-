@@ -187,6 +187,26 @@ def validate_form_ui(ui_path: Path, arm: dict, scope: str) -> None:
     check_param_contract(set(outputs.get("parameters", {})), arm, label)
 
 
+def strip_generator(arm: dict) -> dict:
+    """Drop metadata._generator before comparing two compiles.
+
+    Bicep stamps its own version and a templateHash into every ARM file it emits:
+        "metadata": {"_generator": {"name": "bicep", "version": "0.44.1.10279", ...}}
+
+    CI installs the latest Bicep, which will rarely match the version an author had
+    locally. Comparing raw JSON therefore reports EVERY template as stale on a
+    version bump - a red build that says nothing about the templates. Compare the
+    substance instead: parameters, variables, resources, outputs.
+    """
+    out = json.loads(json.dumps(arm))
+    meta = out.get("metadata")
+    if isinstance(meta, dict):
+        meta.pop("_generator", None)
+        if not meta:
+            out.pop("metadata", None)
+    return out
+
+
 def check_arm_freshness(bicep: Path, arm_path: Path, fix: bool) -> None:
     """Recompile the bicep to a temp file and diff - catches a stale ARM file."""
     label = str(bicep.relative_to(REPO))
@@ -206,8 +226,8 @@ def check_arm_freshness(bicep: Path, arm_path: Path, fix: bool) -> None:
         if ") : Warning " in line:
             warn(f"{label}: bicep linter: {line.split(') : ',1)[-1][:160]}")
     try:
-        fresh = json.loads(tmp.read_text())
-        current = json.loads(arm_path.read_text())
+        fresh = strip_generator(json.loads(tmp.read_text()))
+        current = strip_generator(json.loads(arm_path.read_text()))
         if fresh != current:
             if fix:
                 arm_path.write_text(tmp.read_text())

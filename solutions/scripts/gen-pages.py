@@ -104,6 +104,22 @@ def card(manifest: dict, tpl: dict) -> str:
 
     cli = CLI_BY_SCOPE[scope].format(bicep=f"solutions/{tpl['path']}.bicep")
 
+    # Form-view buttons rely on uiFormDefinitionUri, which the portal accepts but
+    # Microsoft does not document for Deploy-to-Azure links. Say so, and give the
+    # documented template-spec route, rather than letting a customer discover it.
+    spec_note = ""
+    if tpl["ui"] == "uiFormDefinition":
+        name = tpl["path"].split("/")[-1]
+        spec_note = (
+            '\n          <p class="specnote">The wizard button uses '
+            '<code>uiFormDefinitionUri</code> — accepted by the portal but not in '
+            "Microsoft's documented deploy-button format. The documented route to the "
+            "same wizard is a template spec:</p>\n          <pre><code>"
+            f"az ts create --name {name} --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \\\n"
+            f"  --template-file solutions/{tpl['path']}.azuredeploy.json \\\n"
+            f"  --ui-form-definition solutions/{tpl['path']}.uiFormDefinition.json"
+            "</code></pre>")
+
     meta_rows = []
     if tpl.get("prerequisite"):
         meta_rows.append(
@@ -132,7 +148,7 @@ def card(manifest: dict, tpl: dict) -> str:
         </div>
         <details class="cli">
           <summary>Deploy from the CLI instead</summary>
-          <pre><code>{cli}</code></pre>
+          <pre><code>{cli}</code></pre>{spec_note}
         </details>
       </article>
 """
@@ -336,6 +352,7 @@ def build(manifest: dict) -> str:
     cursor:pointer; padding:4px 0}}
   details.cli summary:hover{{color:var(--text)}}
   details.cli pre{{margin-top:8px}}
+  details.cli .specnote{{font-size:12.5px; color:var(--dim); margin:10px 0 0; line-height:1.55}}
 
   .band{{border-top:1px solid var(--line); background:var(--bg2); padding:52px 0}}
   .band h2{{font-size:clamp(22px,2.6vw,30px); margin-bottom:8px}}

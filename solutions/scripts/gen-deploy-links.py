@@ -95,6 +95,21 @@ def button(manifest: dict, tpl: dict, gov: bool = False) -> str:
     return f"[![{alt}]({img})]({portal}/#create/Microsoft.Template/uri/{arm}{ui_seg})"
 
 
+def template_spec_command(tpl: dict) -> str:
+    """The FULLY DOCUMENTED way to deliver a Form-view wizard.
+
+    `uiFormDefinitionUri` on a Deploy-to-Azure URL works and is widely used, but it is
+    NOT in Microsoft's official deploy-button documentation - only the template-spec
+    flow is. Every Form-view template therefore also gets this command, so a customer
+    whose policy allows only documented paths (or who hits a portal change) has a
+    supported route to the same wizard.
+    """
+    name = tpl["path"].split("/")[-1]
+    return (f"az ts create --name {name} --version 1.0 -g <rg> -l <region> \\\n"
+            f"  --template-file solutions/{tpl['path']}.azuredeploy.json \\\n"
+            f"  --ui-form-definition solutions/{tpl['path']}.uiFormDefinition.json")
+
+
 def cli_command(tpl: dict) -> str:
     """The fully documented fallback for every template."""
     scope = tpl["scope"]
@@ -181,8 +196,35 @@ def replace_region(text: str, name: str, body: str) -> tuple[str, bool]:
     return new, new != text
 
 
+def template_spec_table(manifest: dict) -> str:
+    """Documented-path instructions for every Form-view template."""
+    forms = [t for t in sorted(manifest["templates"], key=lambda t: t["order"])
+             if t["ui"] == "uiFormDefinition"]
+    if not forms:
+        return "_No Form-view templates in this solution._"
+
+    lines = [
+        "The buttons above use `uiFormDefinitionUri`, which the portal accepts but which",
+        "Microsoft does **not** document for Deploy-to-Azure links. Template specs are the",
+        "documented delivery path for the identical wizard — use these when a customer's",
+        "policy allows only documented Microsoft flows, or if the button form ever changes:",
+        "",
+    ]
+    for tpl in forms:
+        lines.append(f"**{tpl['title']}** ({SCOPE_LABEL[tpl['scope']]} scope)")
+        lines.append("")
+        lines.append("```bash")
+        lines.append(template_spec_command(tpl))
+        lines.append("# then: portal → Template specs → "
+                     f"{tpl['path'].split('/')[-1]} → Deploy")
+        lines.append("```")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
 REGIONS = {
     "deploy-table": deploy_table,
+    "template-spec": template_spec_table,
     "template-detail": template_detail,
     "inventory-table": inventory_table,
 }
