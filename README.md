@@ -7,7 +7,7 @@
 <p align="center">
   Production Azure infrastructure, Sentinel content, and a live SOC demo for Abstract Security's
   Microsoft integrations.<br>
-  <strong><a href="https://iamabs3c.github.io/Abstract-MS-Azure-/">Open the deployment console →</a></strong>
+  <strong><a href="https://iamabs3c.github.io/Abstract-MS-Azure-/docs/">Open the deployment console →</a></strong>
 </p>
 
 ---

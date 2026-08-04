@@ -13,7 +13,7 @@
     "derived from these three fields, so there is no second place for them to go stale."
   ],
   "schemaVersion": "1.0",
-  "name": "Abstract Security — Microsoft Azure & Sentinel integration",
+  "name": "Abstract Security \u2014 Microsoft Azure & Sentinel integration",
   "version": "4.0.0",
   "description": "Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations.",
   "repo": {
@@ -21,7 +21,8 @@
     "name": "Abstract-MS-Azure-",
     "branch": "main",
     "solutionPath": "solutions",
-    "pagesUrl": "https://iamabs3c.github.io/Abstract-MS-Azure-/"
+    "pagesUrl": "https://iamabs3c.github.io/Abstract-MS-Azure-/docs/",
+    "$pagesUrlNote": "Pages source path is '/', so Jekyll serves the root README at the site root and docs/index.html at /docs/. If Pages is ever repointed to /docs, drop the trailing /docs/ here."
   },
   "portal": {
     "public": "https://portal.azure.com",
@@ -42,7 +43,7 @@
         "abstractDiagnosticsAuthRuleId",
         "eventHubNames"
       ],
-      "notes": "Deploy this first — every other source template consumes its outputs. Azure Policy never creates hubs, so hub names you pass elsewhere must exist here."
+      "notes": "Deploy this first \u2014 every other source template consumes its outputs. Azure Policy never creates hubs, so hub names you pass elsewhere must exist here."
     },
     {
       "id": "activitylog",
@@ -53,7 +54,7 @@
       "category": "source",
       "order": 20,
       "summary": "Streams ONE subscription's Azure Activity Log to the Abstract Event Hub. For a whole estate, use the log-stream governance pack instead.",
-      "notes": "Subscription scope, so it uses a Form view — createUiDefinition cannot bind a portal deployment to a subscription."
+      "notes": "Subscription scope, so it uses a Form view \u2014 createUiDefinition cannot bind a portal deployment to a subscription."
     },
     {
       "id": "abstract-logstreams-policy",
@@ -63,7 +64,7 @@
       "ui": "uiFormDefinition",
       "category": "governance",
       "order": 30,
-      "summary": "Assign once at a management group and every subscription in it — current and future — streams Activity Log, resource logs, SQL auditing and Defender for Cloud to the Abstract Event Hub, and self-heals if a setting is deleted.",
+      "summary": "Assign once at a management group and every subscription in it \u2014 current and future \u2014 streams Activity Log, resource logs, SQL auditing and Defender for Cloud to the Abstract Event Hub, and self-heals if a setting is deleted.",
       "driver": "scripts/Deploy-AbstractLogStreams.sh",
       "notes": "Three gotchas decide whether this works: the region rule (one namespace per region), remediation is not optional, and new subscriptions must land in the right management group. See docs/azure-log-streams.md."
     },
@@ -76,7 +77,7 @@
       "category": "source",
       "order": 40,
       "summary": "Tenant-wide Entra ID diagnostic setting: sign-ins (interactive, non-interactive, SP, MI), directory audit, provisioning, Identity Protection risk, and Microsoft Graph activity.",
-      "notes": "No Azure Policy can manage this — Entra diagnostic settings are tenant-level, so there is no per-subscription object to evaluate. Expect up to three days for the first records."
+      "notes": "No Azure Policy can manage this \u2014 Entra diagnostic settings are tenant-level, so there is no per-subscription object to evaluate. Expect up to three days for the first records."
     },
     {
       "id": "abstract-appreg-automation",
@@ -114,7 +115,7 @@
       "category": "destination",
       "order": 70,
       "summary": "Where Abstract WRITES processed events: namespace, destination hub, least-privilege Send SAS rule, optional Entra ID (RBAC) delivery, Safe Mode networking.",
-      "notes": "Keys are never emitted in deployment outputs — fetch the Send connection string from the portal or CLI."
+      "notes": "Keys are never emitted in deployment outputs \u2014 fetch the Send connection string from the portal or CLI."
     },
     {
       "id": "sentinel-destination",
@@ -125,7 +126,7 @@
       "category": "destination",
       "order": 80,
       "summary": "Abstract writes to Sentinel via the Logs Ingestion API: Log Analytics workspace, Sentinel onboarding, Data Collection Endpoint, custom _CL table, Data Collection Rule, and the DCR role assignments.",
-      "prerequisite": "Create the Entra app first — scripts/New-AbstractSentinelApp.ps1",
+      "prerequisite": "Create the Entra app first \u2014 scripts/New-AbstractSentinelApp.ps1",
       "notes": "Use the with-app variant to create the app registration in the same deployment."
     },
     {
@@ -138,14 +139,14 @@
       "order": 90,
       "summary": "The Sentinel destination plus the Entra app registration, created in one deployment via a deploymentScript, with the client secret written to Key Vault.",
       "prerequisite": "A user-assigned managed identity holding Application.ReadWrite.All",
-      "notes": "Re-running is safe: the script rotates a secret only when none exists or the current one expires within 30 days. This app needs no Graph permissions and no admin consent — it only receives DCR RBAC."
+      "notes": "Re-running is safe: the script rotates a secret only when none exists or the current one expires within 30 days. This app needs no Graph permissions and no admin consent \u2014 it only receives DCR RBAC."
     }
   ],
   "docs": [
     {
       "path": "docs/azure-log-streams.md",
       "title": "Azure log streams at scale",
-      "summary": "Every Microsoft log stream, how each reaches an Event Hub, and which ones Azure Policy can onboard automatically — with the region rule and the two constraints that decide the architecture."
+      "summary": "Every Microsoft log stream, how each reaches an Event Hub, and which ones Azure Policy can onboard automatically \u2014 with the region rule and the two constraints that decide the architecture."
     },
     {
       "path": "docs/azure-app-registrations.md",
@@ -157,7 +158,7 @@
     {
       "path": "scripts/Deploy-AbstractLogStreams.sh",
       "title": "Log-stream governance driver",
-      "summary": "Deploy / Grant / Remediate / Status for the log-stream policy pack. Remediation is not optional — DeployIfNotExists never touches what you already own."
+      "summary": "Deploy / Grant / Remediate / Status for the log-stream policy pack. Remediation is not optional \u2014 DeployIfNotExists never touches what you already own."
     },
     {
       "path": "scripts/Deploy-AbstractAppReg.sh",
