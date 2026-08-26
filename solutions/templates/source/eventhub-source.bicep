@@ -30,7 +30,8 @@
 //                 firewall, no auto-inflate. NOT recommended - Abstract docs
 //                 state Standard is the minimum tier.
 //    - Standard : auto-inflate, IP rules, private endpoints, consumer groups.
-//    - Premium  : capacity must be 1/2/4/8/16 PUs; no auto-inflate.
+//    - Premium  : capacity is PROCESSING UNITS, legal set 1/2/4/6/8/10/12/16 (max 16,
+//                 NOT the 40 that @maxValue allows); no auto-inflate; up to 90d retention.
 //
 //  Throughput sizing (from the Abstract docs):
 //    | Expected events/sec | Throughput Units (max 40) | Partitions (max 32) |
@@ -55,7 +56,7 @@ param namespaceName string
 @allowed(['Basic', 'Standard', 'Premium'])
 param sku string = 'Standard'
 
-@description('Throughput Units (Basic/Standard, 1-40) or Processing Units (Premium: 1, 2, 4, 8, 16). Sizing: ~1 TU per 1 MB/s of expected ingress - see the table in the template header.')
+@description('Throughput Units (Basic/Standard, 1-40) or Processing Units (Premium: 1/2/4/6/8/10/12/16, max 16). NOTE the @maxValue(40) below is the STANDARD ceiling - Bicep cannot express a per-SKU range, so a Premium value above 16 passes here and is rejected by ARM. Sizing: ~1 TU per 1 MB/s of expected ingress.')
 @minValue(1)
 @maxValue(40)
 param capacity int = 1

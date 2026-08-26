@@ -232,7 +232,7 @@
     <h1>Deploy Abstract into Azure, <em>properly</em>.</h1>
     <p class="lede">Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations.</p>
     <div class="stats">
-      <div class="stat"><b>9</b><span>Templates</span></div>
+      <div class="stat"><b>10</b><span>Templates</span></div>
       <div class="stat"><b>4</b><span>Deployment scopes</span></div>
       <div class="stat"><b>100%</b><span>With a portal wizard</span></div>
       <div class="stat"><b>ARM + Bicep</b><span>Every template</span></div>
@@ -363,6 +363,28 @@
           <pre><code>az ts create --name abstract-logstreams-policy --version 1.0 -g &lt;rg&gt; -l &lt;region&gt; \
   --template-file solutions/templates/policy/abstract-logstreams-policy.azuredeploy.json \
   --ui-form-definition solutions/templates/policy/abstract-logstreams-policy.uiFormDefinition.json</code></pre>
+        </details>
+      </article>
+      <article class="card" data-category="governance" data-scope="resourceGroup">
+        <div class="card-badges"><span class="badge scope-resourceGroup">Resource group</span><span class="badge ui">Wizard</span></div>
+        <h3>Pipeline health alerts</h3>
+        <p class="summary">Alerts on the failure this pipeline cannot otherwise show you: Event Hubs publishes NO consumer-lag metric, so a stalled Abstract consumer leaves incoming messages healthy and every dashboard green while retention quietly expires the backlog. Infers the stall from outgoing traffic collapsing while incoming continues, plus ingestion-stopped, throttling, credential errors and quota ceilings.</p>
+        <p class="prereq"><strong>Prerequisite</strong> An existing Event Hubs namespace (deploy the Event Hub source template first), and ideally an Action Group to notify.</p><p class="note">The consumer-stall rule is a scheduled QUERY rule, not a metric alert, and deliberately so: Event Hubs metrics are sparse, so a metric alert on &#x27;outgoing &lt; threshold&#x27; has no data to evaluate and sits in Insufficient Data forever. The KQL synthesises a zero row when the metric is silent. Does NOT cover the Auto-Inflate cost ratchet — there is no platform metric for provisioned throughput units, only the AutoScaleLogs diagnostic category, which needs a diagnostic setting on the namespace itself.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.createUiDefinition.json" target="_blank" rel="noopener">
+            Deploy to Azure
+          </a>
+          <a class="btn ghost" href="https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.createUiDefinition.json" target="_blank" rel="noopener">
+            Azure&nbsp;Gov
+          </a>
+          <a class="btn ghost" href="https://github.com/IamABS3C/Abstract-MS-Azure-/blob/main/solutions/templates/monitoring/pipeline-health-alerts.bicep" target="_blank" rel="noopener">
+            Source
+          </a>
+        </div>
+        <details class="cli">
+          <summary>Deploy from the CLI instead</summary>
+          <pre><code>az deployment group create -g &lt;rg&gt; \
+  --template-file solutions/templates/monitoring/pipeline-health-alerts.bicep</code></pre>
         </details>
       </article>
       </div>

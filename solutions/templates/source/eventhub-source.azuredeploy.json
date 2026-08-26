@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "188097116880316201"
+      "templateHash": "16281821000858877801"
     }
   },
   "parameters": {
@@ -42,7 +42,7 @@
       "minValue": 1,
       "maxValue": 40,
       "metadata": {
-        "description": "Throughput Units (Basic/Standard, 1-40) or Processing Units (Premium: 1, 2, 4, 8, 16). Sizing: ~1 TU per 1 MB/s of expected ingress - see the table in the template header."
+        "description": "Throughput Units (Basic/Standard, 1-40) or Processing Units (Premium: 1/2/4/6/8/10/12/16, max 16). NOTE the @maxValue(40) below is the STANDARD ceiling - Bicep cannot express a per-SKU range, so a Premium value above 16 passes here and is rejected by ARM. Sizing: ~1 TU per 1 MB/s of expected ingress."
       }
     },
     "autoInflate": {

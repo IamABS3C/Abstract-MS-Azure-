@@ -130,12 +130,18 @@ param(
     [string]$NamespaceName,
     [ValidateSet("SafeMode","IpAllowlist","PrivateOnly","Hybrid","Custom")] [string]$SecurityProfile,
     [ValidateSet("Standard","Premium")] [string]$Sku = "Standard",
+    # 1-40 is the STANDARD Throughput Unit range. On Premium this value is Processing Units,
+    # whose legal set is 1/2/4/6/8/10/12/16 - validated against $Sku below rather than here,
+    # because ValidateRange cannot see another parameter.
     [ValidateRange(1,40)] [int]$Capacity = 2,
     [string[]]$HubSources = @("activity","entra","defender"),
     [string]$HubPrefix = "evh-abstract",
     [string]$Environment = "",
-    [ValidateRange(1,1024)] [int]$PartitionCount = 4,
-    [ValidateRange(1,90)] [int]$RetentionDays = 7,
+    # Ranges MUST match eventhub-source.bicep (@maxValue(32) / @maxValue(7)). They previously
+    # read 1024 and 90 - the Event Hubs service maxima - so the script accepted a value and ARM
+    # then rejected the deployment, which reads like a platform fault rather than a wrapper bug.
+    [ValidateRange(1,32)] [int]$PartitionCount = 4,
+    [ValidateRange(1,7)] [int]$RetentionDays = 7,
     [string]$ConsumerGroup = "abstract",
     [ValidateSet("ConnectionString","ServicePrincipal","Both")] [string]$AuthMethod = "Both",
     [string]$SasRuleName = "abstract-access",
@@ -225,6 +231,19 @@ function Test-CloudShell {
 function Stop-Clean { param([int]$Code = 1)
     if ($script:logging) { try { Stop-Transcript | Out-Null } catch {} }
     exit $Code
+}
+
+# ---- Cross-parameter validation (ValidateRange cannot see another parameter) ----
+# On Premium, Capacity means Processing Units, whose legal set is 1/2/4/6/8/10/12/16 - NOT the
+# 1-40 Throughput Unit range. Catching it here beats an opaque ARM rejection minutes later.
+if ($Sku -eq 'Premium') {
+    $legalPu = @(1,2,4,6,8,10,12,16)
+    if ($legalPu -notcontains $Capacity) {
+        throw "Capacity $Capacity is not a valid Premium Processing Unit count. Legal values: $($legalPu -join '/'). (1-40 is the Standard Throughput Unit range.)"
+    }
+    if ($RetentionDays -gt 7) {
+        Warn "Premium supports up to 90 days retention, but this script and eventhub-source.bicep cap RetentionDays at 7. Raise the cap in both before requesting more."
+    }
 }
 
 # ---- Start logging + banner ----
@@ -543,7 +562,13 @@ if ($Action -eq "Deploy") {
                 $body = @{ properties = @{
                     eventHubAuthorizationRuleId = $authRuleId
                     eventHubName                = $hubName
-                    logs = @("Administrative","Security","ServiceHealth","Alert","Recommendation","Policy","Autoscale","ResourceHealth") |
+                    # Administrative, Security, ServiceHealth and Policy carry the detection
+                    # value: every ARM write and RBAC change, Defender alerts, and policy
+                    # state. Alert / Autoscale / Recommendation / ResourceHealth were removed
+                    # 2026-08-25 - they are high volume and carry effectively no detection
+                    # signal, and customers were paying to ingest them by default. Add them
+                    # back deliberately per-tenant if someone actually consumes them.
+                    logs = @("Administrative","Security","ServiceHealth","Policy") |
                         ForEach-Object { @{ category = $_; enabled = $true } }
                 } } | ConvertTo-Json -Depth 6
                 Invoke-AzRestMethod -Method PUT -Path "/subscriptions/$($ctx.Subscription.Id)/providers/Microsoft.Insights/diagnosticSettings/abstract-activity-logs?api-version=2021-05-01-preview" -Payload $body | Out-Null

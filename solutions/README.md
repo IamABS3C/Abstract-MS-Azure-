@@ -93,6 +93,7 @@ Stop configuring diagnostic settings one subscription at a time. Assign once at 
 | Template | Scope | Deploy | Gov | CLI |
 | --- | --- | --- | --- | --- |
 | **Log streams at scale (Azure Policy)** | management group | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.uiFormDefinition.json) | [![Deploy to Azure Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.azuredeploy.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fpolicy%2Fabstract-logstreams-policy.uiFormDefinition.json) | `az deployment mg create -m <mg-id> -l <region> --template-file solutions/templates/policy/abstract-logstreams-policy.bicep` |
+| **Pipeline health alerts** | resource group | [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.createUiDefinition.json) | [![Deploy to Azure Gov](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.azuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FIamABS3C%2FAbstract-MS-Azure-%2Fmain%2Fsolutions%2Ftemplates%2Fmonitoring%2Fpipeline-health-alerts.createUiDefinition.json) | `az deployment group create -g <rg> --template-file solutions/templates/monitoring/pipeline-health-alerts.bicep` |
 
 ### Identity — app registrations for Graph / M365 collection
 
@@ -203,6 +204,15 @@ Assign once at a management group and every subscription in it — current and f
 - **Files:** `templates/policy/abstract-logstreams-policy.bicep` · `templates/policy/abstract-logstreams-policy.azuredeploy.json` · `templates/policy/abstract-logstreams-policy.uiFormDefinition.json`
 - **Driver script:** `scripts/Deploy-AbstractLogStreams.sh`
 - **Note:** Three gotchas decide whether this works: the region rule (one namespace per region), remediation is not optional, and new subscriptions must land in the right management group. See docs/azure-log-streams.md.
+
+#### Pipeline health alerts
+
+Alerts on the failure this pipeline cannot otherwise show you: Event Hubs publishes NO consumer-lag metric, so a stalled Abstract consumer leaves incoming messages healthy and every dashboard green while retention quietly expires the backlog. Infers the stall from outgoing traffic collapsing while incoming continues, plus ingestion-stopped, throttling, credential errors and quota ceilings.
+
+- **Scope:** resource group · **Portal UI:** `createUiDefinition`
+- **Files:** `templates/monitoring/pipeline-health-alerts.bicep` · `templates/monitoring/pipeline-health-alerts.azuredeploy.json` · `templates/monitoring/pipeline-health-alerts.createUiDefinition.json`
+- **Prerequisite:** An existing Event Hubs namespace (deploy the Event Hub source template first), and ideally an Action Group to notify.
+- **Note:** The consumer-stall rule is a scheduled QUERY rule, not a metric alert, and deliberately so: Event Hubs metrics are sparse, so a metric alert on 'outgoing < threshold' has no data to evaluate and sits in Insufficient Data forever. The KQL synthesises a zero row when the metric is silent. Does NOT cover the Auto-Inflate cost ratchet — there is no platform metric for provisioned throughput units, only the AutoScaleLogs diagnostic category, which needs a diagnostic setting on the namespace itself.
 
 #### Microsoft Entra ID log streams
 
