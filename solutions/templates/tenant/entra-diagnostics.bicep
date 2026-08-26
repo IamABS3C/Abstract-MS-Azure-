@@ -55,20 +55,36 @@ param eventHubName string = 'abs-prod-entra'
 Entra ID log categories to stream. Defaults to the security-relevant set that
 every Abstract Entra detection is built on.
 
-Licensing / availability notes:
-  SignInLogs, NonInteractiveUserSignInLogs, ServicePrincipalSignInLogs,
-  ManagedIdentitySignInLogs   - Entra ID P1 or P2
+Licensing / availability notes (revised 2026-08-26 against Microsoft's own
+licensing table - the previous note overstated the P1 requirement):
+  AuditLogs, SignInLogs        - available on Entra ID FREE. Microsoft's
+                                 monitoring-and-health licensing table lists
+                                 both as "Yes" for Free and for P1/P2.
+  NonInteractiveUserSignInLogs,
+  ServicePrincipalSignInLogs,
+  ManagedIdentitySignInLogs    - NO documented P1/P2 requirement exists for
+                                 these as diagnostic-setting EXPORT categories.
+                                 All 80 files in Microsoft's
+                                 identity/monitoring-health docs were checked.
+                                 The real P1/P2 gate people are thinking of is
+                                 on DOWNLOADING sign-in logs via the Microsoft
+                                 Graph API, which is a different operation.
+                                 Treat a P1 claim here as unverified.
+  ProvisioningLogs             - P1/P2 (Free = "No" in the licensing table),
+                                 and only populated when you provision via Entra
+  MicrosoftGraphActivityLogs   - P1/P2, explicitly stated
   RiskyUsers, UserRiskEvents,
   RiskyServicePrincipals, ServicePrincipalRiskEvents,
   RiskyAgents, AgentRiskEvents - Entra ID Protection (P2)
-  ProvisioningLogs             - only populated when you provision via Entra
   ADFSSignInLogs               - only when AD FS is in use
   NetworkAccessTrafficLogs,
   EnrichedOffice365AuditLogs,
   RemoteNetworkHealthLogs      - only with Global Secure Access / Entra
                                  Internet Access + Private Access
   MicrosoftGraphActivityLogs   - high volume; the single best source for
-                                 "what did this token actually do"
+                                 "what did this token actually do". At 100k
+                                 users Microsoft publishes ~1,000 GiB/month and
+                                 ~4.8M Event Hubs messages/month. Size for it.
   MicrosoftServicePrincipalSignInLogs - preview, VERY high volume, first-party
                                  service-to-service. Microsoft advises against
                                  acting on it. Off by default here.
@@ -78,7 +94,16 @@ Licensing / availability notes:
   B2CRequestLogs               - Azure AD B2C tenants only.
 
 Selecting a category your tenant does not license or use is harmless - it simply
-produces no records.
+produces no records. Note the corollary, which is a silent-failure shape: a
+category can be selectable and emit nothing forever because the underlying
+PRODUCT is not in use (NetworkAccessTrafficLogs without Global Secure Access is
+the common case), and that is indistinguishable from a broken pipeline unless
+you know to expect it.
+
+Volume: Microsoft states non-interactive and service-principal sign-ins "can be
+5 to 10 times larger than the interactive user sign-ins". Per-event sizes are
+~2 KB for audit and ~11.5 KB for sign-ins; a 100,000-user tenant runs about
+1.5 million events per day.
 ''')
 param entraLogCategories array = [
   'AuditLogs'
