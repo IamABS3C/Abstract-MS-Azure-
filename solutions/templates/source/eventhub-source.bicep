@@ -138,8 +138,34 @@ param perHubSasRules bool = false
 @description('Create a dedicated Send-only SAS rule for LOG PRODUCERS (Azure diagnostic settings: Activity Log, Entra ID, Defender, resource logs). This is separate from the Listen-only Abstract consumer rule and is what the subscription Activity Log export uses. Requires local auth (enableSas = true).')
 param createDiagnosticsSendRule bool = true
 
-@description('Name of the Send-only diagnostics SAS rule used by log producers / diagnostic settings.')
+@description('Name of the diagnostics SAS rule used by log producers / diagnostic settings.')
 param diagnosticsSendRuleName string = 'abstract-diagnostics-send'
+
+// DEFAULT CHANGED 2026-08-26, and the reason matters more than the value.
+//
+// Microsoft documents: "Streaming to event hubs requires Manage, Send, and Listen
+// permissions." This rule previously carried Send only, and its id is exported as
+// abstractDiagnosticsAuthRuleId - which the Activity Log, Entra ID and BOTH policy
+// templates all consume. So if that requirement is enforced, every Azure log path
+// fails the same way: the diagnostic setting is created successfully and no data ever
+// arrives. A silent, total failure across the whole estate.
+//
+// Send-only has NOT been shown to fail. It has also NOT been shown to work. Given the
+// blast radius the default is now the documented-required set, because a template that
+// works and over-grants is recoverable, while one that silently collects nothing is not.
+//
+// Be honest about the cost: Manage implies Send and Listen AND permits entity CRUD and
+// key regeneration, so this rule is close in power to RootManageSharedAccessKey. Do NOT
+// describe it as least privilege.
+//
+// The way out is a live test, not an argument. Once someone confirms Send-only delivers
+// on a real tenant, set this to SendOnly and the least-privilege claim becomes true.
+@description('Rights on the diagnostics rule. ManageSendListen is what Microsoft documents as required for Event Hubs streaming and is the default; SendOnly is narrower but UNVERIFIED - if it does not work, every Azure log path silently collects nothing. See the comment above this parameter.')
+@allowed([
+  'ManageSendListen'
+  'SendOnly'
+])
+param diagnosticsRuleRights string = 'ManageSendListen'
 
 @description('Assign Azure RBAC roles for Service Principal (role-based) authentication in Abstract: Event Hubs role on the namespace + Storage Blob Data role on the checkpoint storage account.')
 param enableRbac bool = false
@@ -358,17 +384,16 @@ resource hubAuth 'Microsoft.EventHub/namespaces/eventhubs/authorizationRules@202
   }
 }]
 
-// Send-only rule for LOG PRODUCERS (diagnostic settings). Separate from the
-// Listen-only Abstract consumer rule so producers never get the consumer's key
-// and vice-versa. The subscription Activity Log template consumes its id via the
-// abstractDiagnosticsAuthRuleId output below.
+// Rule for LOG PRODUCERS (diagnostic settings), separate from the Listen-only Abstract
+// consumer rule so producers never hold the consumer's key and vice-versa. Its id is
+// exported as abstractDiagnosticsAuthRuleId and consumed by the Activity Log, Entra and
+// policy templates - which is exactly why the rights default matters here. See the
+// diagnosticsRuleRights parameter comment.
 resource diagnosticsSendRule 'Microsoft.EventHub/namespaces/authorizationRules@2024-01-01' = if (enableSas && createDiagnosticsSendRule) {
   parent: ehNamespace
   name: diagnosticsSendRuleName
   properties: {
-    rights: [
-      'Send'
-    ]
+    rights: diagnosticsRuleRights == 'SendOnly' ? [ 'Send' ] : [ 'Manage', 'Send', 'Listen' ]
   }
 }
 

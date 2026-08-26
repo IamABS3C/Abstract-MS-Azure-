@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "16281821000858877801"
+      "templateHash": "8781941283964300318"
     }
   },
   "parameters": {
@@ -191,7 +191,18 @@
       "type": "string",
       "defaultValue": "abstract-diagnostics-send",
       "metadata": {
-        "description": "Name of the Send-only diagnostics SAS rule used by log producers / diagnostic settings."
+        "description": "Name of the diagnostics SAS rule used by log producers / diagnostic settings."
+      }
+    },
+    "diagnosticsRuleRights": {
+      "type": "string",
+      "defaultValue": "ManageSendListen",
+      "allowedValues": [
+        "ManageSendListen",
+        "SendOnly"
+      ],
+      "metadata": {
+        "description": "Rights on the diagnostics rule. ManageSendListen is what Microsoft documents as required for Event Hubs streaming and is the default; SendOnly is narrower but UNVERIFIED - if it does not work, every Azure log path silently collects nothing. See the comment above this parameter."
       }
     },
     "enableRbac": {
@@ -522,9 +533,7 @@
       "apiVersion": "2024-01-01",
       "name": "[format('{0}/{1}', parameters('namespaceName'), parameters('diagnosticsSendRuleName'))]",
       "properties": {
-        "rights": [
-          "Send"
-        ]
+        "rights": "[if(equals(parameters('diagnosticsRuleRights'), 'SendOnly'), createArray('Send'), createArray('Manage', 'Send', 'Listen'))]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.EventHub/namespaces', parameters('namespaceName'))]"
