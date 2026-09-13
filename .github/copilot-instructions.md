@@ -24,15 +24,20 @@ Pink `#FF216B` · mid `#E8005D` · deep `#C2004C` · bg `#060608` · teal `#01e6
 - **abstract-customer-success-architect** — `/Users/mherbert/.claude/skills/abstract-customer-success-architect/SKILL.md`
 - **abstract-customer-success-manager** — `/Users/mherbert/.claude/skills/abstract-customer-success-manager/SKILL.md`
 - **abstract-designer** — `/Users/mherbert/.claude/skills/abstract-designer/SKILL.md`
+- **abstract-detections-hunting** — `/Users/mherbert/.claude/skills/abstract-detections-hunting/SKILL.md`
 - **abstract-enablement-onboarding** — `/Users/mherbert/.claude/skills/abstract-enablement-onboarding/SKILL.md`
+- **abstract-forwarder-health** — `/Users/mherbert/.claude/skills/abstract-forwarder-health/SKILL.md`
 - **abstract-integrations-grandmaster** — `/Users/mherbert/.claude/skills/abstract-integrations-grandmaster/SKILL.md`
 - **abstract-knowledge** — `/Users/mherbert/.claude/skills/abstract-knowledge/SKILL.md`
 - **abstract-marketing** — `/Users/mherbert/.claude/skills/abstract-marketing/SKILL.md`
+- **abstract-masking** — `/Users/mherbert/.claude/skills/abstract-masking/SKILL.md`
+- **abstract-models** — `/Users/mherbert/.claude/skills/abstract-models/SKILL.md`
 - **abstract-product-manager** — `/Users/mherbert/.claude/skills/abstract-product-manager/SKILL.md`
 - **abstract-revops-analyst** — `/Users/mherbert/.claude/skills/abstract-revops-analyst/SKILL.md`
 - **abstract-sales-engineer** — `/Users/mherbert/.claude/skills/abstract-sales-engineer/SKILL.md`
 - **abstract-security-engineer** — `/Users/mherbert/.claude/skills/abstract-security-engineer/SKILL.md`
 - **abstract-soc-analyst-ir** — `/Users/mherbert/.claude/skills/abstract-soc-analyst-ir/SKILL.md`
+- **abstract-tagging** — `/Users/mherbert/.claude/skills/abstract-tagging/SKILL.md`
 - **abstract-writer** — `/Users/mherbert/.claude/skills/abstract-writer/SKILL.md`
 - **cowork-vs-code-router** — `/Users/mherbert/.claude/skills/cowork-vs-code-router/SKILL.md`
 
