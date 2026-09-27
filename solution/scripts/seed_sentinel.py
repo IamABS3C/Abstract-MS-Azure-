@@ -61,7 +61,8 @@ def get_token(tenant: str, client_id: str, secret: str) -> str:
 def to_row(item: dict) -> dict:
     """Shape an input item like the event the Abstract integration uploads."""
     event = dict(item.get("AbstractEvent") or item)
-    event.setdefault("@timestamp", _now_iso())
+    # A wrapped row keeps its own time when its inner event carries none.
+    event.setdefault("@timestamp", item.get("TimeGenerated") or _now_iso())
     event.setdefault("timestamp", event["@timestamp"])
     if "type" in event:
         event.setdefault("acs_type", event["type"])

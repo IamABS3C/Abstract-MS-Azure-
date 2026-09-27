@@ -42,11 +42,22 @@ all 18 with their fields populated.
   validation (`The resource identifier '.../providers/Microsoft.KeyVault/' is
   malformed`), because the vault's name was empty in that mode while its id is
   still resolved. All three modes now pass `az deployment group validate`.
+- The app-registration script reused any app with the requested display name, so
+  a deployment naming an existing app could add a credential to it. It now reuses
+  an app only when exactly one has the name and it carries the
+  `abstract:sentinel-destination` tag the script writes on creation.
+- The script reused a vault secret on expiry alone. It now reuses one only when
+  the secret was stored for this app (`appId` tag) and the app still holds a
+  matching credential, so a recreated app or a shared Existing vault gets a
+  working secret.
+- The Key Vault role assignment for the provisioning identity sets
+  `principalType` again, avoiding `PrincipalNotFound` for a new identity.
 - The app-registration script treated any Key Vault read failure (typically a
   403 while a fresh role assignment propagates) as "no secret", minted a client
   secret, and, if the vault write then failed, exited with that credential live
   and uncaptured. It now retries, treats only `SecretNotFound` as absent, and
-  deletes a credential it could not store.
+  deletes a credential it could not store, and only one it can prove is new, so
+  a lagging credential list can never make it revoke the secret Abstract uses.
 
 ### Removed
 - `AGENTS.md`, `.github/copilot-instructions.md` and `.cursor/` are no longer

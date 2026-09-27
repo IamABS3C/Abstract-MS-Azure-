@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "11817630878575727636"
+      "templateHash": "16431700135770636192"
     }
   },
   "parameters": {
@@ -17,6 +17,19 @@
     },
     "roleDefinitionId": {
       "type": "string"
+    },
+    "principalType": {
+      "type": "string",
+      "defaultValue": "",
+      "allowedValues": [
+        "",
+        "ServicePrincipal",
+        "User",
+        "Group"
+      ],
+      "metadata": {
+        "description": "Principal type of principalId. Set it for a freshly created identity to avoid PrincipalNotFound while the directory replicates; leave empty when the type is not known (for example a user or group supplied by the deployer)."
+      }
     }
   },
   "resources": [
@@ -27,7 +40,8 @@
       "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), parameters('principalId'), parameters('roleDefinitionId'))]",
       "properties": {
         "principalId": "[parameters('principalId')]",
-        "roleDefinitionId": "[parameters('roleDefinitionId')]"
+        "roleDefinitionId": "[parameters('roleDefinitionId')]",
+        "principalType": "[if(empty(parameters('principalType')), null(), parameters('principalType'))]"
       }
     }
   ]

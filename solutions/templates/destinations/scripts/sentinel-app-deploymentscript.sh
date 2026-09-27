@@ -61,16 +61,35 @@ fi
 TENANT_ID=$(az account show --query tenantId -o tsv) || die "cannot read tenant - is the script identity attached?"
 ok "tenant $TENANT_ID"
 
-# --- App registration (idempotent by display name) ------------------------
+# --- App registration -------------------------------------------------------
+# The display name is the idempotency key, but a name proves nothing: any app in
+# the tenant can carry it, and this identity can add credentials to any app. So
+# an existing app is reused only when exactly one has the name and it carries the
+# marker tag this template writes.
+MARKER="abstract:sentinel-destination"
 log "Ensuring app registration '$APP_NAME'"
-APP_ID=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query '[0].appId' -o tsv 2>/dev/null || true)
-if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
+MATCHES=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query "[].{appId:appId, tags:tags}" -o json) \
+  || die "cannot list app registrations - does the script identity hold Application.ReadWrite.All with admin consent?"
+read -r MATCH_COUNT APP_ID MARKED <<<"$(printf '%s' "$MATCHES" | python3 -c "
+import json, sys
+apps = json.load(sys.stdin) or []
+first = apps[0] if apps else {}
+print(len(apps), first.get('appId') or '-', 'yes' if '$MARKER' in (first.get('tags') or []) else 'no')")"
+if [ "$MATCH_COUNT" -gt 1 ]; then
+  die "$MATCH_COUNT app registrations are named '$APP_NAME' - choose a unique appDisplayName"
+elif [ "$MATCH_COUNT" -eq 1 ]; then
+  if [ "$MARKED" != yes ]; then
+    die "an app named '$APP_NAME' ($APP_ID) exists but was not created by this template, so it will not be reused or given a credential. Choose another appDisplayName, or, if an earlier version of this template created it, mark it: az rest --method PATCH --url \"https://graph.microsoft.com/v1.0/applications(appId='$APP_ID')\" --body '{\"tags\":[\"$MARKER\"]}'"
+  fi
+  ok "reusing existing app $APP_ID"
+else
   APP_ID=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADMyOrg --query appId -o tsv) \
     || die "app creation failed - does the script identity hold Application.ReadWrite.All with admin consent?"
   ok "created app $APP_ID"
-  sleep 15   # directory replication before the SP create
-else
-  ok "reusing existing app $APP_ID"
+  sleep 15   # directory replication before the tag and the SP create
+  az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications(appId='${APP_ID}')" \
+    --headers "Content-Type=application/json" --body "{\"tags\":[\"${MARKER}\"]}" -o none \
+    || die "could not mark app $APP_ID as created by this template"
 fi
 [ -z "$APP_ID" ] && die "app id resolved empty"
 APP_OBJ_ID=$(az ad app show --id "$APP_ID" --query id -o tsv) || die "cannot read app object id for $APP_ID"
@@ -108,10 +127,10 @@ else
     # 403 while the Key Vault role assignment made moments ago propagates) is
     # retried, then fatal - treating it as absent would mint a secret that the
     # vault then refuses, leaving a live credential nobody captured.
-    EXP="" ; SHOW_ERR="" ; FOUND=false
+    SHOW="{}" ; SHOW_ERR="" ; FOUND=false
     for attempt in 1 2 3 4 5 6; do
-      if EXP=$(az keyvault secret show --vault-name "$KV_NAME" --name "$SECRET_NAME" \
-                 --query 'attributes.expires' -o tsv 2>/tmp/kv-show.err); then
+      if SHOW=$(az keyvault secret show --vault-name "$KV_NAME" --name "$SECRET_NAME" \
+                 --query '{expires:attributes.expires, appId:tags.appId}' -o json 2>/tmp/kv-show.err); then
         FOUND=true; break
       fi
       SHOW_ERR=$(cat /tmp/kv-show.err)
@@ -123,18 +142,39 @@ else
       die "cannot read $KV_NAME: ${SHOW_ERR:-unknown error} - is Key Vault Secrets Officer granted to the script identity, and does the vault use RBAC authorization?"
     fi
     if [ "$FOUND" = true ]; then
-      if [ -n "$EXP" ] && [ "$EXP" != "None" ]; then
-        if python3 -c "
-import sys, datetime
-exp = datetime.datetime.fromisoformat('$EXP'.replace('Z', '+00:00'))
+      # A vault secret is only a stored copy of a client secret. Reuse it only when
+      # it was stored for this app and the app still holds a matching credential;
+      # after an app is recreated, or in an existing vault another app also uses,
+      # its expiry alone proves nothing.
+      CREDS=$(az ad app credential list --id "$APP_ID" \
+                --query "[?displayName=='${SECRET_NAME}'].endDateTime" -o json 2>/dev/null || echo '[]')
+      VERDICT=$(python3 - "$SHOW" "$CREDS" "$APP_ID" <<'PY'
+import datetime, json, re, sys
+secret, creds, app_id = json.loads(sys.argv[1] or "{}"), json.loads(sys.argv[2] or "[]"), sys.argv[3]
 now = datetime.datetime.now(datetime.timezone.utc)
-sys.exit(0 if (exp - now).days > 30 else 1)"; then
-          NEED_SECRET=false
-          ok "existing secret valid for >30 days - NOT rotating (re-running this template is safe)"
-        else
-          warn "existing secret expires within 30 days - rotating"
-        fi
-      fi
+def days_left(ts):
+    if not ts or ts == "None":
+        return -1
+    ts = re.sub(r"(\.\d{6})\d+", r"\1", str(ts)).replace("Z", "+00:00")
+    return (datetime.datetime.fromisoformat(ts) - now).days
+if secret.get("appId") and secret["appId"] != app_id:
+    print("other-app")
+elif days_left(secret.get("expires")) <= 30:
+    print("expiring")
+elif not any(days_left(c) > 30 for c in creds):
+    print("no-credential")
+else:
+    print("reuse")
+PY
+)
+      case "$VERDICT" in
+        reuse)         NEED_SECRET=false
+                       ok "existing secret belongs to app $APP_ID and is valid for >30 days - NOT rotating (re-running this template is safe)" ;;
+        other-app)     warn "the vault secret $SECRET_NAME was stored for another app - minting one for $APP_ID" ;;
+        expiring)      warn "existing secret expires within 30 days - rotating" ;;
+        no-credential) warn "app $APP_ID holds no matching credential for the vault secret (was the app recreated?) - minting a new one" ;;
+        *)             die "could not evaluate the existing secret" ;;
+      esac
     else
       ok "no existing secret in the vault"
     fi
@@ -142,6 +182,7 @@ sys.exit(0 if (exp - now).days > 30 else 1)"; then
 
   if [ "$NEED_SECRET" = true ]; then
     log "Generating a client secret (${SECRET_YEARS} year(s))"
+    BEFORE=$(az ad app credential list --id "$APP_ID" --query "[].keyId" -o tsv 2>/dev/null | sort || true)
     SECRET=$(az ad app credential reset --id "$APP_ID" --append \
       --display-name "$SECRET_NAME" --years "$SECRET_YEARS" --query password -o tsv) \
       || die "secret generation failed"
@@ -149,12 +190,10 @@ sys.exit(0 if (exp - now).days > 30 else 1)"; then
     END=$(python3 -c "
 import datetime
 print((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365*int('$SECRET_YEARS'))).strftime('%Y-%m-%dT%H:%M:%SZ'))")
-    KEY_ID=$(az ad app credential list --id "$APP_ID" \
-      --query "sort_by([?displayName=='${SECRET_NAME}'], &startDateTime)[-1].keyId" -o tsv 2>/dev/null || true)
     STORED=false
     for attempt in 1 2 3; do
       if az keyvault secret set --vault-name "$KV_NAME" --name "$SECRET_NAME" \
-           --value "$SECRET" --expires "$END" -o none; then
+           --value "$SECRET" --expires "$END" --tags appId="$APP_ID" -o none; then
         STORED=true; break
       fi
       warn "Key Vault write failed (attempt $attempt/3), retrying in 20s"
@@ -162,11 +201,22 @@ print((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=36
     done
     unset SECRET
     if [ "$STORED" != true ]; then
-      # Never leave a live credential that exists nowhere but in Entra.
-      if [ -n "$KEY_ID" ] && [ "$KEY_ID" != "None" ]; then
-        az ad app credential delete --id "$APP_ID" --key-id "$KEY_ID" \
-          && warn "removed the unstored credential $KEY_ID" \
-          || warn "could not remove credential $KEY_ID - delete it in Entra (app $APP_ID)"
+      # Never leave a live credential that exists nowhere but in Entra - but delete
+      # only a key that is provably the new one. The credential list can lag, and
+      # deleting an older key would revoke the secret Abstract is already using.
+      NEW_KEYS=""
+      for attempt in 1 2 3; do
+        AFTER=$(az ad app credential list --id "$APP_ID" --query "[].keyId" -o tsv 2>/dev/null | sort || true)
+        NEW_KEYS=$(comm -13 <(printf '%s\n' "$BEFORE") <(printf '%s\n' "$AFTER") | sed '/^$/d')
+        [ -n "$NEW_KEYS" ] && break
+        sleep 10
+      done
+      if [ "$(printf '%s\n' "$NEW_KEYS" | sed '/^$/d' | wc -l | tr -d ' ')" = "1" ]; then
+        az ad app credential delete --id "$APP_ID" --key-id "$NEW_KEYS" \
+          && warn "removed the unstored credential $NEW_KEYS" \
+          || warn "could not remove credential $NEW_KEYS - delete it in Entra (app $APP_ID)"
+      else
+        warn "could not identify the new credential unambiguously - delete the newest '$SECRET_NAME' credential on app $APP_ID in Entra"
       fi
       die "could not write the secret to $KV_NAME - is Key Vault Secrets Officer granted to the script identity?"
     fi

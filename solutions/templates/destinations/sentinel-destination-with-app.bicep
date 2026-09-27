@@ -202,6 +202,7 @@ module kvOfficerAssignmentNew 'key-vault-role-assignment.bicep' = if (keyVaultMo
   params: {
     keyVaultName: effectiveKeyVaultName
     principalId: runnerIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficerRoleId)
   }
   dependsOn: [keyVault]
@@ -213,6 +214,7 @@ module kvOfficerAssignmentExisting 'key-vault-role-assignment.bicep' = if (keyVa
   params: {
     keyVaultName: effectiveKeyVaultName
     principalId: runnerIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId(existingKeyVaultSubscriptionId, 'Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficerRoleId)
   }
 }
