@@ -32,3 +32,10 @@ docs/threat-model/demo/mitre_layer.json
 # Jupyter checkpoints
 docs/threat-model/demo/.ipynb_checkpoints/
 **/.ipynb_checkpoints/
+
+# AI-assistant instruction files are generated per machine by the Claude operating
+# system (~/.claude/dist/vscode-sync/sync.py). They carry internal notes and local
+# paths, so they stay local and are never published from this public repository.
+AGENTS.md
+.github/copilot-instructions.md
+.cursor/
