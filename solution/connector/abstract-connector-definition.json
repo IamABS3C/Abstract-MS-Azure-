@@ -39,7 +39,7 @@
             },
             {
               "description": "Abstract events by product",
-              "query": "AbstractEventLogs_CL\n| where TimeGenerated > ago(7d)\n| summarize count() by tostring(AbstractEvent.product)"
+              "query": "AbstractEventLogs_CL\n| extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', ''))\n| where TimeGenerated > ago(7d)\n| summarize count() by tostring(AbstractEvent.product)"
             }
           ],
           "dataTypes": [

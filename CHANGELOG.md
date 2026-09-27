@@ -1,5 +1,68 @@
 # Changelog
 
+## 3.6.0 — 2026-09-27
+
+The Sentinel Destination table now matches what Abstract actually sends. The
+Abstract Azure Sentinel Destination uploads each Abstract Common Schema event as
+nested JSON with its own top-level keys, and the Logs Ingestion API drops every
+property a stream does not declare. Measured on a live workspace with the same 18
+real ACS events: the previous default (`TimeGenerated, Message, AbstractEvent`)
+stored 18 rows with `AbstractEvent` and `Message` empty on all of them, and the
+optional 474-column "full schema" (`cloud_account_id`-style flattened names) failed
+to deploy at all, because `type` is a reserved column name. The new schema stored
+all 18 with their fields populated.
+
+### Changed
+- **Sentinel table schema** — one column per top-level ACS key (75 columns;
+  nested objects and lists are `dynamic`), generated from the live ACS catalog
+  (`solution/schema/acs-fields.json`) by `solutions/scripts/gen-sentinel-schema.py`
+  into `solutions/parameters/sentinel-destination.schema.json`. The DCR
+  transformation sets `TimeGenerated` (from `timestamp`, else `ingested_time`,
+  else ingestion time) and stores the reserved `id` and `type` keys as `acs_id`
+  and `acs_type`. `sentinel-destination.full-schema.parameters.json` is removed:
+  passed to the CLI it would have declared columns with no transformation.
+- **`solution/schema/all_fields.json`** is now the one-record sample the Abstract
+  documentation asks you to upload in the portal's "New custom log (DCR-based)"
+  step, with `all_fields.transform.kql` to paste into its transformation editor.
+- **Sentinel content** (ASIM parser, analytics rules, hunting, workbooks,
+  connector, Copilot skills, package, notebook) reads both table shapes: the first
+  step uses the `AbstractEvent` column when it exists and otherwise packs the
+  row, and the reserved-key fields read `acs_id`/`acs_type`. All 21 queries were
+  run on both shapes.
+- **`seed_sentinel.py`** sends events the way the integration does instead of
+  wrapped rows the new stream would drop.
+- **Sentinel Destination + app registration** — Key Vault is now Create,
+  Existing or None; newer API versions; per-resource tags.
+- The provisioning identity for the app-registration variant needs only
+  `Application.ReadWrite.All`; `AppRoleAssignment.ReadWrite.All` was listed as a
+  prerequisite but is never used by that template.
+
+### Fixed
+- The app-registration template's Key Vault "None" mode failed ARM template
+  validation (`The resource identifier '.../providers/Microsoft.KeyVault/' is
+  malformed`), because the vault's name was empty in that mode while its id is
+  still resolved. All three modes now pass `az deployment group validate`.
+- The app-registration script reused any app with the requested display name, so
+  a deployment naming an existing app could add a credential to it. It now reuses
+  an app only when exactly one has the name and it carries the
+  `abstract:sentinel-destination` tag the script writes on creation.
+- The script reused a vault secret on expiry alone. It now reuses one only when
+  the secret was stored for this app (`appId` tag) and the app still holds a
+  matching credential, so a recreated app or a shared Existing vault gets a
+  working secret.
+- The Key Vault role assignment for the provisioning identity sets
+  `principalType` again, avoiding `PrincipalNotFound` for a new identity.
+- The app-registration script treated any Key Vault read failure (typically a
+  403 while a fresh role assignment propagates) as "no secret", minted a client
+  secret, and, if the vault write then failed, exited with that credential live
+  and uncaptured. It now retries, treats only `SecretNotFound` as absent, and
+  deletes a credential it could not store, and only one it can prove is new, so
+  a lagging credential list can never make it revoke the secret Abstract uses.
+
+### Removed
+- `AGENTS.md`, `.github/copilot-instructions.md` and `.cursor/` are no longer
+  published from this repository; they are generated per machine and ignored.
+
 ## 3.5.0 — 2026-06-17
 
 Rebuilt the threat-model demo's **AI-SOC notebook** into a versatile analyst

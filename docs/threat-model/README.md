@@ -95,8 +95,8 @@ Activity, DNS Activity, HTTP Activity, Authentication, Account Change, API Activ
 class UIDs against the OCSF version your pipeline targets — names are stable, UIDs version.)
 
 For Sentinel specifically, this repo's [Sentinel destination](../../solutions/templates/destinations/sentinel-destination.bicep)
-ships a custom `*_CL` table; populate `tableColumns` from Abstract's `all_fields.json` so the
-full normalized schema (not just `Message`) lands — see the [README](../../README.md#destinations).
+ships a custom `*_CL` table with one column per top-level Abstract Common Schema key, generated from
+`solution/schema/acs-fields.json`, so the full normalized event lands — see the [README](../../README.md#destinations).
 
 ---
 

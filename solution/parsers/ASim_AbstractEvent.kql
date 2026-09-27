@@ -2,8 +2,12 @@
 // ASim_AbstractEvent  —  ASIM-style normalizing parser for Abstract Security
 // -----------------------------------------------------------------------------
 // Source : AbstractEventLogs_CL  (the custom table the Sentinel Destination
-//          template creates; default schema = TimeGenerated, Message,
-//          AbstractEvent:dynamic that carries the Abstract Common Schema event).
+//          template creates: one column per top-level ACS key, as the Abstract
+//          integration sends the event, with nested objects as dynamic).
+//          Tables created with the older wrapped schema (TimeGenerated,
+//          Message, AbstractEvent:dynamic) are read the same way: the first
+//          extend uses the AbstractEvent column when it exists, and otherwise
+//          packs the row's columns into one bag.
 // Purpose: project the Abstract Common Schema (ACS) into ASIM-aligned column
 //          names so Abstract-delivered data lights up Microsoft's ASIM-based
 //          analytics, and add convenient ACS pass-through fields.
@@ -12,19 +16,20 @@
 //          ASim_AbstractEvent   (Legacy category: ASIM)
 //          Then query it like a table:  ASim_AbstractEvent | take 50
 //
-// Field mapping is grounded in the live ACS catalog (473 fields). If you ingest
-// the full all_fields schema as explicit columns instead of the dynamic
-// AbstractEvent column, swap `e.<field>` for `columnname_s` accordingly.
+// Field mapping is grounded in the live ACS catalog (473 fields). Log Analytics
+// reserves the id and type column names, so the destination's transformation
+// stores them as acs_id and acs_type; the coalesce() calls read either form.
 // =============================================================================
 let ASim_AbstractEvent = (disabled: bool = false) {
     AbstractEventLogs_CL
+    | extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', ''))
     | where not(disabled)
     | extend e = AbstractEvent
     // ---- core / ASIM common ----
     | extend
         EventVendor      = tostring(e.vendor),
         EventProduct     = tostring(e.product),
-        EventType        = tostring(e.type),
+        EventType        = coalesce(tostring(e.type), tostring(e.acs_type)),
         EventResult      = tostring(e.action),
         EventSeverity    = tostring(e.severity),
         EventMessage     = coalesce(tostring(e.message), Message),
@@ -41,15 +46,15 @@ let ASim_AbstractEvent = (disabled: bool = false) {
     // ---- identity ----
     | extend
         ActorUsername    = coalesce(tostring(e.user_name), tostring(e.user_id)),
-        TargetUsername   = tostring(e['user.target.name']),
+        TargetUsername   = coalesce(tostring(e.user.target.name), tostring(e['user.target.name'])),
         UserAgent        = tostring(e.user_agent)
     // ---- correlation back to Abstract ----
     | extend
-        AbstractEventId    = tostring(e.id),
+        AbstractEventId    = coalesce(tostring(e.id), tostring(e.acs_id)),
         AbstractIdentity   = tostring(e.identity),
         AbstractMatchedRules = e.matched_rules,
         AbstractTags       = e.tags,
-        AbstractTimestamp  = todatetime(e['@timestamp'])
+        AbstractTimestamp  = coalesce(todatetime(e['@timestamp']), todatetime(e.timestamp))
     | project-reorder
         TimeGenerated, EventVendor, EventProduct, EventType, EventResult, EventSeverity,
         SrcIpAddr, DstIpAddr, SrcPortNumber, DstPortNumber, ActorUsername, EventMessage,
