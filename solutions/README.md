@@ -256,17 +256,17 @@ Abstract writes to Sentinel via the Logs Ingestion API: Log Analytics workspace,
 
 - **Scope:** resource group · **Portal UI:** `createUiDefinition`
 - **Files:** `templates/destinations/sentinel-destination.bicep` · `templates/destinations/sentinel-destination.azuredeploy.json` · `templates/destinations/sentinel-destination.createUiDefinition.json`
-- **Prerequisite:** Create the Entra app first — scripts/New-AbstractSentinelApp.ps1
-- **Note:** Use the with-app variant to create the app registration in the same deployment.
+- **Prerequisite:** Create a single-tenant Entra app and client secret first — scripts/New-AbstractSentinelApp.ps1. Pass the service principal object ID (not the client ID) for DCR role assignments.
+- **Note:** The table has one column per top-level key of the Abstract Common Schema event, as the Abstract Azure Sentinel Destination sends it (nested objects are dynamic), generated from the ACS catalog by scripts/gen-sentinel-schema.py. The DCR transformation sets TimeGenerated and stores the reserved id and type keys as acs_id and acs_type. Override tableColumns only for a custom payload shape. Enter the client ID, secret value, tenant ID, DCR immutable ID, DCE ingestion URL, and exact stream name (Custom-<table name>) in Abstract. Use the with-app variant to create the app in the same deployment.
 
 #### Sentinel Destination + app registration
 
-The Sentinel destination plus the Entra app registration, created in one deployment via a deploymentScript, with the client secret written to Key Vault.
+The Sentinel destination plus the Entra app registration, created in one deployment via a deploymentScript. Choose a new Key Vault, an existing Key Vault, or no Key Vault.
 
 - **Scope:** resource group · **Portal UI:** `createUiDefinition`
 - **Files:** `templates/destinations/sentinel-destination-with-app.bicep` · `templates/destinations/sentinel-destination-with-app.azuredeploy.json` · `templates/destinations/sentinel-destination-with-app.createUiDefinition.json`
-- **Prerequisite:** A user-assigned managed identity holding Application.ReadWrite.All
-- **Note:** Re-running is safe: the script rotates a secret only when none exists or the current one expires within 30 days. This app needs no Graph permissions and no admin consent — it only receives DCR RBAC.
+- **Prerequisite:** A user-assigned managed identity whose service principal has the Microsoft Graph Application.ReadWrite.All application permission with tenant admin consent (AppRoleAssignment.ReadWrite.All is not needed). If that identity or an existing Key Vault is in another subscription or resource group, the deploying principal also needs Managed Identity Operator on the identity and role-assignment rights on the vault. The deploying principal needs Owner (or Contributor plus User Access Administrator) on the resource group.
+- **Note:** Create and Existing Key Vault modes store the generated client secret; re-runs reuse it while more than 30 days remain. None mode creates no secret; create one in Entra after deployment and copy its value into Abstract. Secret values are never returned in ARM outputs. A new secret is generated only when none is usable or it expires within 30 days; forceSecretRotation is for deliberate rotation. Deployment outputs include the client ID, tenant ID, DCR immutable ID, DCE URL, and exact stream name (Custom-<table name>). Set secretReaderObjectId to grant an optional user or group Key Vault Secrets User access to retrieve the secret.
 <!-- END GENERATED: template-detail -->
 
 ---

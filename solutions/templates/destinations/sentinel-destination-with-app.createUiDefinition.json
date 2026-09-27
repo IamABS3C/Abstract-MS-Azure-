@@ -6,7 +6,7 @@
     "config": {
       "isWizard": true,
       "basics": {
-        "description": "![Abstract Security](https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png)\n\n# ABSTRACT SECURITY\n**The Security Data Pipeline Platform.** Send detection-ready data straight into Microsoft Sentinel — normalized, enriched, cost-optimized.\n\n[abstract.security](https://abstract.security) · [Documentation](https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/)\n\n---\n### Azure Sentinel — Destination Integration (ONE-CLICK, incl. app registration)\nThis **advanced** deployment provisions the **full ingestion stack** *and* **creates the Entra app registration for you** via an Azure deployment script — storing the client secret in **Key Vault** (never in a deployment output). It then grants the new service principal **both** `Monitoring Metrics Publisher` **and** `Monitoring Contributor` on the DCR.\n\n⚠️ **Prerequisite:** you must supply a **user-assigned managed identity that already holds the *Application Administrator* directory role** (ARM cannot bootstrap that permission). The deploying user needs **Owner** (or **Contributor + User Access Administrator**) on the resource group.\n\n💡 Prefer the *standard* Sentinel Destination template + `scripts/new-abstract-sentinel-app.*` if you'd rather keep the client secret out of Azure entirely.\n\nWhen the deployment finishes, read the app/client id, tenant id and DCR/DCE/stream values from the **Outputs** tab, and retrieve the **client secret from Key Vault** to paste into Abstract.",
+        "description": "![Abstract Security](https://cybersecurity-excellence-awards.com/wp-content/uploads/163661.png)\n\n# ABSTRACT SECURITY\n**The Security Data Pipeline Platform.** Send detection-ready data straight into Microsoft Sentinel — normalized, enriched, cost-optimized.\n\n[abstract.security](https://abstract.security) · [Documentation](https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/)\n\n---\n### Azure Sentinel — Destination Integration (one-click app registration)\nThis deployment creates the ingestion stack and an Entra app registration for Abstract. Choose a new Key Vault, an existing Key Vault, or no Key Vault. With no Key Vault, this deployment does **not** create a client secret; create it in Entra after deployment and copy it once into Abstract.\n\n⚠️ **Prerequisites:** the provisioning identity needs the Microsoft Graph application permission `Application.ReadWrite.All` (not `AppRoleAssignment.ReadWrite.All`), granted with admin consent by a Global Administrator once per tenant. The deploying principal needs **Owner** (or **Contributor + User Access Administrator**) on the deployment resource group.\n\nThe app registration is Abstract's runtime identity; the supplied managed identity is only the provisioning runner. The template grants the runtime service principal both **Monitoring Metrics Publisher** and **Monitoring Contributor** on the DCR.",
         "resourceGroup": {
           "constraints": {
             "validations": []
@@ -86,6 +86,20 @@
             "visible": "[equals(steps('workspace').mode, 'Create')]"
           },
           {
+            "name": "workspaceSku",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Workspace pricing tier",
+            "defaultValue": "PerGB2018",
+            "toolTip": "PerGB2018 is the recommended pay-as-you-go tier. Change advanced pricing options in the Bicep parameters if required.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "Pay-as-you-go (PerGB2018)", "value": "PerGB2018" }
+              ]
+            },
+            "visible": "[equals(steps('workspace').mode, 'Create')]"
+          },
+          {
             "name": "enableSentinel",
             "type": "Microsoft.Common.CheckBox",
             "label": "Enable Microsoft Sentinel on the new workspace",
@@ -103,7 +117,7 @@
             "type": "Microsoft.Common.InfoBox",
             "options": {
               "icon": "Info",
-              "text": "Creates a Data Collection Endpoint, a custom *_CL table, and a Data Collection Rule that routes Abstract's stream into the table. The DCR stream name becomes 'Custom-<table name>' — that exact value is your 'Log Stream Name' in Abstract. The default table schema is minimal (TimeGenerated, Message, AbstractEvent); to capture explicit per-field ACS columns, deploy via CLI with a tableColumns parameter from Abstract's all_fields.json."
+              "text": "Creates a Data Collection Endpoint, a custom *_CL table, and a Data Collection Rule that routes Abstract's stream into the table. The table has one column per top-level key of the Abstract Common Schema event, which is how the Abstract Azure Sentinel Destination sends it: nested objects are dynamic columns, and the rule's transformation sets TimeGenerated and stores the reserved id and type keys as acs_id and acs_type. Leave the columns field as [] unless you send a custom payload shape. The DCR stream name is 'Custom-<table name>' — enter that exact value as the 'Log Stream Name' in Abstract."
             }
           },
           {
@@ -139,6 +153,29 @@
               "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{2,63}[A-Za-z0-9]$",
               "validationMessage": "3-64 chars: letters, numbers, hyphens, underscores, periods."
             }
+          },
+          {
+            "name": "tableColumnsJson",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Custom table columns (JSON; optional)",
+            "defaultValue": "[]",
+            "multiLine": true,
+            "toolTip": "Leave [] to use the generated Abstract ACS schema. To override, enter a JSON array such as [{\"name\":\"TimeGenerated\",\"type\":\"datetime\"},{\"name\":\"Message\",\"type\":\"string\"}]. Include TimeGenerated with type datetime.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "tagsByResource",
+            "type": "Microsoft.Common.TagsByResource",
+            "label": "Resource-specific tags (optional)",
+            "resources": [
+              "Microsoft.OperationalInsights/workspaces",
+              "Microsoft.Insights/dataCollectionEndpoints",
+              "Microsoft.Insights/dataCollectionRules",
+              "Microsoft.KeyVault/vaults",
+              "Microsoft.Resources/deploymentScripts"
+            ]
           }
         ]
       },
@@ -151,14 +188,14 @@
             "type": "Microsoft.Common.InfoBox",
             "options": {
               "icon": "Warning",
-              "text": "This template creates the Entra app registration for you using an Azure deployment script that runs AS the managed identity you supply below. That identity MUST already hold the 'Application Administrator' (or Cloud Application Administrator) directory role — ARM cannot grant it. The generated client secret is written to Key Vault, never to a deployment output."
+              "text": "The supplied user-assigned identity runs the provisioning script; it is separate from Abstract's runtime app. Before deployment, a Global Administrator must grant the provisioning identity Microsoft Graph Application.ReadWrite.All (AppRoleAssignment.ReadWrite.All is not needed) with admin consent once per tenant. With no Key Vault, no secret is generated; create one in Entra after deployment and copy its value once."
             }
           },
           {
             "name": "managedIdentityResourceId",
             "type": "Microsoft.Common.TextBox",
             "label": "User-assigned managed identity resource ID",
-            "toolTip": "Full resource ID of a user-assigned managed identity that holds Application Administrator. Format: /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<name>",
+            "toolTip": "Full resource ID of a user-assigned managed identity. It can be in a different subscription or resource group. Format: /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<name>",
             "placeholder": "/subscriptions/.../resourceGroups/.../providers/Microsoft.ManagedIdentity/userAssignedIdentities/abstract-deployer",
             "constraints": {
               "required": true,
@@ -193,16 +230,67 @@
             }
           },
           {
+            "name": "keyVaultMode",
+            "type": "Microsoft.Common.OptionsGroup",
+            "label": "Client secret storage",
+            "defaultValue": "Create a new Key Vault",
+            "toolTip": "Choose where the generated client secret is stored. None does not create a secret; you create it in Entra after deployment.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "Create a new Key Vault", "value": "Create" },
+                { "label": "Use an existing Key Vault", "value": "Existing" },
+                { "label": "Skip Key Vault; create secret manually in Entra", "value": "None" }
+              ]
+            }
+          },
+          {
             "name": "keyVaultName",
             "type": "Microsoft.Common.TextBox",
             "label": "Key Vault name (leave empty to auto-generate)",
             "defaultValue": "",
-            "toolTip": "Key Vault that will hold the generated client secret. Empty = auto-generate abstract-kv-<hash>. Must be globally unique.",
+            "toolTip": "Name of the new Key Vault. Empty = auto-generate abstract-kv-<hash>. Must be globally unique.",
             "constraints": {
               "required": false,
               "regex": "^$|^[a-z][a-z0-9-]{1,22}[a-z0-9]$",
               "validationMessage": "3-24 chars, lowercase letters/numbers/hyphens, start with a letter — or empty to auto-generate."
-            }
+            },
+            "visible": "[equals(steps('appreg').keyVaultMode, 'Create')]"
+          },
+          {
+            "name": "existingKeyVaultResourceId",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Existing Key Vault resource ID",
+            "defaultValue": "",
+            "toolTip": "Full resource ID of an existing Key Vault. The provisioning identity needs Key Vault Secrets Officer at that vault's scope.",
+            "placeholder": "/subscriptions/.../resourceGroups/.../providers/Microsoft.KeyVault/vaults/...",
+            "constraints": {
+              "required": "[equals(steps('appreg').keyVaultMode, 'Existing')]",
+              "regex": "^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.KeyVault/vaults/[^/]+$",
+              "validationMessage": "Enter the full resource ID of an existing Key Vault."
+            },
+            "visible": "[equals(steps('appreg').keyVaultMode, 'Existing')]"
+          },
+          {
+            "name": "secretName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Key Vault secret name",
+            "defaultValue": "abstract-sentinel-client-secret",
+            "toolTip": "Used only when Key Vault is enabled.",
+            "constraints": {
+              "required": false,
+              "regex": "^[A-Za-z0-9-]{1,127}$",
+              "validationMessage": "Use 1-127 letters, numbers, or hyphens."
+            },
+            "visible": "[not(equals(steps('appreg').keyVaultMode, 'None'))]"
+          },
+          {
+            "name": "forceSecretRotation",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Force client secret rotation",
+            "defaultValue": false,
+            "toolTip": "Only use for a planned rotation. Update Abstract with the new secret value.",
+            "visible": "[not(equals(steps('appreg').keyVaultMode, 'None'))]"
           },
           {
             "name": "secretReaderObjectId",
@@ -215,7 +303,8 @@
               "required": false,
               "regex": "^$|^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$",
               "validationMessage": "Must be a GUID (object id) or empty."
-            }
+            },
+            "visible": "[not(equals(steps('appreg').keyVaultMode, 'None'))]"
           }
         ]
       }
@@ -226,14 +315,22 @@
       "workspaceName": "[if(equals(steps('workspace').mode, 'Create'), coalesce(steps('workspace').workspaceNameNew, ''), steps('workspace').workspaceNameExisting)]",
       "existingWorkspaceLocation": "[if(equals(steps('workspace').mode, 'Existing'), coalesce(steps('workspace').existingWorkspaceLocation, ''), '')]",
       "workspaceRetentionDays": "[coalesce(steps('workspace').workspaceRetentionDays, 90)]",
+      "workspaceSku": "[coalesce(steps('workspace').workspaceSku, 'PerGB2018')]",
       "enableSentinel": "[if(equals(steps('workspace').mode, 'Create'), coalesce(steps('workspace').enableSentinel, true), false)]",
       "dataCollectionEndpointName": "[steps('ingestion').dataCollectionEndpointName]",
       "dataCollectionRuleName": "[steps('ingestion').dataCollectionRuleName]",
       "customTableName": "[steps('ingestion').customTableName]",
+      "tableColumns": "[parse(steps('ingestion').tableColumnsJson)]",
+      "tagsByResource": "[steps('ingestion').tagsByResource]",
       "managedIdentityResourceId": "[steps('appreg').managedIdentityResourceId]",
       "appDisplayName": "[steps('appreg').appDisplayName]",
       "secretValidityYears": "[steps('appreg').secretValidityYears]",
+      "keyVaultMode": "[steps('appreg').keyVaultMode]",
       "keyVaultName": "[coalesce(steps('appreg').keyVaultName, '')]",
+      "existingKeyVaultResourceId": "[if(equals(steps('appreg').keyVaultMode, 'Existing'), steps('appreg').existingKeyVaultResourceId, resourceGroup().id)]",
+      "secretName": "[coalesce(steps('appreg').secretName, 'abstract-sentinel-client-secret')]",
+      "forceSecretRotation": "[coalesce(steps('appreg').forceSecretRotation, false)]",
+      "azCliVersion": "2.60.0",
       "secretReaderObjectId": "[coalesce(steps('appreg').secretReaderObjectId, '')]"
     }
   }

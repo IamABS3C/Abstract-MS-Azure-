@@ -73,6 +73,20 @@
             "visible": "[equals(steps('workspace').mode, 'Create')]"
           },
           {
+            "name": "workspaceSku",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Workspace pricing tier",
+            "defaultValue": "PerGB2018",
+            "toolTip": "PerGB2018 is the recommended pay-as-you-go tier. Change advanced pricing options in the Bicep parameters if required.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "Pay-as-you-go (PerGB2018)", "value": "PerGB2018" }
+              ]
+            },
+            "visible": "[equals(steps('workspace').mode, 'Create')]"
+          },
+          {
             "name": "enableSentinel",
             "type": "Microsoft.Common.CheckBox",
             "label": "Enable Microsoft Sentinel on the new workspace",
@@ -112,7 +126,7 @@
             "type": "Microsoft.Common.InfoBox",
             "options": {
               "icon": "Info",
-              "text": "Creates a Data Collection Endpoint, a custom *_CL table, and a Data Collection Rule that routes Abstract's stream into the table. The DCR stream name becomes 'Custom-<table name>' — that exact value is your 'Log Stream Name' in Abstract. The default table schema is minimal (TimeGenerated, Message, AbstractEvent); to capture the full Abstract Common Schema, deploy via CLI with a tableColumns parameter built from Abstract's all_fields.json."
+              "text": "Creates a Data Collection Endpoint, a custom *_CL table, and a Data Collection Rule that routes Abstract's stream into the table. The table has one column per top-level key of the Abstract Common Schema event, which is how the Abstract Azure Sentinel Destination sends it: nested objects are dynamic columns, and the rule's transformation sets TimeGenerated and stores the reserved id and type keys as acs_id and acs_type. Leave the columns field as [] unless you send a custom payload shape. The DCR stream name is 'Custom-<table name>' — enter that exact value as the 'Log Stream Name' in Abstract."
             }
           },
           {
@@ -148,6 +162,27 @@
               "regex": "^[A-Za-z0-9][A-Za-z0-9-_.]{2,63}[A-Za-z0-9]$",
               "validationMessage": "3-64 chars: letters, numbers, hyphens, underscores, periods."
             }
+          },
+          {
+            "name": "tableColumnsJson",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Custom table columns (JSON; optional)",
+            "defaultValue": "[]",
+            "multiLine": true,
+            "toolTip": "Leave [] to use the generated Abstract ACS schema. To override, enter a JSON array such as [{\"name\":\"TimeGenerated\",\"type\":\"datetime\"},{\"name\":\"Message\",\"type\":\"string\"}]. Include TimeGenerated with type datetime.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "tagsByResource",
+            "type": "Microsoft.Common.TagsByResource",
+            "label": "Resource-specific tags (optional)",
+            "resources": [
+              "Microsoft.OperationalInsights/workspaces",
+              "Microsoft.Insights/dataCollectionEndpoints",
+              "Microsoft.Insights/dataCollectionRules"
+            ]
           }
         ]
       },
@@ -184,11 +219,14 @@
       "createWorkspace": "[equals(steps('workspace').mode, 'Create')]",
       "workspaceName": "[if(equals(steps('workspace').mode, 'Create'), coalesce(steps('workspace').workspaceNameNew, ''), steps('workspace').workspaceNameExisting)]",
       "workspaceRetentionDays": "[coalesce(steps('workspace').workspaceRetentionDays, 90)]",
+      "workspaceSku": "[coalesce(steps('workspace').workspaceSku, 'PerGB2018')]",
       "enableSentinel": "[if(equals(steps('workspace').mode, 'Create'), coalesce(steps('workspace').enableSentinel, true), false)]",
       "existingWorkspaceLocation": "[if(equals(steps('workspace').mode, 'Existing'), coalesce(steps('workspace').existingWorkspaceLocation, ''), '')]",
       "dataCollectionEndpointName": "[steps('ingestion').dataCollectionEndpointName]",
       "dataCollectionRuleName": "[steps('ingestion').dataCollectionRuleName]",
       "customTableName": "[steps('ingestion').customTableName]",
+      "tableColumns": "[parse(steps('ingestion').tableColumnsJson)]",
+      "tagsByResource": "[steps('ingestion').tagsByResource]",
       "principalId": "[coalesce(steps('auth').principalId, '')]",
       "principalType": "ServicePrincipal"
     }

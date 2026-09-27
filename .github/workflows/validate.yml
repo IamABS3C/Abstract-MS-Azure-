@@ -55,6 +55,12 @@ jobs:
       - name: GitHub Pages site is current
         run: python3 solutions/scripts/gen-pages.py --check
 
+      # The Sentinel table schema, the portal sample (all_fields.json) and the DCR
+      # transformation are generated from the ACS catalog. A hand edit to any one of
+      # them lets the table drift from what Abstract sends, and the columns go empty.
+      - name: Sentinel schema is current
+        run: python3 solutions/scripts/gen-sentinel-schema.py --check
+
   shell-lint:
     name: Shell scripts parse
     runs-on: ubuntu-latest

@@ -3,36 +3,34 @@
 //  Version : 1.0  (opt-in / advanced variant of sentinel-destination.bicep)
 //  Author  : Abstract Security - Solutions Engineering
 //
-//  This variant provisions EVERYTHING the standard template does AND creates the
-//  Entra app registration for you, using an Azure deploymentScript. It exists for
-//  teams that want a pure portal one-click. It is deliberately heavier and has
-//  real prerequisites - for most deployments prefer the standard template
-//  (sentinel-destination.bicep) + scripts/new-abstract-sentinel-app.{sh,ps1},
-//  which keep the client secret out of Azure entirely.
+//  This variant provisions the Sentinel destination and creates the Entra app
+//  registration using an Azure deploymentScript. Key Vault can be created,
+//  supplied by resource ID, or skipped. When skipped, the customer creates the
+//  client secret in Entra after deployment; ARM never returns secret values.
 //
 //  WHAT IT CREATES
-//    1. Key Vault (RBAC-authorization) to hold the generated client secret.
-//    2. RBAC: the supplied user-assigned identity gets Key Vault Secrets Officer
-//       on that vault (so the script can write the secret).
-//    3. deploymentScript (Azure CLI) running AS the supplied identity: creates
-//       (or reuses) the Entra app + service principal, generates a client secret,
-//       and STORES THE SECRET IN KEY VAULT. Its outputs contain the app/client id,
-//       tenant id, SP object id, and the Key Vault secret URI - NEVER the raw secret.
-//    4. Log Analytics workspace + Microsoft Sentinel + DCE + custom _CL table + DCR.
-//    5. RBAC on the DCR for the new SP: Monitoring Metrics Publisher + Monitoring
-//       Contributor (both, per the Abstract docs).
-//    6. (optional) Key Vault Secrets User for an operator object id, so a human can
-//       read the secret back to paste into the Abstract modal.
+//    1. Optional Key Vault storage for the generated client secret.
+//    2. deploymentScript running as the supplied provisioning identity: creates
+//       (or reuses) the Entra app and service principal. With Key Vault enabled it
+//       generates and stores the secret; without it, the customer creates the
+//       secret in Entra after deployment.
+//    3. Log Analytics workspace + Microsoft Sentinel + DCE + custom _CL table + DCR.
+//    4. RBAC on the DCR for the runtime SP: Monitoring Metrics Publisher and
+//       Monitoring Contributor (per the Abstract destination guide).
 //
 //  PREREQUISITES (cannot be bootstrapped inside ARM)
-//    * A USER-ASSIGNED MANAGED IDENTITY that already holds a directory role able to
-//      create app registrations (e.g. "Application Administrator" or
-//      "Cloud Application Administrator"), passed as managedIdentityResourceId.
+//    * A USER-ASSIGNED MANAGED IDENTITY for the provisioning script. Tenant
+//      bootstrap must grant it the Microsoft Graph application permission
+//      Application.ReadWrite.All with admin consent by a Global Administrator,
+//      once per tenant. This template only creates an app, its service principal
+//      and a client secret, so it does not need AppRoleAssignment.ReadWrite.All
+//      (the shared bootstrap identity from scripts/Deploy-AbstractAppReg.sh has
+//      both and also works).
 //    * The deploying principal needs Owner (or Contributor + User Access
 //      Administrator) on the resource group to create the role assignments.
 //
-//  SECURITY NOTE: the client secret is written to Key Vault and is NOT returned in
-//  any deployment output. Retrieve it from Key Vault to enter into Abstract.
+//  SECURITY NOTE: the client secret is never returned in deployment outputs. If
+//  Key Vault is skipped, create the secret in Entra and copy it once into Abstract.
 //
 //  Compile:  az bicep build --file sentinel-destination-with-app.bicep \
 //                --outfile sentinel-destination-with-app.azuredeploy.json
@@ -44,28 +42,31 @@
 @description('Azure region for the workspace, DCE, DCR, Key Vault and deployment script.')
 param location string = resourceGroup().location
 
-@description('Tags applied to every resource created by this template.')
+@description('Tags applied to every created resource that supports tags.')
 param tags object = {}
+
+@description('Resource-specific tags, keyed by fully qualified Azure resource type.')
+param tagsByResource object = {}
 
 // ---------------------------------------------------------------------------
 // Identity that runs the app-registration script (PREREQUISITE - see header)
 // ---------------------------------------------------------------------------
-@description('Resource ID of a user-assigned managed identity that can create Entra app registrations (holds Application Administrator or equivalent). REQUIRED.')
+@description('Resource ID of the user-assigned provisioning identity. Tenant bootstrap must grant it Microsoft Graph Application.ReadWrite.All with admin consent; this template does not use AppRoleAssignment.ReadWrite.All.')
 param managedIdentityResourceId string
 
 @description('Display name for the Entra app registration created for Abstract.')
 param appDisplayName string = 'Abstract-Sentinel-App'
 
-@description('Client-secret validity in years.')
+@description('Client-secret validity in years when a Key Vault mode generates the secret.')
 @minValue(1)
 @maxValue(2)
 param secretValidityYears int = 1
 
-@description('Optional object ID of a user/group to grant Key Vault Secrets User (so they can read the generated secret). Leave empty to grant no reader.')
+@description('Optional user or group object ID granted Key Vault Secrets User when Key Vault is enabled.')
 #disable-next-line secure-secrets-in-params // this is an AAD object id, not a secret
 param secretReaderObjectId string = ''
 
-@description('Azure CLI version for the deployment script container.')
+@description('Azure CLI version for the deployment script container. Verify the selected image version is available before changing this value.')
 param azCliVersion string = '2.60.0'
 
 @description('Name of the Key Vault secret holding the client secret.')
@@ -86,8 +87,15 @@ param forceSecretRotation bool = false
 // ---------------------------------------------------------------------------
 // Key Vault
 // ---------------------------------------------------------------------------
+@allowed(['Create', 'Existing', 'None'])
+@description('Create a new Key Vault, use an existing vault by resource ID, or skip Key Vault. In None mode, create the client secret in Entra after deployment.')
+param keyVaultMode string = 'Create'
+
 @description('Key Vault name (3-24 lowercase alphanumerics/hyphens, globally unique). Leave empty to auto-generate abstract-kv-<hash>.')
 param keyVaultName string = ''
+
+@description('Full resource ID of the existing Key Vault. Used only when keyVaultMode is Existing.')
+param existingKeyVaultResourceId string = resourceGroup().id
 
 // ---------------------------------------------------------------------------
 // Workspace + Sentinel
@@ -119,12 +127,11 @@ param dataCollectionRuleName string = 'abstract-dcr'
 @description('Custom log table name. MUST end in _CL.')
 param customTableName string = 'AbstractEventLogs_CL'
 
-@description('Schema of the custom table and DCR stream. Default is the minimal wrapped-dynamic schema; replace with all_fields-derived columns for explicit ACS columns.')
-param tableColumns array = [
-  { name: 'TimeGenerated', type: 'datetime' }
-  { name: 'Message', type: 'string' }
-  { name: 'AbstractEvent', type: 'dynamic' }
-]
+@description('Custom table columns. Leave empty (recommended) to use the generated ACS schema: one column per top-level key of the event Abstract sends, with a DCR transformation that sets TimeGenerated. Supply columns only for a custom payload shape; the DCR stream then uses the same columns and transformKql.')
+param tableColumns array = []
+
+@description('DCR transformation used only when tableColumns is supplied. The generated schema carries its own transformation.')
+param transformKql string = 'source'
 
 // ---------------------------------------------------------------------------
 // Derived values + role definition IDs
@@ -133,7 +140,21 @@ var autoWorkspaceName = 'abstract-sentinel-${uniqueString(resourceGroup().id)}'
 var effectiveWorkspaceName = createWorkspace ? (empty(workspaceName) ? autoWorkspaceName : workspaceName) : workspaceName
 var workspaceResourceId = resourceId('Microsoft.OperationalInsights/workspaces', effectiveWorkspaceName)
 var effectiveLocation = createWorkspace ? location : (empty(existingWorkspaceLocation) ? location : existingWorkspaceLocation)
-var effectiveKeyVaultName = empty(keyVaultName) ? 'abstract-kv-${uniqueString(resourceGroup().id)}' : keyVaultName
+// The Create-mode vault resource always gets a valid name. It is deployed only in
+// Create mode, but ARM still resolves its id (module names, dependsOn) in every
+// mode, and an empty name there fails template validation in None mode.
+var keyVaultResourceName = empty(keyVaultName) ? 'abstract-kv-${uniqueString(resourceGroup().id)}' : keyVaultName
+var effectiveKeyVaultName = keyVaultMode == 'Existing' ? last(split(existingKeyVaultResourceId, '/')) : (keyVaultMode == 'Create' ? keyVaultResourceName : '')
+var existingKeyVaultSubscriptionId = split(existingKeyVaultResourceId, '/')[2]
+var existingKeyVaultResourceGroupName = split(existingKeyVaultResourceId, '/')[4]
+// Generated by gen-sentinel-schema.py from the ACS field catalog. The
+// stream mirrors the payload (it still carries the reserved id and type keys);
+// the transformation sets TimeGenerated and renames those two.
+var generatedSchema = loadJsonContent('../../parameters/sentinel-destination.schema.json')
+var useGeneratedSchema = empty(tableColumns)
+var effectiveTableColumns = useGeneratedSchema ? generatedSchema.tableColumns : tableColumns
+var effectiveStreamColumns = useGeneratedSchema ? generatedSchema.streamColumns : tableColumns
+var effectiveTransformKql = useGeneratedSchema ? generatedSchema.transformKql : transformKql
 var streamName = 'Custom-${customTableName}'
 var logAnalyticsDestinationName = 'abstractSentinelWorkspace'
 // secretName is now a PARAMETER (it was hardcoded here) so more than one Abstract
@@ -147,15 +168,16 @@ var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 // Identity that runs the script (must already have app-creation directory rights).
 resource runnerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: last(split(managedIdentityResourceId, '/'))
+  scope: resourceGroup(split(managedIdentityResourceId, '/')[2], split(managedIdentityResourceId, '/')[4])
 }
 
 // ---------------------------------------------------------------------------
-// Key Vault (RBAC authorization) to hold the client secret
+// Key Vault (optional; RBAC authorization)
 // ---------------------------------------------------------------------------
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: effectiveKeyVaultName
+resource keyVault 'Microsoft.KeyVault/vaults@2026-02-01' = if (keyVaultMode == 'Create') {
+  name: keyVaultResourceName
   location: location
-  tags: tags
+  tags: union(tags, contains(tagsByResource, 'Microsoft.KeyVault/vaults') ? tagsByResource['Microsoft.KeyVault/vaults'] : {})
   properties: {
     sku: {
       family: 'A'
@@ -169,34 +191,60 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
-// Let the script identity write the secret.
-resource kvOfficerAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.id, managedIdentityResourceId, keyVaultSecretsOfficerRoleId)
-  scope: keyVault
-  properties: {
+resource existingKeyVault 'Microsoft.KeyVault/vaults@2026-02-01' existing = {
+  name: keyVaultMode == 'Existing' ? effectiveKeyVaultName : 'unused-key-vault'
+  scope: resourceGroup(existingKeyVaultSubscriptionId, existingKeyVaultResourceGroupName)
+}
+
+module kvOfficerAssignmentNew 'key-vault-role-assignment.bicep' = if (keyVaultMode == 'Create') {
+  name: 'kv-officer-new-${uniqueString(keyVault.id, managedIdentityResourceId)}'
+  scope: resourceGroup()
+  params: {
+    keyVaultName: effectiveKeyVaultName
     principalId: runnerIdentity.properties.principalId
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficerRoleId)
-    principalType: 'ServicePrincipal'
+  }
+  dependsOn: [keyVault]
+}
+
+module kvOfficerAssignmentExisting 'key-vault-role-assignment.bicep' = if (keyVaultMode == 'Existing') {
+  name: 'kv-officer-existing-${uniqueString(existingKeyVault.id, managedIdentityResourceId)}'
+  scope: resourceGroup(existingKeyVaultSubscriptionId, existingKeyVaultResourceGroupName)
+  params: {
+    keyVaultName: effectiveKeyVaultName
+    principalId: runnerIdentity.properties.principalId
+    roleDefinitionId: subscriptionResourceId(existingKeyVaultSubscriptionId, 'Microsoft.Authorization/roleDefinitions', keyVaultSecretsOfficerRoleId)
   }
 }
 
-// Optional: let a human read the secret back.
-resource kvReaderAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(secretReaderObjectId)) {
-  name: guid(keyVault.id, secretReaderObjectId, keyVaultSecretsUserRoleId)
-  scope: keyVault
-  properties: {
+module kvReaderAssignmentNew 'key-vault-role-assignment.bicep' = if (keyVaultMode == 'Create' && !empty(secretReaderObjectId)) {
+  name: 'kv-reader-new-${uniqueString(keyVault.id, secretReaderObjectId)}'
+  scope: resourceGroup()
+  params: {
+    keyVaultName: effectiveKeyVaultName
     principalId: secretReaderObjectId
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+  }
+  dependsOn: [keyVault]
+}
+
+module kvReaderAssignmentExisting 'key-vault-role-assignment.bicep' = if (keyVaultMode == 'Existing' && !empty(secretReaderObjectId)) {
+  name: 'kv-reader-existing-${uniqueString(existingKeyVault.id, secretReaderObjectId)}'
+  scope: resourceGroup(existingKeyVaultSubscriptionId, existingKeyVaultResourceGroupName)
+  params: {
+    keyVaultName: effectiveKeyVaultName
+    principalId: secretReaderObjectId
+    roleDefinitionId: subscriptionResourceId(existingKeyVaultSubscriptionId, 'Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
   }
 }
 
 // ---------------------------------------------------------------------------
-// deploymentScript: create app + SP + secret, store secret in Key Vault
+// deploymentScript: create app + SP; optionally generate/store a secret
 // ---------------------------------------------------------------------------
 resource appScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'abstract-create-app'
   location: location
-  tags: tags
+  tags: union(tags, contains(tagsByResource, 'Microsoft.Resources/deploymentScripts') ? tagsByResource['Microsoft.Resources/deploymentScripts'] : {})
   kind: 'AzureCLI'
   identity: {
     type: 'UserAssigned'
@@ -212,25 +260,24 @@ resource appScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     environmentVariables: [
       { name: 'APP_NAME', value: appDisplayName }
       { name: 'KV_NAME', value: effectiveKeyVaultName }
-      { name: 'VAULT_URI', value: keyVault.properties.vaultUri }
+      { name: 'KEY_VAULT_MODE', value: keyVaultMode }
+      { name: 'VAULT_URI', value: keyVaultMode == 'Create' ? keyVault.?properties.vaultUri : (keyVaultMode == 'Existing' ? existingKeyVault.?properties.vaultUri : '') }
       { name: 'SECRET_NAME', value: secretName }
       { name: 'SECRET_YEARS', value: string(secretValidityYears) }
       { name: 'FORCE_ROTATE', value: string(forceSecretRotation) }
     ]
     scriptContent: loadTextContent('scripts/sentinel-app-deploymentscript.sh')
   }
-  dependsOn: [
-    kvOfficerAssignment
-  ]
+  dependsOn: keyVaultMode == 'Create' ? [kvOfficerAssignmentNew] : (keyVaultMode == 'Existing' ? [kvOfficerAssignmentExisting] : [])
 }
 
 // ---------------------------------------------------------------------------
 // Log Analytics workspace + Sentinel
 // ---------------------------------------------------------------------------
-resource workspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = if (createWorkspace) {
+resource workspace 'Microsoft.OperationalInsights/workspaces@2026-03-01' = if (createWorkspace) {
   name: effectiveWorkspaceName
   location: location
-  tags: tags
+  tags: union(tags, contains(tagsByResource, 'Microsoft.OperationalInsights/workspaces') ? tagsByResource['Microsoft.OperationalInsights/workspaces'] : {})
   properties: {
     sku: {
       name: workspaceSku
@@ -251,12 +298,12 @@ resource sentinelOnboarding 'Microsoft.SecurityInsights/onboardingStates@2024-03
 // ---------------------------------------------------------------------------
 // Custom log table + DCE + DCR
 // ---------------------------------------------------------------------------
-resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01' = {
+resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2026-03-01' = {
   name: '${effectiveWorkspaceName}/${customTableName}'
   properties: {
     schema: {
       name: customTableName
-      columns: [for col in tableColumns: {
+      columns: [for col in effectiveTableColumns: {
         name: col.name
         type: toLower(string(col.type)) == 'datetime' ? 'dateTime' : toLower(string(col.type))
       }]
@@ -266,10 +313,10 @@ resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01
   dependsOn: createWorkspace ? [workspace] : []
 }
 
-resource dce 'Microsoft.Insights/dataCollectionEndpoints@2023-03-11' = {
+resource dce 'Microsoft.Insights/dataCollectionEndpoints@2024-03-11' = {
   name: dataCollectionEndpointName
   location: effectiveLocation
-  tags: tags
+  tags: union(tags, contains(tagsByResource, 'Microsoft.Insights/dataCollectionEndpoints') ? tagsByResource['Microsoft.Insights/dataCollectionEndpoints'] : {})
   properties: {
     networkAcls: {
       publicNetworkAccess: 'Enabled'
@@ -277,15 +324,15 @@ resource dce 'Microsoft.Insights/dataCollectionEndpoints@2023-03-11' = {
   }
 }
 
-resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
+resource dcr 'Microsoft.Insights/dataCollectionRules@2024-03-11' = {
   name: dataCollectionRuleName
   location: effectiveLocation
-  tags: tags
+  tags: union(tags, contains(tagsByResource, 'Microsoft.Insights/dataCollectionRules') ? tagsByResource['Microsoft.Insights/dataCollectionRules'] : {})
   properties: {
     dataCollectionEndpointId: dce.id
     streamDeclarations: {
       '${streamName}': {
-        columns: [for col in tableColumns: {
+        columns: [for col in effectiveStreamColumns: {
           name: col.name
           type: toLower(string(col.type))
         }]
@@ -303,7 +350,7 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
       {
         streams: [streamName]
         destinations: [logAnalyticsDestinationName]
-        transformKql: 'source'
+        transformKql: effectiveTransformKql
         outputStream: streamName
       }
     ]
@@ -344,11 +391,12 @@ resource monitoringContributorAssignment 'Microsoft.Authorization/roleAssignment
 output clientId string = appScript.properties.outputs.appId
 output applicationTenantId string = appScript.properties.outputs.tenantId
 output servicePrincipalObjectId string = appScript.properties.outputs.spObjectId
-output clientSecretKeyVaultUri string = appScript.properties.outputs.keyVaultSecretUri
+output clientSecretKeyVaultUri string = keyVaultMode == 'None' ? '' : appScript.properties.outputs.keyVaultSecretUri
 output keyVaultName string = effectiveKeyVaultName
 output workspaceName string = effectiveWorkspaceName
 output customTableName string = customTableName
 output dataCollectionRuleImmutableId string = dcr.properties.immutableId
 output dataCollectionEndpointUrl string = dce.properties.logsIngestion.endpoint
 output logStreamName string = streamName
-output abstractModalHint string = 'Client Secret Value = read secret "${secretName}" from Key Vault "${effectiveKeyVaultName}"; all other fields are in the outputs above.'
+output secretCreationInstructions string = keyVaultMode == 'None' ? 'Create a client secret for this app in Entra after deployment and copy its value once into Abstract. Entra will not show the value again.' : 'Read the client secret from the configured Key Vault and enter it in Abstract.'
+output abstractModalHint string = keyVaultMode == 'None' ? 'Create a client secret for the app in Entra, then enter that value into Abstract; all other fields are in the outputs above.' : 'Read the client secret from Key Vault "${effectiveKeyVaultName}"; all other fields are in the outputs above.'

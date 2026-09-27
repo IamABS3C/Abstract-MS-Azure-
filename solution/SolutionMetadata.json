@@ -5,7 +5,7 @@
   "Description": "The **Abstract Security** solution turns the Abstract Security data pipeline into a first-class, actionable Microsoft Sentinel integration. Abstract delivers normalized, enriched, cost-reduced security telemetry into Sentinel via the Logs Ingestion API, and this solution makes that data discoverable and bidirectional: a branded data connector, an ASIM parser, analytics rules, hunting queries, a pipeline-overview workbook, SOAR playbooks, and a Security Copilot plugin + agent that call the Abstract API to close the loop (triage in Sentinel, act on the pipeline).",
   "Metadata": "SolutionMetadata.json",
   "BasePath": "solution",
-  "Version": "3.5.0",
+  "Version": "3.6.0",
   "publisherId": "abstractsecurity",
   "offerId": "abstract-security-sentinel",
   "providers": ["Abstract Security"],

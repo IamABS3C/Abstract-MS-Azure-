@@ -11,9 +11,11 @@ pipeline. Pairs with the threat-model demo:
     python solution/scripts/seed_sentinel.py --file events.json
     python solution/scripts/seed_sentinel.py --sample 50 --dry-run     # no creds needed
 
-Input: JSON (one event per line, or a JSON array). Each item is either a full
-table row ({TimeGenerated, Message, AbstractEvent}) or a bare ACS event (it gets
-wrapped automatically).
+Input: JSON (one event per line, or a JSON array) of bare ACS events. Each is sent
+the way the Abstract Azure Sentinel Destination sends it: the event's own top-level
+keys, plus timestamp (copy of @timestamp) and acs_type (copy of type). The DCR
+transformation sets TimeGenerated from timestamp. Older wrapped rows
+({TimeGenerated, Message, AbstractEvent}) are unwrapped automatically.
 
 Auth/target from env (the app + DCR the Sentinel Destination template created —
 never hard-code; the app's SP needs Monitoring Metrics Publisher on the DCR):
@@ -57,15 +59,13 @@ def get_token(tenant: str, client_id: str, secret: str) -> str:
 
 
 def to_row(item: dict) -> dict:
-    """Normalize an input item into a table row {TimeGenerated, Message, AbstractEvent}."""
-    if "AbstractEvent" in item:
-        item.setdefault("TimeGenerated", item.get("AbstractEvent", {}).get("@timestamp") or _now_iso())
-        return item
-    return {
-        "TimeGenerated": item.get("@timestamp") or _now_iso(),
-        "Message": item.get("message", ""),
-        "AbstractEvent": item,
-    }
+    """Shape an input item like the event the Abstract integration uploads."""
+    event = dict(item.get("AbstractEvent") or item)
+    event.setdefault("@timestamp", _now_iso())
+    event.setdefault("timestamp", event["@timestamp"])
+    if "type" in event:
+        event.setdefault("acs_type", event["type"])
+    return event
 
 
 def _sev_to_risk(sev: str) -> float:

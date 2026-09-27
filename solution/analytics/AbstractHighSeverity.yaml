@@ -20,12 +20,13 @@ tactics:
   - Execution
 query: |
   AbstractEventLogs_CL
+  | extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', ''))
   | where TimeGenerated > ago(1h)
   | extend e = AbstractEvent
   | extend AbstractSeverity = tolower(tostring(e.severity)),
            SrcIpAddr = coalesce(tostring(e.source_ipv4), tostring(e.source_address)),
            ActorUsername = coalesce(tostring(e.user_name), tostring(e.user_id)),
-           AbstractInsightId = tostring(e.id),
+           AbstractInsightId = coalesce(tostring(e.id), tostring(e.acs_id)),
            EventProduct = tostring(e.product),
            EventMessage = coalesce(tostring(e.message), Message)
   | where AbstractSeverity in ("high", "critical")
