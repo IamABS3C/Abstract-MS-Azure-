@@ -1,5 +1,38 @@
 # Changelog
 
+## 4.0.0 — 2026-09-28
+
+### Changed
+- **The Sentinel Destination writes Microsoft's ASIM tables** (`enableAsim`, `asimSchemas`,
+  both templates). Each event is mapped from the Abstract Common Schema into Microsoft's
+  normalized table for its activity: Authentication, AuditEvent, NetworkSession, Dns,
+  WebSession, ProcessEvent, FileEvent and RegistryEvent. Microsoft's built-in ASIM parsers
+  read those tables, so Microsoft's ASIM analytics rules, hunting queries and workbooks
+  work on Abstract data from every vendor. One mapping per schema, keyed on ACS, in
+  `solutions/asim`: a new vendor needs nothing on the Sentinel side. Every event still
+  also lands in the Abstract table. Abstract findings and alerts stay out of the activity
+  tables.
+- `solutions/scripts/gen-sentinel-asim.py` builds the routes, refuses KQL that Azure
+  Monitor transformations reject and any column Microsoft's table lacks (Azure drops those
+  silently), keeps the portal forms in sync and rebuilds the ARM templates. CI runs it with
+  `--check`.
+- The guide is now `solutions/docs/sentinel-asim.md`.
+
+### Removed
+- **`sourceRoutes`** and `gen-sentinel-source-routes.py`. They copied each vendor's
+  published Sentinel connector parsing into the template, one vendor at a time, which
+  Abstract would have had to maintain per vendor. A deployment that passes `sourceRoutes`
+  must drop the parameter.
+
+### Verified live
+- Live AWS CloudTrail and Okta feeds from QA1: 95% and 100% of events landed in an ASIM
+  table; the rest carry no ASIM-relevant category. Stored QA1 test events for the other
+  schemas all landed. Microsoft's built-in `_Im_*` parsers returned every row, and
+  Microsoft's `ASimDataTester` passed Authentication, AuditEvent, NetworkSession and
+  FileEvent with no errors or warnings (details in the guide).
+- A DCR update takes about 15 minutes to settle; see the guide.
+- Not yet shown: a Microsoft rule alerting on these rows, and RegistryEvent (no data).
+
 ## 3.8.0 — 2026-09-28
 
 ### Added

@@ -61,11 +61,11 @@ jobs:
       - name: Sentinel schema is current
         run: python3 solutions/scripts/gen-sentinel-schema.py --check
 
-      # Source routes reuse Microsoft's published connector parsing, fetched from
-      # Azure/Azure-Sentinel at the pinned ref. A hand edit, or a ref bump without a
-      # regenerate, would route a source through parsing nobody reviewed.
-      - name: Sentinel source routes are current
-        run: python3 solutions/scripts/gen-sentinel-source-routes.py --check
+      # The ACS-to-ASIM mappings in solutions/asim are compiled into the templates.
+      # A mapping edited without a regenerate would deploy stale parsing; a mapping that
+      # names a column Microsoft's table lacks would be dropped silently by Azure.
+      - name: Sentinel ASIM routes are current
+        run: python3 solutions/scripts/gen-sentinel-asim.py --check
 
   shell-lint:
     name: Shell scripts parse
