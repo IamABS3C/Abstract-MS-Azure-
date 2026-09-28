@@ -72,6 +72,29 @@ def raw_url(repo: dict, rel_path: str) -> str:
             f"{repo['branch']}/{repo['solutionPath']}/{rel_path}")
 
 
+PORTAL_LOGO = "brand/portal-badge.png"
+
+
+def sync_portal_logos(manifest: dict, write: bool) -> list[str]:
+    """Every portal form opens with the Abstract logo. It is served from this repo (the
+    official lockup, rendered by brand/build.sh), never from a third-party site, and its
+    URL derives from the manifest like every other link."""
+    import re
+    url = raw_url(manifest["repo"], PORTAL_LOGO)
+    pattern = re.compile(r"!\[Abstract Security\]\([^)]*\)")
+    stale = []
+    for form in sorted((SOLUTION_ROOT / "templates").rglob("*.json")):
+        if not form.name.endswith(("createUiDefinition.json", "uiFormDefinition.json")):
+            continue
+        text = form.read_text()
+        new = pattern.sub(f"![Abstract Security]({url})", text)
+        if new != text:
+            stale.append(str(form.relative_to(SOLUTION_ROOT.parent)))
+            if write:
+                form.write_text(new)
+    return stale
+
+
 def enc(url: str) -> str:
     """Portal deep links need the raw URL percent-encoded, including the slashes."""
     return urllib.parse.quote(url, safe="")
@@ -250,6 +273,11 @@ def main() -> int:
         return 0
 
     stale: list[str] = []
+    for form in sync_portal_logos(manifest, write=args.write):
+        if args.check:
+            stale.append(f"{form}: portal logo")
+        else:
+            print(f"updated {form}: portal logo")
     for target in targets:
         if not target.exists():
             continue

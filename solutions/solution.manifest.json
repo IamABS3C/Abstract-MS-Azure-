@@ -21,8 +21,8 @@
     "name": "Abstract-MS-Azure-",
     "branch": "main",
     "solutionPath": "solutions",
-    "pagesUrl": "https://iamabs3c.github.io/Abstract-MS-Azure-/docs/",
-    "$pagesUrlNote": "Pages source path is '/', so Jekyll serves the root README at the site root and docs/index.html at /docs/. If Pages is ever repointed to /docs, drop the trailing /docs/ here."
+    "pagesUrl": "https://iamabs3c.github.io/Abstract-MS-Azure-/",
+    "$pagesUrlNote": "Pages is published by .github/workflows/pages.yml from the docs/ folder only, so docs/index.html is the site root. docs/docs/index.html redirects the old /docs/ address."
   },
   "portal": {
     "public": "https://portal.azure.com"
