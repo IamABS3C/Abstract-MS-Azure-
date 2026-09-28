@@ -212,19 +212,64 @@
             }
           },
           {
-            "name": "sourceRoutes",
+            "name": "enableAsim",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Write Microsoft ASIM normalized tables",
+            "defaultValue": true,
+            "toolTip": "Also writes each event into Microsoft's ASIM tables (ASimAuthenticationEventLogs and others), mapped from the Abstract schema. Microsoft's ASIM analytics rules, hunting queries and workbooks then work on Abstract data from every vendor. Needs Microsoft Sentinel on the workspace."
+          },
+          {
+            "name": "asimSchemas",
             "type": "Microsoft.Common.DropDown",
-            "label": "Parse these sources into their vendor tables (optional)",
+            "label": "ASIM schemas",
             "multiselect": true,
-            "selectAll": false,
-            "filter": true,
-            "toolTip": "For each source selected, the rule unpacks the event's raw record and runs that vendor's published Microsoft Sentinel connector parsing into the vendor's own table. Install the vendor's Content Hub solution for its parsers, rules and workbooks. Every event still lands in the Abstract table.",
+            "selectAll": true,
+            "defaultValue": [
+              "AuditEvent",
+              "Authentication",
+              "Dns",
+              "FileEvent",
+              "NetworkSession",
+              "ProcessEvent",
+              "RegistryEvent",
+              "WebSession"
+            ],
+            "visible": "[steps('ingestion').enableAsim]",
+            "toolTip": "The ASIM tables to write. Each maps from the Abstract schema, so it covers every vendor Abstract collects.",
             "constraints": {
               "required": false,
               "allowedValues": [
                 {
-                  "label": "Okta (Okta Single Sign-On solution → OktaV2_CL)",
-                  "value": "okta"
+                  "label": "AuditEvent",
+                  "value": "AuditEvent"
+                },
+                {
+                  "label": "Authentication",
+                  "value": "Authentication"
+                },
+                {
+                  "label": "Dns",
+                  "value": "Dns"
+                },
+                {
+                  "label": "FileEvent",
+                  "value": "FileEvent"
+                },
+                {
+                  "label": "NetworkSession",
+                  "value": "NetworkSession"
+                },
+                {
+                  "label": "ProcessEvent",
+                  "value": "ProcessEvent"
+                },
+                {
+                  "label": "RegistryEvent",
+                  "value": "RegistryEvent"
+                },
+                {
+                  "label": "WebSession",
+                  "value": "WebSession"
                 }
               ]
             }
@@ -292,8 +337,9 @@
       "principalId": "[coalesce(steps('auth').principalId, '')]",
       "principalType": "ServicePrincipal",
       "customTablePlan": "[steps('ingestion').customTablePlan]",
-      "sourceRoutes": "[coalesce(steps('ingestion').sourceRoutes, parse('[]'))]",
-      "enableDcrErrorLogs": "[steps('ingestion').enableDcrErrorLogs]"
+      "enableDcrErrorLogs": "[steps('ingestion').enableDcrErrorLogs]",
+      "enableAsim": "[steps('ingestion').enableAsim]",
+      "asimSchemas": "[coalesce(steps('ingestion').asimSchemas, parse('[]'))]"
     }
   }
 }
