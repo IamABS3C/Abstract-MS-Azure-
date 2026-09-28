@@ -7,8 +7,13 @@
     "author": "Abstract Security - Solutions Engineering"
   },
   "parameters": {
-    "workspaceName": { "type": "string" },
-    "customTableName": { "type": "string", "defaultValue": "AbstractEventLogs_CL" }
+    "workspaceName": {
+      "type": "string"
+    },
+    "customTableName": {
+      "type": "string",
+      "defaultValue": "AbstractEventLogs_CL"
+    }
   },
   "resources": [
     {
@@ -20,7 +25,7 @@
         "displayName": "Abstract Security - High or Critical event",
         "description": "An Abstract-delivered event with high or critical severity was observed. Enriched/normalized upstream by the Abstract pipeline; the AbstractInsightId custom detail enables the agentic Verdict playbook.",
         "severity": "High",
-        "enabled": true,
+        "enabled": false,
         "query": "AbstractEventLogs_CL\n| extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', ''))\n| where TimeGenerated > ago(1h)\n| extend e = AbstractEvent\n| extend AbstractSeverity = tolower(tostring(e.severity)),\n         SrcIpAddr = coalesce(tostring(e.source_ipv4), tostring(e.source_address)),\n         ActorUsername = coalesce(tostring(e.user_name), tostring(e.user_id)),\n         AbstractInsightId = coalesce(tostring(e.id), tostring(e.acs_id)),\n         EventProduct = tostring(e.product),\n         EventMessage = coalesce(tostring(e.message), Message)\n| where AbstractSeverity in (\"high\", \"critical\")\n| project TimeGenerated, AbstractSeverity, EventProduct, EventMessage, SrcIpAddr, ActorUsername, AbstractInsightId",
         "queryFrequency": "PT1H",
         "queryPeriod": "PT1H",
@@ -28,7 +33,10 @@
         "triggerThreshold": 0,
         "suppressionDuration": "PT1H",
         "suppressionEnabled": false,
-        "tactics": ["InitialAccess", "Execution"],
+        "tactics": [
+          "InitialAccess",
+          "Execution"
+        ],
         "incidentConfiguration": {
           "createIncident": true,
           "groupingConfiguration": {
@@ -36,12 +44,17 @@
             "reopenClosedIncident": false,
             "lookbackDuration": "PT5H",
             "matchingMethod": "Selected",
-            "groupByEntities": ["IP", "Account"],
+            "groupByEntities": [
+              "IP",
+              "Account"
+            ],
             "groupByAlertDetails": [],
             "groupByCustomDetails": []
           }
         },
-        "eventGroupingSettings": { "aggregationKind": "AlertPerResult" },
+        "eventGroupingSettings": {
+          "aggregationKind": "AlertPerResult"
+        },
         "customDetails": {
           "AbstractInsightId": "AbstractInsightId",
           "AbstractSeverity": "AbstractSeverity",
@@ -50,11 +63,21 @@
         "entityMappings": [
           {
             "entityType": "IP",
-            "fieldMappings": [ { "identifier": "Address", "columnName": "SrcIpAddr" } ]
+            "fieldMappings": [
+              {
+                "identifier": "Address",
+                "columnName": "SrcIpAddr"
+              }
+            ]
           },
           {
             "entityType": "Account",
-            "fieldMappings": [ { "identifier": "Name", "columnName": "ActorUsername" } ]
+            "fieldMappings": [
+              {
+                "identifier": "Name",
+                "columnName": "ActorUsername"
+              }
+            ]
           }
         ]
       }

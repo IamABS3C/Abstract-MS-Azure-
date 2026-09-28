@@ -158,15 +158,14 @@ def deploy_table(manifest: dict) -> str:
         lines.append("")
         lines.append(CATEGORY_BLURB[cat])
         lines.append("")
-        lines.append("| Template | Scope | Deploy | CLI |")
+        lines.append("| Template | What it does | Scope | Deploy |")
         lines.append("| --- | --- | --- | --- |")
         for tpl in by_cat[cat]:
             star = " ⭐" if tpl.get("recommended") else ""
-            first = " **(deploy first)**" if tpl.get("deployFirst") else ""
+            first = "<br><sub>deploy first</sub>" if tpl.get("deployFirst") else ""
             lines.append(
-                f"| **{tpl['title']}**{star}{first} | {SCOPE_LABEL[tpl['scope']]} | "
-                f"{button(manifest, tpl)} | "
-                f"`{cli_command(tpl)}` |"
+                f"| **{tpl['title']}**{star}{first} | {tpl.get('tagline', '')} | "
+                f"{SCOPE_LABEL[tpl['scope']]} | {button(manifest, tpl)} |"
             )
         lines.append("")
     return "\n".join(lines).rstrip()
@@ -182,6 +181,8 @@ def template_detail(manifest: dict) -> str:
         lines.append("")
         lines.append(f"- **Scope:** {SCOPE_LABEL[tpl['scope']]} "
                      f"· **Portal UI:** `{tpl['ui']}`")
+        lines.append(f"- **Deploy:** {button(manifest, tpl)}")
+        lines.append(f"- **CLI:** `{cli_command(tpl)}`")
         lines.append(f"- **Files:** `{tpl['path']}.bicep` · "
                      f"`{tpl['path']}.azuredeploy.json` · "
                      f"`{tpl['path']}.{tpl['ui']}.json`")
@@ -226,7 +227,7 @@ def template_spec_table(manifest: dict) -> str:
         return "_No Form-view templates in this solution._"
 
     lines = [
-        "The buttons above use `uiFormDefinitionUri`, which the portal accepts but which",
+        "The deploy buttons use `uiFormDefinitionUri`, which the portal accepts but which",
         "Microsoft does **not** document for Deploy-to-Azure links. Template specs are the",
         "documented delivery path for the identical wizard — use these when a customer's",
         "policy allows only documented Microsoft flows, or if the button form ever changes:",
