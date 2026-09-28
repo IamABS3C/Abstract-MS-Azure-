@@ -187,11 +187,15 @@
             "name": "customTablePlan",
             "type": "Microsoft.Common.DropDown",
             "label": "Abstract table plan",
-            "defaultValue": "Analytics",
-            "toolTip": "Analytics runs analytics rules and the Abstract content pack. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Azure does not allow changing an existing Analytics table to Auxiliary.",
+            "defaultValue": "Keep current plan (Analytics for a new table)",
+            "toolTip": "Keep current plan leaves an existing table's plan alone, so a redeploy never changes its cost; a new table is created as Analytics. Analytics runs analytics rules and the Abstract content pack. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Choosing a plan for an existing table switches the whole table.",
             "constraints": {
               "required": true,
               "allowedValues": [
+                {
+                  "label": "Keep current plan (Analytics for a new table)",
+                  "value": "Keep"
+                },
                 {
                   "label": "Analytics",
                   "value": "Analytics"

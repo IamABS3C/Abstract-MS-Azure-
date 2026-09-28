@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "4984787628003821979"
+      "templateHash": "495997560996384133"
     }
   },
   "parameters": {
@@ -193,19 +193,28 @@
     },
     "customTablePlan": {
       "type": "string",
-      "defaultValue": "Analytics",
+      "defaultValue": "Keep",
       "allowedValues": [
+        "Keep",
         "Analytics",
         "Basic",
         "Auxiliary"
       ],
       "metadata": {
-        "description": "Table plan for the Abstract table. Analytics (default) runs analytics rules and our content pack on it. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Set at creation; changing an existing Analytics table to Auxiliary is not supported by Azure."
+        "description": "Table plan for the Abstract table. Keep (default) keeps the plan an existing table already has, and create a new table as Analytics: a redeploy then never changes a table's plan, or its cost, by accident. Analytics runs analytics rules and our content pack on it. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Setting a plan on an existing table switches it; Azure applies the new plan to the whole table."
       }
     }
   },
   "variables": {
     "copy": [
+      {
+        "name": "customTableArmColumns",
+        "count": "[length(variables('effectiveTableColumns'))]",
+        "input": {
+          "name": "[variables('effectiveTableColumns')[copyIndex('customTableArmColumns')].name]",
+          "type": "[if(equals(toLower(string(variables('effectiveTableColumns')[copyIndex('customTableArmColumns')].type)), 'datetime'), 'dateTime', toLower(string(variables('effectiveTableColumns')[copyIndex('customTableArmColumns')].type)))]"
+        }
+      },
       {
         "name": "sourceRouteFlows",
         "count": "[length(variables('enabledSourceRoutes'))]",
@@ -1117,6 +1126,7 @@
     "generatedSchema": "[variables('$fxv#0')]",
     "useGeneratedSchema": "[empty(parameters('tableColumns'))]",
     "effectiveTableColumns": "[if(variables('useGeneratedSchema'), variables('generatedSchema').tableColumns, parameters('tableColumns'))]",
+    "customTablePlanProperty": "[if(equals(parameters('customTablePlan'), 'Keep'), createObject(), createObject('plan', parameters('customTablePlan')))]",
     "effectiveStreamColumns": "[if(variables('useGeneratedSchema'), variables('generatedSchema').streamColumns, parameters('tableColumns'))]",
     "effectiveTransformKql": "[if(variables('useGeneratedSchema'), variables('generatedSchema').transformKql, parameters('transformKql'))]",
     "sourceRouteCatalog": "[variables('$fxv#1').routes]",
@@ -1237,23 +1247,7 @@
       "type": "Microsoft.OperationalInsights/workspaces/tables",
       "apiVersion": "2026-03-01",
       "name": "[format('{0}/{1}', variables('effectiveWorkspaceName'), parameters('customTableName'))]",
-      "properties": {
-        "schema": {
-          "copy": [
-            {
-              "name": "columns",
-              "count": "[length(variables('effectiveTableColumns'))]",
-              "input": {
-                "name": "[variables('effectiveTableColumns')[copyIndex('columns')].name]",
-                "type": "[if(equals(toLower(string(variables('effectiveTableColumns')[copyIndex('columns')].type)), 'datetime'), 'dateTime', toLower(string(variables('effectiveTableColumns')[copyIndex('columns')].type)))]"
-              }
-            }
-          ],
-          "name": "[parameters('customTableName')]"
-        },
-        "totalRetentionInDays": "[parameters('workspaceRetentionDays')]",
-        "plan": "[parameters('customTablePlan')]"
-      },
+      "properties": "[union(createObject('schema', createObject('name', parameters('customTableName'), 'columns', variables('customTableArmColumns')), 'totalRetentionInDays', parameters('workspaceRetentionDays')), variables('customTablePlanProperty'))]",
       "dependsOn": [
         "[resourceId('Microsoft.OperationalInsights/workspaces', variables('effectiveWorkspaceName'))]"
       ]

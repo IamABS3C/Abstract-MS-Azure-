@@ -139,9 +139,9 @@ param enableDcrErrorLogs bool = true
 @description('Sources whose raw record (event.original) Sentinel should parse with the vendor\'s own published connector logic, by name from parameters/sentinel-source-routes.json (for example [\'okta\']). Each adds a DCR route into the vendor\'s table and creates that table if it is a custom table. Every event still also lands in the Abstract table.')
 param sourceRoutes array = []
 
-@description('Table plan for the Abstract table. Analytics (default) runs analytics rules and our content pack on it. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Set at creation; changing an existing Analytics table to Auxiliary is not supported by Azure.')
-@allowed(['Analytics', 'Basic', 'Auxiliary'])
-param customTablePlan string = 'Analytics'
+@description('Table plan for the Abstract table. Keep (default) keeps the plan an existing table already has, and create a new table as Analytics: a redeploy then never changes a table\'s plan, or its cost, by accident. Analytics runs analytics rules and our content pack on it. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Setting a plan on an existing table switches it; Azure applies the new plan to the whole table.')
+@allowed(['Keep', 'Analytics', 'Basic', 'Auxiliary'])
+param customTablePlan string = 'Keep'
 
 // ---------------------------------------------------------------------------
 // Derived values + role definition IDs
@@ -163,6 +163,13 @@ var existingKeyVaultResourceGroupName = split(existingKeyVaultResourceId, '/')[4
 var generatedSchema = loadJsonContent('../../parameters/sentinel-destination.schema.json')
 var useGeneratedSchema = empty(tableColumns)
 var effectiveTableColumns = useGeneratedSchema ? generatedSchema.tableColumns : tableColumns
+// Log Analytics table columns want 'dateTime' (capital T); everything else is lower-case.
+var customTableArmColumns = [for col in effectiveTableColumns: {
+  name: col.name
+  type: toLower(string(col.type)) == 'datetime' ? 'dateTime' : toLower(string(col.type))
+}]
+// customTablePlan 'Keep' sends no plan, so Azure keeps an existing table's plan (Analytics for a new table).
+var customTablePlanProperty = customTablePlan == 'Keep' ? {} : { plan: customTablePlan }
 var effectiveStreamColumns = useGeneratedSchema ? generatedSchema.streamColumns : tableColumns
 var effectiveTransformKql = useGeneratedSchema ? generatedSchema.transformKql : transformKql
 
@@ -328,17 +335,13 @@ resource sentinelOnboarding 'Microsoft.SecurityInsights/onboardingStates@2024-03
 // ---------------------------------------------------------------------------
 resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2026-03-01' = {
   name: '${effectiveWorkspaceName}/${customTableName}'
-  properties: {
+  properties: union({
     schema: {
       name: customTableName
-      columns: [for col in effectiveTableColumns: {
-        name: col.name
-        type: toLower(string(col.type)) == 'datetime' ? 'dateTime' : toLower(string(col.type))
-      }]
+      columns: customTableArmColumns
     }
     totalRetentionInDays: workspaceRetentionDays
-    plan: customTablePlan
-  }
+  }, customTablePlanProperty)
   dependsOn: createWorkspace ? [workspace] : []
 }
 

@@ -3,8 +3,9 @@
 ## 3.8.0 — 2026-09-28
 
 ### Added
-- **`customTablePlan`** on both Sentinel templates: Analytics (default), Basic or Auxiliary
-  (the Sentinel data lake tier) for the Abstract table.
+- **`customTablePlan`** on both Sentinel templates: Keep (default), Analytics, Basic or
+  Auxiliary (the Sentinel data lake tier) for the Abstract table. Keep sends no plan, so a
+  redeploy never changes an existing table's plan or cost; a new table is created as Analytics.
 - **Portal form controls** for the Abstract table plan, the vendor-table source routes (a
   multi-select the generator keeps in sync with the source list) and DCR error logging.
 - **Per-source modes** in `docs/sentinel-source-routes.md`: vendor table (trim to the raw
@@ -12,8 +13,16 @@
   the Abstract content pack), with Microsoft first-party data left on its native connectors.
   States that none of it needs a Microsoft partnership.
 - MIT attribution for the reused Microsoft transformations on every generated route.
+- `gen-sentinel-source-routes.py` rebuilds the compiled ARM templates when the routes change,
+  and `--check` fails when a portal form or template is missing or an ARM template does not
+  embed the current routes. Before, a new source could appear in the portal while the
+  deployed template silently skipped its route.
 
 ### Verified live
+- Table plans: Azure accepted Analytics to Auxiliary and Auxiliary to Analytics on existing
+  tables, and a table update without a plan kept the table's plan. Redeploying the template
+  twice over an Auxiliary Abstract table (default plan, then with the Okta route added)
+  succeeded both times, left the table Auxiliary and kept the DCR's immutable id.
 - An Auxiliary Abstract table accepted the full schema through the DCR transformation: 10 of
   10 captured Okta events with every field present and `TimeGenerated` from the event.
 - Found while testing: the standard `/query` API and `az monitor log-analytics query` return 0

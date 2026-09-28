@@ -39,7 +39,7 @@ trimmed event leaves them empty.
 | Route function | Abstract, on each source's route to Sentinel | `SELECT_KEYS` keeps only `event.original` and the routing fields, so parsed ACS fields Sentinel's content does not read are not sent |
 | One destination | Abstract | A single Azure Sentinel Destination per workspace. It does not need one per source: each source already has its own route |
 | Source routes | The DCR, from `sourceRoutes` in the Sentinel Destination templates | For each listed source, selects its events, unpacks `event.original` into the columns Microsoft's connector expects, and runs Microsoft's published transformation into the vendor's table |
-| Abstract table | The same DCR | Receives every event. `customTablePlan`: Analytics (default) to run rules and the content pack on it, Auxiliary (the data lake tier) for cheap retention when every source is in vendor-table mode, or Basic. Set it at creation: Azure does not change an Analytics table to Auxiliary |
+| Abstract table | The same DCR | Receives every event. `customTablePlan`: Keep (default) leaves an existing table's plan alone and creates a new table as Analytics, so a redeploy never changes the table's cost. Pick Analytics to run rules and the content pack on it, Auxiliary (the data lake tier) for cheap retention when every source is in vendor-table mode, or Basic. Picking a plan for an existing table switches the whole table |
 
 **Querying an Auxiliary table.** Use the Log Analytics portal with an explicit time range, or the `/search` API (`POST https://api.loganalytics.io/v1/workspaces/<id>/search` with a `timespan`). The standard `/query` API and `az monitor log-analytics query` return a count of **0** for an Auxiliary table that holds data. Tested with the full Abstract schema: every event and field arrived, and `TimeGenerated` came from the event.
 
@@ -65,7 +65,9 @@ Ingestion API's 1 MB-per-call and 2 GB-per-minute headroom.
    definition for a custom `_CL` target, a KQL `match` on the routing fields, and `defaults`
    for any column Microsoft's own poller adds that the raw record lacks.
 3. Run `python3 solutions/scripts/gen-sentinel-source-routes.py`. It refuses a transformation
-   it cannot safely re-point, or one over Azure's 15,360-character limit.
+   it cannot safely re-point, or one over Azure's 15,360-character limit, adds the source to
+   both portal forms and rebuilds both ARM templates (it needs `az bicep`). Commit all of them:
+   CI's `--check` fails if a form or ARM template lags the source list.
 4. Deploy with `sourceRoutes` listing the source (the portal form lists every source the
    generator knows), and install the vendor's Content Hub solution for its parsers, rules and
    workbooks. Installing a Content Hub solution is free and needs no partnership.
