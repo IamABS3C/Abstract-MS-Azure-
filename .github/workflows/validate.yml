@@ -90,6 +90,10 @@ jobs:
             fi
           done < <(find . -name '*.sh' -not -path './.git/*' -not -path '*/.venv/*' -print0)
           exit $fail
+      # The with-app deployment script decides which app and which Key Vault secret it may
+      # touch. These cases run it against a stubbed Azure CLI; a regression fails here.
+      - name: Sentinel app script decisions
+        run: bash solutions/ci/test-sentinel-app-script.sh
       - name: shellcheck (advisory)
         continue-on-error: true
         run: |

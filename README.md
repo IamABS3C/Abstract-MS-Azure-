@@ -144,7 +144,7 @@ az deployment tenant create -l eastus \
   --parameters eventHubAuthorizationRuleId=<rule-id> eventHubName=<entra-hub>
 
 # 5. Sentinel destination into an existing workspace (ASIM stays off).
-az deployment group create -g <workspace-rg> \
+az deployment group create -g <workspace-rg> --mode Incremental \
   --template-file solutions/templates/destinations/sentinel-destination.bicep \
   --parameters createWorkspace=false workspaceName=<workspace> principalId=<abstract-sp-object-id>
 ```

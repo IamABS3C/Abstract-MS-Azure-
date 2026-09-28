@@ -10,9 +10,12 @@ Azure for it:
 | [`sentinel-destination`](../templates/destinations/sentinel-destination.bicep) | **Recommended for production.** You create the Entra app registration yourself (or with [`new-abstract-sentinel-app.sh`](../scripts/new-abstract-sentinel-app.sh)) and pass its service principal. No privileged identity is involved. |
 | [`sentinel-destination-with-app`](../templates/destinations/sentinel-destination-with-app.bicep) | Labs and fast proofs of concept. A deployment script creates the app registration and client secret for you, which needs a tier-0 provisioning identity (see [Identities](#6-identities-and-permissions)). |
 
-Every statement below is either read from the templates in this repository (they are the
-source of truth; file references are given) or was measured on a test Sentinel workspace
-fed by an Abstract test tenant. Anything not measured is marked **Not verified**.
+Every statement below comes from one of three places, and says which when it matters:
+- the templates and scripts in this repository, which are the source of truth;
+- a measurement on a test Sentinel workspace fed by an Abstract test tenant (**Measured**);
+- Microsoft's documentation (**Microsoft docs**).
+
+Anything not established one of those ways is marked **Not verified**.
 
 ---
 
@@ -23,12 +26,15 @@ fed by an Abstract test tenant. Anything not measured is marked **Not verified**
   changes the settings of an existing workspace or its Microsoft Sentinel onboarding. The
   only Microsoft Sentinel resource either template writes is the onboarding state of a
   **new** workspace it creates itself.
-- **In an existing workspace it adds exactly three resources** — a custom table
-  (`AbstractEventLogs_CL`), a Data Collection Endpoint and a Data Collection Rule — plus an
-  optional diagnostic setting on that DCR and one role assignment on that DCR.
-- **The identity Abstract uses can only publish rows to that one DCR.** It gets
-  Monitoring Metrics Publisher on the DCR, nothing on the workspace, and no Microsoft
-  Graph permissions. It cannot read your data or touch your rules.
+- **In an existing workspace the standard template adds three resources**: a custom table
+  (`AbstractEventLogs_CL`), a Data Collection Endpoint and a Data Collection Rule. With
+  defaults it also adds a diagnostic setting and one role assignment, both on that DCR.
+  The with-app template additionally creates a Key Vault, a deployment script and the Entra
+  app ([section 3](#3-exactly-what-each-template-creates-or-changes)).
+- **With the default roles, the identity Abstract uses can only publish rows to that one
+  DCR.** It gets Monitoring Metrics Publisher on the DCR, nothing on the workspace, and no
+  Microsoft Graph permissions. It cannot read your data or touch your rules. (Opting into
+  Monitoring Contributor also lets it change that DCR.)
 - **Writing Microsoft's ASIM tables is off by default.** When you turn it on, your
   existing ASIM analytics rules start seeing Abstract data too. That is the point of the
   feature, and it is also the one way this destination can change how your existing
@@ -65,15 +71,16 @@ Logs Ingestion API:
   `TimeGenerated` from `timestamp` and stores ACS `id` and `type` as `acs_id` and
   `acs_type`, because Log Analytics reserves those names.
 - **Configuration check:** when you save the destination, Abstract posts a single
-  one-field test record. That record proves the credentials and DCR work, not the table
-  schema.
+  one-field test record (**Measured**: it lands with `TimeGenerated` set at arrival). That
+  record proves the credentials and DCR work, not the table schema.
 
-The destination is a push API client. It holds no Azure role other than the one you grant
-on the DCR. It never calls Azure Resource Manager, Microsoft Graph or the Sentinel API.
+The destination is a push API client: it signs in to Entra ID and posts to the Logs
+Ingestion API. It holds no Azure role other than the one you grant on the DCR, so it has no
+access to Azure Resource Manager, Microsoft Graph or the Sentinel API.
 
 **Measured end to end** (Abstract test tenant → the real destination → test workspace):
-every event landed with every field populated, including nested `ext.*` fields; 390 of
-423 leaf values were byte-identical and the other 24 differed only in date or number
+every event landed with its fields populated, including nested `ext.*` fields. Of 423
+leaf values compared, 390 were byte-identical and 24 more differed only in date or number
 formatting.
 
 ---
@@ -102,7 +109,7 @@ workspace (set `existingWorkspaceLocation`).
 | --- | --- | --- | --- |
 | Log Analytics workspace | `createWorkspace` = true | SKU, retention, resource-permission access mode | **Not created or modified** |
 | Microsoft Sentinel onboarding (`onboardingStates/default`) | `createWorkspace` and `enableSentinel` | Turns Sentinel on | **Not created or modified** |
-| Table `AbstractEventLogs_CL` (name from `customTableName`) | Always | One column per top-level ACS key (75 columns), generated from the ACS catalog | Created, or updated if a table of that name exists ([section 5](#5-what-it-can-change-and-how-to-control-it)) |
+| Table `AbstractEventLogs_CL` (name from `customTableName`) | Always | 75 columns generated from the ACS catalog: `TimeGenerated`, one per top-level ACS key, and the fields the destination adds (`timestamp`, `acs_type`, `acs_resource_*`) | Created, or updated if a table of that name exists ([section 5](#5-what-it-can-change-and-how-to-control-it)) |
 | Data Collection Endpoint (`abstract-dce`) | Always | Public ingestion endpoint | Created in the resource group |
 | Data Collection Rule (`abstract-dcr`) | Always | One input stream; one dataflow to the Abstract table; one per enabled ASIM schema | Created in the resource group |
 | Diagnostic setting `abstract-dcr-errors` on the DCR | `enableDcrErrorLogs` (default on) | Sends the DCR's ingestion errors to `DCRLogErrors` | Created on the new DCR only |
@@ -119,9 +126,9 @@ the service principal the script creates. In addition:
 | Resource | Created when | Notes |
 | --- | --- | --- |
 | Key Vault (RBAC authorization, soft delete, purge protection) | `keyVaultMode` = Create | Holds only the client secret |
-| Role: Key Vault Secrets Officer for the provisioning identity | `keyVaultMode` = Create or Existing | On the new vault, or on the existing vault you name |
-| Role: Key Vault Secrets User for a reader you name | `secretReaderObjectId` supplied | Optional |
-| Deployment script `abstract-create-app` | Always | Runs `scripts/sentinel-app-deploymentscript.sh` as the provisioning identity. Azure creates a temporary storage account and container instance for it and removes them when the script ends, whether it succeeds or fails (`cleanupPreference: Always`) |
+| Role: Key Vault Secrets Officer for the provisioning identity | `keyVaultMode` = Create or Existing | On the new vault, or on the existing vault you name. For an existing vault in another resource group, the deployer needs role-assignment rights there too |
+| Role: Key Vault Secrets User for a reader you name | `secretReaderObjectId` supplied and `keyVaultMode` = Create or Existing | Optional |
+| Deployment script `abstract-create-app` | Always | Runs `scripts/sentinel-app-deploymentscript.sh` as the provisioning identity. Azure creates a temporary storage account and container instance for it; with `cleanupPreference: Always` it removes them when the script ends, whether it succeeds or fails (**Microsoft docs**) |
 | **Outside Azure Resource Manager (in Entra ID):** app registration, service principal, one client secret | Always (the secret only with a Key Vault) | The app has **no** API permissions. It is tagged `abstract:sentinel-destination` |
 
 Deleting the resource group does **not** delete the Entra app or service principal.
@@ -156,16 +163,20 @@ Metrics Publisher on the DCR ([section 6](#6-identities-and-permissions)).
 
 ## 5. What it can change, and how to control it
 
-Every deployment is **incremental**: nothing outside the template is ever deleted.
+Deploy in **Incremental** mode, which is Azure's default and what every command in this
+guide uses: nothing outside the template is deleted. **Never** deploy these templates with
+`--mode Complete`: in Existing mode the workspace is not part of the template, so Complete
+mode would delete it and everything else in the resource group.
+
 Within the template, a deployment writes each resource it declares. That matters in four
 places.
 
 | What | When it happens | Control |
 | --- | --- | --- |
-| **The Abstract table's column list** | A table named `customTableName` already exists | Columns not in the generated schema are removed, and a column whose type differs fails the deployment. A table created by an older, wrapped version of the destination (`TimeGenerated`, `Message`, `AbstractEvent`) would lose `Message` and `AbstractEvent`. Check first (pre-check 2 below), or use a new table name |
+| **The Abstract table's column list** | A table named `customTableName` already exists | Columns not in the generated schema are removed, and a column whose type differs fails the deployment (**Microsoft docs**). A table created by an older, wrapped version of the destination (`TimeGenerated`, `Message`, `AbstractEvent`) would lose `Message` and `AbstractEvent`. Check first (pre-check 2 below), or use a new table name |
 | **The Abstract table's retention and plan** | Only when you set them | `customTableRetentionDays` = 0 (default) sends no retention, and `customTablePlan` = Keep (default) sends no plan, so both stay as they are. **Measured:** a table update without retention kept 60 days interactive / 180 days total; redeploys over an Auxiliary table kept it Auxiliary. Setting a shorter retention deletes older data; setting a plan switches the whole table |
 | **A DCR, DCE or diagnostic setting with the same name** | `abstract-dcr`, `abstract-dce` or `abstract-dcr-errors` already exists in the resource group | The template replaces it. A second destination in the same resource group with the default names would take over the first one's DCR. Give each destination its own names |
-| **A new workspace, redeployed** | You redeploy in Create mode into the same resource group | The auto-generated name is deterministic, so the template re-applies its SKU and retention to that workspace. After the first deployment, redeploy in **Existing** mode |
+| **A new workspace, redeployed** | You redeploy in Create mode into the same resource group | The auto-generated name is deterministic, so the template re-applies its SKU, retention, access mode and tags to that workspace. After the first deployment, redeploy in **Existing** mode |
 
 ---
 
@@ -178,7 +189,7 @@ places.
 | **Secret reader** (optional) | You name it | None | Key Vault Secrets User (the vault) | Acceptable |
 
 **Monitoring Metrics Publisher** grants `Microsoft.Insights/Telemetry/Write`, the only
-permission the Logs Ingestion API needs. **Measured:** with Monitoring Contributor removed
+permission the Logs Ingestion API needs (**Microsoft docs**). **Measured:** with Monitoring Contributor removed
 from the destination's service principal, Abstract kept delivering events to the test
 workspace for the 25 minutes it was watched, including through a DCR redeploy. Monitoring Contributor is
 therefore off by default; it would let the identity rewrite or delete the DCR and its
@@ -212,9 +223,15 @@ step the script performs.
   or logs. The script writes it to Key Vault through a file readable only by the script,
   never on a command line.
 - A re-run reuses the stored secret while it has more than 30 days left and still belongs
-  to the same app. The script refuses to overwrite a same-named secret that belongs to a
-  different app, and reuses an existing app registration only if exactly one has the name
-  and it carries the `abstract:sentinel-destination` tag.
+  to the same app. The script never overwrites a same-named secret tagged for a different
+  app, even with `forceSecretRotation`, and refuses a same-named secret with no `appId` tag
+  unless `forceSecretRotation` is set.
+- An existing app registration is reused only if exactly one has the name and it carries
+  the `abstract:sentinel-destination` tag. The operator scripts
+  (`new-abstract-sentinel-app.sh`, `New-AbstractSentinelApp.ps1`) apply the same rule and
+  tag the secrets they store with the app's `appId`.
+- These decisions are tested on every change by `solutions/ci/test-sentinel-app-script.sh`,
+  which runs the script against a stubbed Azure CLI.
 - If Key Vault is skipped (`keyVaultMode` = None), no secret is created: create one in
   Entra and paste it into Abstract once.
 - Secrets last `secretValidityYears` (default 1 year). Rotation adds a new secret; remove
@@ -229,22 +246,25 @@ step the script performs.
 With `enableAsim` on, the DCR also maps each event from ACS into Microsoft's normalized
 table for its activity (`ASimAuthenticationEventLogs`, `ASimNetworkSessionLogs` and six
 others; see [sentinel-asim.md](sentinel-asim.md)). Microsoft's built-in ASIM parsers read
-those tables automatically, so:
+those tables automatically (**Microsoft docs**), so:
 
 - **Every ASIM analytics rule, hunting query and workbook already running in the
   workspace sees Abstract data from the moment rows arrive.** That can raise new
   incidents.
 - **Duplicates:** if Microsoft's own connector also collects a vendor, ASIM returns that
   vendor's events twice, which can double-count thresholds.
-- **Cost:** each mapped event is stored twice, once in the Abstract table and once in an
-  ASIM table.
-- **UEBA** does not read ASIM tables (Microsoft's UEBA source list), so it is unaffected.
+- **Cost:** each mapped event is stored at least twice, once in the Abstract table and once
+  in an ASIM table. An event whose category spans two schemas (for example authentication
+  and iam, or web and network) lands in both ASIM tables.
+- **UEBA:** Microsoft's documented UEBA sources do not include the ASIM tables, so UEBA
+  should be unaffected (**Not verified** on a workspace).
 
 **Built-in protections:**
 - off by default;
 - Abstract findings and alerts never go to the activity tables;
 - events more than two days old stay out of the ASIM tables. Azure restamps such events
-  with their arrival time, so a replay or backfill would otherwise look like live activity.
+  with their arrival time (**Microsoft docs**), so a replay or backfill would otherwise look
+  like live activity.
 
 **To turn it on safely:**
 
@@ -272,8 +292,8 @@ those tables automatically, so:
 
 | Item | Charged? |
 | --- | --- |
-| Ingestion into the Abstract table | Yes, at the table's plan (Analytics by default; Basic or Auxiliary are cheaper, but Sentinel analytics rules cannot run on Auxiliary) |
-| Ingestion into ASIM tables (when on) | Yes, a second copy of each mapped event |
+| Ingestion into the Abstract table | Yes, at the table's plan (Analytics by default; Basic or Auxiliary are cheaper, but Sentinel analytics rules cannot run on Auxiliary, per **Microsoft docs**) |
+| Ingestion into ASIM tables (when on) | Yes, a further copy of each mapped event |
 | Retention beyond the free period | Yes |
 | `DCRLogErrors` | Yes, normally tiny |
 | DCE, DCR, role assignments | **Not verified** as free; no charge is published |
@@ -319,6 +339,12 @@ is where the savings come from.
    `solutions/scripts/new-abstract-sentinel-app.sh`), and store its secret in Key Vault.
 2. Deploy the standard template in Existing mode with unique DCE and DCR names, ASIM off,
    and retention and plan left on their defaults.
+   ```bash
+   az deployment group create -g <rg> --mode Incremental \
+     --template-file solutions/templates/destinations/sentinel-destination.bicep \
+     --parameters createWorkspace=false workspaceName=<ws> principalId=<sp-object-id> \
+                  dataCollectionEndpointName=<unique-dce> dataCollectionRuleName=<unique-dcr>
+   ```
 3. Enter the three outputs, the client ID, secret and tenant ID in Abstract's Azure
    Sentinel Destination, and route one low-volume source first.
 
@@ -363,7 +389,9 @@ only ever adds its own items:
 - the `ASim_AbstractEvent` function and three hunting queries (saved searches);
 - three workbooks;
 - three Logic App playbooks and their API connections;
-- two connector tiles, which are display only.
+- two connector tiles, which are display only. The second one's instructions describe
+  deploying an optional Logic App pull connector (`solution/connector/`), which writes
+  four more `_CL` tables if you choose to deploy it.
 
 The Verdict playbook adds a comment and, for a malicious verdict, raises severity to
 High; it never changes an incident's status.
@@ -410,10 +438,12 @@ originals. Review each item before enabling it.
 - Events kept arriving after Monitoring Contributor was removed from the destination's
   service principal.
 - DCR updates take about 15 minutes to settle.
-- The with-app deployment script, run against a stubbed Azure CLI, covers these cases:
-  - it stores a new secret through a file;
-  - it refuses a secret that belongs to another app;
-  - it refuses an untagged app with the same name;
+- The with-app deployment script's decisions, run against a stubbed Azure CLI by
+  `solutions/ci/test-sentinel-app-script.sh` on every change:
+  - it stores a new secret through a file, never on a command line;
+  - it refuses a secret tagged for another app, even when rotation is forced;
+  - it refuses an untagged same-named secret unless rotation is forced;
+  - it refuses an untagged app with the same name, or more than one;
   - it removes an unstored credential when the Key Vault write fails;
   - it reuses a valid secret without rotating it.
 
@@ -427,3 +457,8 @@ originals. Review each item before enabling it.
   the activity the ten rules that were run look for.
 - DCE and DCR billing.
 - Whether Microsoft's E5 data grant covers the ASIM tables.
+- Whether UEBA ignores rows in the ASIM tables (Microsoft's source list says it does).
+- The operator scripts' new app-tag checks against a live tenant
+  (`New-AbstractSentinelApp.ps1` relies on `New-AzADApplication -Tag`).
+- The app-registration paths' new tag checks and the Azure Policy path's durable marker
+  against a live tenant; both are compile-checked only.

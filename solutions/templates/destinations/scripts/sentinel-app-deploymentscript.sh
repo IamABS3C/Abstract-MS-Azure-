@@ -121,9 +121,9 @@ if [ "$KEY_VAULT_MODE" = "None" ]; then
 else
   log "Checking for a usable secret in $KV_NAME"
   NEED_SECRET=true
-  if [ "$FORCE_ROTATE" = "true" ]; then
-    warn "FORCE_ROTATE=true - minting a new secret. Update Abstract with the new value."
-  else
+  # The existing secret is always read, even for a forced rotation, so a same-named
+  # secret that belongs to another app is never overwritten.
+  if true; then
     # Only a SecretNotFound answer means "absent". Any other failure (most often a
     # 403 while the Key Vault role assignment made moments ago propagates) is
     # retried, then fatal - treating it as absent would mint a secret that the
@@ -160,6 +160,8 @@ def days_left(ts):
     return (datetime.datetime.fromisoformat(ts) - now).days
 if secret.get("appId") and secret["appId"] != app_id:
     print("other-app")
+elif not secret.get("appId"):
+    print("untagged")
 elif days_left(secret.get("expires")) <= 30:
     print("expiring")
 elif not any(days_left(c) > 30 for c in creds):
@@ -168,7 +170,13 @@ else:
     print("reuse")
 PY
 )
+      if [ "$FORCE_ROTATE" = "true" ] && [ "$VERDICT" != "other-app" ]; then
+        [ "$VERDICT" = "untagged" ] && warn "the vault secret $SECRET_NAME has no appId tag - replacing it because forceSecretRotation is set"
+        VERDICT=forced
+      fi
       case "$VERDICT" in
+        forced)        warn "forceSecretRotation - minting a new secret. Update Abstract with the new value." ;;
+        untagged)      die "the vault secret $SECRET_NAME has no appId tag, so it may belong to something else - refusing to overwrite it. Choose a different secretName, or set forceSecretRotation if it is this app's secret." ;;
         reuse)         NEED_SECRET=false
                        ok "existing secret belongs to app $APP_ID and is valid for >30 days - NOT rotating (re-running this template is safe)" ;;
         other-app)     die "the vault secret $SECRET_NAME belongs to another app - refusing to overwrite it. Choose a different secretName or vault." ;;

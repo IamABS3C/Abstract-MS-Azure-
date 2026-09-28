@@ -355,7 +355,7 @@
             "type": "Microsoft.Common.InfoBox",
             "options": {
               "icon": "Info",
-              "text": "Abstract authenticates to Azure Monitor with an Entra app registration. ARM cannot create app registrations, so create the app + client secret first. Paste the app's SERVICE PRINCIPAL object ID below to have this template grant it Monitoring Metrics Publisher + Monitoring Contributor on the DCR. The Client ID, Client Secret and Tenant ID go into the Abstract modal directly."
+              "text": "Abstract authenticates to Azure Monitor with an Entra app registration. ARM cannot create app registrations, so create the app + client secret first. Paste the app's SERVICE PRINCIPAL object ID below to have this template grant it Monitoring Metrics Publisher on the DCR (Monitoring Contributor only if you tick the box below). The Client ID, Client Secret and Tenant ID go into the Abstract modal directly."
             }
           },
           {

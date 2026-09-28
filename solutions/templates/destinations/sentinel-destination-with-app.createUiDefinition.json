@@ -375,7 +375,7 @@
             "type": "Microsoft.Common.TextBox",
             "label": "Entra app display name",
             "defaultValue": "Abstract-Sentinel-App",
-            "toolTip": "Display name for the app registration created for Abstract. Reused if one with this name already exists.",
+            "toolTip": "Display name for the app registration created for Abstract. An existing app is reused only if it is the only one with this name and this template created it (it carries the abstract:sentinel-destination tag); otherwise the deployment stops.",
             "constraints": {
               "required": true,
               "regex": "^.{1,120}$",

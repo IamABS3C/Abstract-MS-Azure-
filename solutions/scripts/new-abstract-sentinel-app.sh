@@ -20,8 +20,9 @@
 #  an app in the tenant (and, to deploy, Contributor + User Access
 #  Administrator / Owner on the target resource group).
 #
-#  SECURITY: the client secret is printed once (or stored in Key Vault with
-#  --keyvault) and is NEVER written to disk or a log by this script.
+#  SECURITY: the client secret is printed once, or stored in Key Vault with
+#  --keyvault. It is never logged. For the Key Vault write it passes through a
+#  temporary file readable only by you, deleted immediately after.
 #
 #  USAGE
 #    ./new-abstract-sentinel-app.sh \
@@ -111,12 +112,31 @@ if ! $ASSUME_YES; then
 fi
 
 # ---- 1. app registration (idempotent by displayName) ------------------------
-APP_ID="$(az ad app list --display-name "$APP_NAME" --query '[0].appId' -o tsv 2>/dev/null || true)"
-if [[ -n "$APP_ID" && "$APP_ID" != "None" ]]; then
+# A name proves nothing: anyone allowed to register apps could create one with this
+# name, and this script would then give it a credential and DCR access. Reuse an app
+# only if exactly one has the name and it carries the marker tag the Sentinel
+# templates and this script write on apps they create.
+MARKER="abstract:sentinel-destination"
+MATCHES="$(az ad app list --display-name "$APP_NAME" --query "[].{appId:appId, tags:tags}" -o json)"
+read -r MATCH_COUNT APP_ID MARKED <<<"$(printf '%s' "$MATCHES" | python3 -c "
+import json, sys
+apps = json.load(sys.stdin) or []
+first = apps[0] if apps else {}
+print(len(apps), first.get('appId') or '-', 'yes' if '$MARKER' in (first.get('tags') or []) else 'no')")"
+if [[ "$MATCH_COUNT" -gt 1 ]]; then
+  err "$MATCH_COUNT app registrations are named '$APP_NAME' - choose a unique --app-name."; exit 1
+elif [[ "$MATCH_COUNT" -eq 1 ]]; then
+  if [[ "$MARKED" != yes ]]; then
+    err "An app named '$APP_NAME' ($APP_ID) exists but was not created for the Abstract Sentinel destination, so it is not reused. Choose another --app-name, or tag it if you created it for Abstract: az rest --method PATCH --url \"https://graph.microsoft.com/v1.0/applications(appId='$APP_ID')\" --body '{\"tags\":[\"$MARKER\"]}'"
+    exit 1
+  fi
   info "Reusing existing app registration '$APP_NAME' (appId $APP_ID)."
 else
   info "Creating app registration '$APP_NAME' (single-tenant)…"
   APP_ID="$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADMyOrg --query appId -o tsv)"
+  sleep 15   # directory replication before the tag
+  az rest --method PATCH --url "https://graph.microsoft.com/v1.0/applications(appId='${APP_ID}')" \
+    --headers "Content-Type=application/json" --body "{\"tags\":[\"${MARKER}\"]}" -o none
   ok "Created app (appId $APP_ID)."
 fi
 
@@ -142,7 +162,7 @@ if [[ -n "$KEYVAULT" ]]; then
   # Through a 0600 file, not the command line, so the value never shows in the process list.
   SECRET_FILE="$(mktemp)"; chmod 600 "$SECRET_FILE"; printf '%s' "$SECRET_VALUE" > "$SECRET_FILE"
   KV_URI="$(az keyvault secret set --vault-name "$KEYVAULT" \
-      --name abstract-sentinel-client-secret --file "$SECRET_FILE" --encoding utf-8 \
+      --name abstract-sentinel-client-secret --file "$SECRET_FILE" --encoding utf-8 --tags appId="$APP_ID" \
       --expires "$(date -u -v+"${SECRET_YEARS}"y +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "+${SECRET_YEARS} years" +%Y-%m-%dT%H:%M:%SZ)" \
       --query id -o tsv)"; rm -f "$SECRET_FILE"
   SECRET_SINK="stored in Key Vault: $KV_URI"

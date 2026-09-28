@@ -78,7 +78,8 @@ AbstractEventLogs_CL | where acs_id == "<AdditionalFields.AbstractEventId>"
 - **Coverage depends on the Abstract parser.** An event without `event.category` stays in
   the Abstract table only. Fixing the parser in Abstract fixes it for Sentinel and for
   Abstract's own detections at the same time.
-- **Cost.** Mapped events are stored twice: in the Abstract table and in an ASIM table. To
+- **Cost.** Mapped events are stored at least twice: in the Abstract table and in each ASIM
+  table they match (an event whose category spans two schemas lands in both). To
   pay full price for one copy, set the Abstract table to the Auxiliary plan
   (`customTablePlan`) and keep the ASIM tables on Analytics. That only suits workspaces that
   do not use the Abstract content pack, which reads the Abstract table. `asimSchemas`
