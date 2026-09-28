@@ -22,7 +22,8 @@
 #    3. NO OUTPUT VERIFICATION. Nothing read back what it had created.
 #
 #  The app being created is Abstract's runtime identity. It receives DCR RBAC
-#  (Monitoring Metrics Publisher + Monitoring Contributor) from the template;
+#  (Monitoring Metrics Publisher, plus Monitoring Contributor only if the template
+#  is told to) from the template;
 #  it is distinct from the provisioning identity running this script.
 #
 #  Environment (set by the template):
@@ -68,8 +69,17 @@ ok "tenant $TENANT_ID"
 # marker tag this template writes.
 MARKER="abstract:sentinel-destination"
 log "Ensuring app registration '$APP_NAME'"
-MATCHES=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query "[].{appId:appId, tags:tags}" -o json) \
-  || die "cannot list app registrations - does the script identity hold Application.ReadWrite.All with admin consent?"
+# A Graph permission granted to the identity in the same deployment can take a few
+# minutes to reach its tokens, so a refused list is retried before it is fatal.
+MATCHES=""
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  if MATCHES=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query "[].{appId:appId, tags:tags}" -o json 2>/tmp/app-list.err); then
+    break
+  fi
+  MATCHES=""
+  [ "$attempt" -lt 10 ] && { warn "cannot list app registrations yet (attempt $attempt/10), retrying in 30s"; sleep 30; }
+done
+[ -n "$MATCHES" ] || die "cannot list app registrations - does the script identity hold Application.ReadWrite.All (or, for an app it owns, Application.ReadWrite.OwnedBy) with admin consent? $(head -c 300 /tmp/app-list.err)"
 read -r MATCH_COUNT APP_ID MARKED <<<"$(printf '%s' "$MATCHES" | python3 -c "
 import json, sys
 apps = json.load(sys.stdin) or []
@@ -120,9 +130,9 @@ if [ "$KEY_VAULT_MODE" = "None" ]; then
 else
   log "Checking for a usable secret in $KV_NAME"
   NEED_SECRET=true
-  if [ "$FORCE_ROTATE" = "true" ]; then
-    warn "FORCE_ROTATE=true - minting a new secret. Update Abstract with the new value."
-  else
+  # The existing secret is always read, even for a forced rotation, so a same-named
+  # secret that belongs to another app is never overwritten.
+  if true; then
     # Only a SecretNotFound answer means "absent". Any other failure (most often a
     # 403 while the Key Vault role assignment made moments ago propagates) is
     # retried, then fatal - treating it as absent would mint a secret that the
@@ -159,6 +169,8 @@ def days_left(ts):
     return (datetime.datetime.fromisoformat(ts) - now).days
 if secret.get("appId") and secret["appId"] != app_id:
     print("other-app")
+elif not secret.get("appId"):
+    print("untagged")
 elif days_left(secret.get("expires")) <= 30:
     print("expiring")
 elif not any(days_left(c) > 30 for c in creds):
@@ -167,10 +179,16 @@ else:
     print("reuse")
 PY
 )
+      if [ "$FORCE_ROTATE" = "true" ] && [ "$VERDICT" != "other-app" ]; then
+        [ "$VERDICT" = "untagged" ] && warn "the vault secret $SECRET_NAME has no appId tag - replacing it because forceSecretRotation is set"
+        VERDICT=forced
+      fi
       case "$VERDICT" in
+        forced)        warn "forceSecretRotation - minting a new secret. Update Abstract with the new value." ;;
+        untagged)      die "the vault secret $SECRET_NAME has no appId tag, so it may belong to something else - refusing to overwrite it. Choose a different secretName, or set forceSecretRotation if it is this app's secret." ;;
         reuse)         NEED_SECRET=false
                        ok "existing secret belongs to app $APP_ID and is valid for >30 days - NOT rotating (re-running this template is safe)" ;;
-        other-app)     warn "the vault secret $SECRET_NAME was stored for another app - minting one for $APP_ID" ;;
+        other-app)     die "the vault secret $SECRET_NAME belongs to another app - refusing to overwrite it. Choose a different secretName or vault." ;;
         expiring)      warn "existing secret expires within 30 days - rotating" ;;
         no-credential) warn "app $APP_ID holds no matching credential for the vault secret (was the app recreated?) - minting a new one" ;;
         *)             die "could not evaluate the existing secret" ;;
@@ -192,10 +210,15 @@ import datetime
 print((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365*int('$SECRET_YEARS'))).strftime('%Y-%m-%dT%H:%M:%SZ'))")
     STORED=false
     for attempt in 1 2 3; do
+      # The value goes through a 0600 file, never the command line, so it cannot be read
+      # from the process list.
+      SECRET_FILE=$(mktemp); chmod 600 "$SECRET_FILE"; printf '%s' "$SECRET" > "$SECRET_FILE"
       if az keyvault secret set --vault-name "$KV_NAME" --name "$SECRET_NAME" \
-           --value "$SECRET" --expires "$END" --tags appId="$APP_ID" -o none; then
+           --file "$SECRET_FILE" --encoding utf-8 --expires "$END" --tags appId="$APP_ID" -o none; then
+        rm -f "$SECRET_FILE"
         STORED=true; break
       fi
+      rm -f "$SECRET_FILE"
       warn "Key Vault write failed (attempt $attempt/3), retrying in 20s"
       sleep 20
     done

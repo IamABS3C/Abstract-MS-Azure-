@@ -15,6 +15,10 @@ on:
 # quote-heavy regex inside a YAML block scalar is a reliable way to break a workflow
 # file in a way that is hard to see in review.
 
+# Read-only: CI never needs to write to the repository.
+permissions:
+  contents: read
+
 jobs:
   json-lint:
     name: JSON parses
@@ -86,6 +90,10 @@ jobs:
             fi
           done < <(find . -name '*.sh' -not -path './.git/*' -not -path '*/.venv/*' -print0)
           exit $fail
+      # The with-app deployment script decides which app and which Key Vault secret it may
+      # touch. These cases run it against a stubbed Azure CLI; a regression fails here.
+      - name: Sentinel app script decisions
+        run: bash solutions/ci/test-sentinel-app-script.sh
       - name: shellcheck (advisory)
         continue-on-error: true
         run: |

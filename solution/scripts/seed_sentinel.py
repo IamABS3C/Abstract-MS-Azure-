@@ -5,11 +5,14 @@ Seed AbstractEventLogs_CL via the Azure Monitor Logs Ingestion API.
 Pushes Abstract Common Schema (ACS) events straight into the custom table the
 Sentinel Destination template creates, so the workbook, analytics rule, hunting
 queries, and connector graph light up for a demo — without waiting on a live
-pipeline. Pairs with the threat-model demo:
+pipeline.
 
-    python docs/threat-model/demo/identities.py | python solution/scripts/seed_sentinel.py
     python solution/scripts/seed_sentinel.py --file events.json
     python solution/scripts/seed_sentinel.py --sample 50 --dry-run     # no creds needed
+
+LAB WORKSPACES ONLY. Seeded rows are indistinguishable from real ones: they reach the
+Abstract content pack and, if the destination writes ASIM tables, every ASIM rule in
+the workspace. Never run this against a production workspace.
 
 Input: JSON (one event per line, or a JSON array) of bare ACS events. Each is sent
 the way the Abstract Azure Sentinel Destination sends it: the event's own top-level
@@ -69,80 +72,12 @@ def to_row(item: dict) -> dict:
     return event
 
 
-def _sev_to_risk(sev: str) -> float:
-    return {"critical": 95, "high": 80, "medium": 40, "low": 20, "informational": 5, "info": 5}.get((sev or "").lower(), 10)
-
-
-def _demo_to_acs(e: dict, idx: int) -> dict:
-    """Map one threat-model demo event (data.py:events() shape) to an ACS event."""
-    t = e.get("_t", "")
-    ts = e.get("ts")
-    iso = ts.strftime("%Y-%m-%dT%H:%M:%SZ") if hasattr(ts, "strftime") else _now_iso()
-    user = (e.get("user") or e.get("to") or e.get("account") or e.get("nhi") or e.get("agent") or "")
-    user = user.split(":")[-1] if user else ""
-    sev = e.get("sev") or ("high" if t in ("email", "pan_wildfire", "edr") else "info")
-    catalog = {
-        "email":       ("Email Security", "Email", "email", "deliver"),
-        "dns":         ("DNS", "DNS", "dns", "query"),
-        "pan_traffic": ("Palo Alto Networks", "Palo Alto Networks", "network", "traffic"),
-        "pan_wildfire":("Palo Alto Networks", "Palo Alto Networks", "malware", "wildfire_verdict"),
-        "edr":         ("CrowdStrike Falcon", "CrowdStrike", "process", "suspicious_exec"),
-        "okta":        ("Okta", "Okta", "authentication", "login"),
-        "cloudtrail":  ("AWS CloudTrail", "AWS", "cloud", "api_call"),
-        "nhi":         ("Non-Human Identity", "Abstract", "iam", "token_use"),
-        "agent":       ("AI Agent", "Abstract", "agent", "beacon"),
-        "benign_traffic": ("Network", "Benign", "network", "traffic"),
-        "benign_dns":  ("DNS", "Benign", "dns", "query"),
-        "benign_auth": ("Okta", "Benign", "authentication", "login"),
-    }
-    product, vendor, etype, action = catalog.get(t, ("Abstract", "Abstract", t or "event", "observe"))
-    # aggregation_count models Abstract collapsing many raw events into one enriched
-    # record upstream (dedupe/aggregation). High-volume/benign types represent many
-    # raw events; high-signal singletons represent themselves (1).
-    high_volume = {"benign_traffic", "benign_dns", "benign_auth", "pan_traffic", "dns"}
-    agg = (10 + (idx % 50)) if t in high_volume else 1
-    acs = {
-        "id": f"demo-{idx:05d}", "@timestamp": iso, "type": etype, "action": action,
-        "product": product, "vendor": vendor, "severity": sev,
-        "user_name": user, "host_name": e.get("host", ""),
-        "source_ipv4": e.get("src_ip", ""),
-        "dest_ipv4": e.get("dst") if str(e.get("dst", "")).count(".") == 3 else e.get("resp", ""),
-        "risk_score": _sev_to_risk(sev),
-        "aggregation_count": agg,
-        # Abstract resolves an identity for the actor so risk is scored per-identity
-        # across products (drives the identity hunt + cumulative-risk ROI panels).
-        "identity": user or "",
-        "message": e.get("query") or e.get("url") or e.get("proc") or f"{t} event",
-        "tags": ["demo", "threat-model", t],
-    }
-    if e.get("sha256"):
-        acs["file"] = {"hash": {"sha256": e["sha256"]}}
-    return {k: v for k, v in acs.items() if v not in ("", None)}
-
-
-def _events_from_demo() -> list:
-    demo = os.path.join(os.path.dirname(__file__), "..", "..", "docs", "threat-model", "demo")
-    if not os.path.isdir(demo):
-        raise SystemExit("threat-model demo not found at docs/threat-model/demo — run from the repo root.")
-    sys.path.insert(0, demo)
-    import data  # the demo's synthetic estate (data.events()); imports pipeline.py from same dir
-    return [to_row(_demo_to_acs(e, i)) for i, e in enumerate(data.events())]
-
-
 def read_events(args) -> list:
-    if getattr(args, "from_demo", False):
-        return _events_from_demo()
     if args.sample:
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "docs", "threat-model", "demo"))
-        try:
-            import identities  # the demo's ACS scenario generator
-            evs = identities.generate_scenario() + identities.background_noise(max(0, args.sample - 20))
-            return [to_row(e) for e in evs]
-        except Exception:  # fall back to a tiny built-in sample
-            base = {"product": "Demo", "vendor": "Abstract", "severity": "high", "type": "authentication",
-                    "action": "success", "user_name": "demo.user", "source_ipv4": "203.0.113.10",
-                    "message": "sample event", "id": "demo-0"}
-            return [to_row({**base, "id": f"demo-{i}", "@timestamp": _now_iso()}) for i in range(args.sample)]
+        base = {"product": "Demo", "vendor": "Abstract", "severity": "high", "type": "event",
+                "action": "success", "user_name": "demo.user", "source_ipv4": "203.0.113.10",
+                "message": "sample event", "id": "demo-0", "tags": ["demo"]}
+        return [to_row({**base, "id": f"demo-{i}", "@timestamp": _now_iso()}) for i in range(args.sample)]
     raw = open(args.file).read() if args.file else sys.stdin.read()
     raw = raw.strip()
     if not raw:
@@ -169,8 +104,7 @@ def post_rows(dce: str, dcr: str, stream: str, token: str, rows: list):
 def main():
     p = argparse.ArgumentParser(description="Seed AbstractEventLogs_CL via Logs Ingestion API")
     p.add_argument("--file", help="JSON file of events (array or one-per-line)")
-    p.add_argument("--sample", type=int, default=0, help="generate N demo events instead of reading input")
-    p.add_argument("--from-demo", action="store_true", help="map the threat-model demo's synthetic estate (data.py) to ACS and seed it")
+    p.add_argument("--sample", type=int, default=0, help="generate N sample events instead of reading input")
     p.add_argument("--dry-run", action="store_true", help="print rows; do not send (no creds needed)")
     args = p.parse_args()
 

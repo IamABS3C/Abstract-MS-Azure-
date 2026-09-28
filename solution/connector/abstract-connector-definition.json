@@ -72,7 +72,7 @@
             ],
             "customs": [
               { "name": "Abstract Security tenant", "description": "An Abstract Security account with a configured Azure Sentinel destination integration." },
-              { "name": "Entra app registration", "description": "An app registration whose service principal holds Monitoring Metrics Publisher + Monitoring Contributor on the Data Collection Rule (deployed by the Sentinel Destination template)." }
+              { "name": "Entra app registration", "description": "An app registration whose service principal holds Monitoring Metrics Publisher on the Data Collection Rule (deployed by the Sentinel Destination template)." }
             ]
           },
           "instructionSteps": [
@@ -82,7 +82,7 @@
             },
             {
               "title": "2. Create the Entra app",
-              "description": "Register an app + client secret and grant its service principal **Monitoring Metrics Publisher** and **Monitoring Contributor** on the DCR (the template does this when you pass the SP object id)."
+              "description": "Register an app + client secret and grant its service principal **Monitoring Metrics Publisher** on the DCR (the template does this when you pass the SP object id)."
             },
             {
               "title": "3. Configure the destination in Abstract",

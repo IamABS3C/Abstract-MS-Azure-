@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.44.1.10279",
-      "templateHash": "8781941283964300318"
+      "version": "0.47.16.16243",
+      "templateHash": "5732789232456735692"
     }
   },
   "parameters": {
@@ -818,7 +818,7 @@
         "storageAccountUrl": "[if(parameters('createStorageAccount'), reference(resourceId('Microsoft.Storage/storageAccounts', variables('storageNameEffective')), '2023-05-01').primaryEndpoints.blob, '(bring your own)')]",
         "eventHubConnectionString": "[if(parameters('enableSas'), format('Portal: Event Hubs Namespace > Shared access policies > {0} > Connection string-primary key (or run the companion script with -Action Credentials)', parameters('sasRuleName')), '(SAS disabled)')]",
         "storageAccountConnectionString": "[if(and(parameters('createStorageAccount'), parameters('storageAllowSharedKeyAccess')), 'Portal: Storage Account > Security + networking > Access keys > Connection string (or run the companion script with -Action Credentials)', '(shared key access disabled)')]",
-        "docs": "https://docs.abstract.security -> Integrations -> Azure Event Hub"
+        "docs": "https://docs.abstractsecurity.app -> Integrations -> Azure Event Hub"
       }
     }
   }

@@ -15,9 +15,8 @@
          -KeyVault. The secret is NEVER written to disk or a transcript.
       3. With -Deploy, deploys the Sentinel Destination stack (Log Analytics
          workspace + Microsoft Sentinel + Data Collection Endpoint + custom _CL
-         table + Data Collection Rule) and grants the SP BOTH
-         "Monitoring Metrics Publisher" AND "Monitoring Contributor" on the DCR
-         (exactly what the Abstract docs require), then prints the values for the
+         table + Data Collection Rule) and grants the SP "Monitoring Metrics
+         Publisher" on the DCR (all the Logs Ingestion API needs), then prints the values for the
          Abstract "Azure Sentinel Destination" modal.
 
     The Abstract app needs NO Graph API permissions or admin consent - it is
@@ -47,7 +46,7 @@
 .EXAMPLE
     ./New-AbstractSentinelApp.ps1 -AppName Abstract-Sentinel-App `
         -Deploy -ResourceGroup rg-abstract-sentinel -Location eastus
-    # One-shot: identity + full ingestion stack + both DCR roles + modal values.
+    # One-shot: identity + full ingestion stack + DCR role + modal values.
 
 .NOTES
     Secrets: shown once or stored in Key Vault; never logged. If you lose the
@@ -103,12 +102,21 @@ if (-not $Force) {
 }
 
 # ---- 1. app registration (idempotent by display name) -----------------------
-$app = Get-AzADApplication -DisplayName $AppName -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($app) {
+# A name proves nothing: reuse an app only if exactly one has the name and it carries
+# the marker tag the Sentinel templates and these scripts write on apps they create.
+$Marker = 'abstract:sentinel-destination'
+$found = @(Get-AzADApplication -DisplayName $AppName -ErrorAction SilentlyContinue)
+if ($found.Count -gt 1) {
+    throw "$($found.Count) app registrations are named '$AppName' - choose a unique -AppName."
+} elseif ($found.Count -eq 1) {
+    $app = $found[0]
+    if (-not ($app.Tag -contains $Marker)) {
+        throw "An app named '$AppName' ($($app.AppId)) exists but was not created for the Abstract Sentinel destination, so it is not reused. Choose another -AppName, or add the tag '$Marker' to it if you created it for Abstract."
+    }
     Info "Reusing existing app registration '$AppName' (appId $($app.AppId))."
 } else {
     Info "Creating app registration '$AppName' (single-tenant)…"
-    $app = New-AzADApplication -DisplayName $AppName -SignInAudience AzureADMyOrg
+    $app = New-AzADApplication -DisplayName $AppName -SignInAudience AzureADMyOrg -Tag @($Marker)
     Ok "Created app (appId $($app.AppId))."
 }
 $AppId = $app.AppId
@@ -133,12 +141,12 @@ if ($KeyVault) {
     if (-not (Get-Module -ListAvailable -Name Az.KeyVault)) { throw "Az.KeyVault not installed (needed for -KeyVault)." }
     Info "Storing secret in Key Vault '$KeyVault'…"
     $secure = ConvertTo-SecureString $SecretValue -AsPlainText -Force
-    $kv = Set-AzKeyVaultSecret -VaultName $KeyVault -Name 'abstract-sentinel-client-secret' -SecretValue $secure
+    $kv = Set-AzKeyVaultSecret -VaultName $KeyVault -Name 'abstract-sentinel-client-secret' -SecretValue $secure -Expires $cred.EndDateTime -Tag @{ appId = $AppId }
     $SecretSink  = "stored in Key Vault: $($kv.Id)"
     $SecretValue = '(stored in Key Vault - not shown)'
 }
 
-# ---- 4. optional deployment (grants BOTH DCR roles to the SP) ---------------
+# ---- 4. optional deployment (grants Monitoring Metrics Publisher on the DCR) --
 $DcrImmutableId = ''; $DceUrl = ''; $StreamName = "Custom-$TableName"
 if ($Deploy) {
     if (-not (Get-AzResourceGroup -Name $ResourceGroup -ErrorAction SilentlyContinue)) {
@@ -177,7 +185,7 @@ if ($Deploy) {
     Write-Host "   Data Collection Endpoint     : $DceUrl"
     Write-Host "   Log Stream Name              : $StreamName"
     Write-Host ''
-    Write-Host ' RBAC granted on the DCR: Monitoring Metrics Publisher + Monitoring Contributor'
+    Write-Host ' RBAC granted on the DCR: Monitoring Metrics Publisher'
 } else {
     Write-Host ''
     Warn ' Next: deploy the ingestion stack and grant RBAC to this SP, e.g.'

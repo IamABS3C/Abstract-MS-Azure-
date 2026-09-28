@@ -72,17 +72,41 @@ def raw_url(repo: dict, rel_path: str) -> str:
             f"{repo['branch']}/{repo['solutionPath']}/{rel_path}")
 
 
+PORTAL_LOGO = "brand/portal-badge.png"
+
+
+def sync_portal_logos(manifest: dict, write: bool) -> list[str]:
+    """Every portal form opens with the Abstract logo. It is served from this repo (the
+    official lockup, rendered by brand/build.sh), never from a third-party site, and its
+    URL derives from the manifest like every other link."""
+    import re
+    url = raw_url(manifest["repo"], PORTAL_LOGO)
+    pattern = re.compile(r"!\[Abstract Security\]\([^)]*\)")
+    stale = []
+    for form in sorted((SOLUTION_ROOT / "templates").rglob("*.json")):
+        if not form.name.endswith(("createUiDefinition.json", "uiFormDefinition.json")):
+            continue
+        text = form.read_text()
+        new = pattern.sub(f"![Abstract Security]({url})", text)
+        if new != text:
+            stale.append(str(form.relative_to(SOLUTION_ROOT.parent)))
+            if write:
+                form.write_text(new)
+    return stale
+
+
 def enc(url: str) -> str:
     """Portal deep links need the raw URL percent-encoded, including the slashes."""
     return urllib.parse.quote(url, safe="")
 
 
-def button(manifest: dict, tpl: dict, gov: bool = False) -> str:
+def button(manifest: dict, tpl: dict) -> str:
+    if tpl["ui"] == "none":
+        return "CLI only"
     repo = manifest["repo"]
-    portal = manifest["portal"]["government" if gov else "public"]
-    img = ("https://aka.ms/deploytoazuregovbutton" if gov
-           else "https://aka.ms/deploytoazurebutton")
-    alt = "Deploy to Azure Gov" if gov else "Deploy to Azure"
+    portal = manifest["portal"]["public"]
+    img = "https://aka.ms/deploytoazurebutton"
+    alt = "Deploy to Azure"
 
     arm = enc(raw_url(repo, f"{tpl['path']}.azuredeploy.json"))
     if tpl["ui"] == "createUiDefinition":
@@ -136,15 +160,14 @@ def deploy_table(manifest: dict) -> str:
         lines.append("")
         lines.append(CATEGORY_BLURB[cat])
         lines.append("")
-        lines.append("| Template | Scope | Deploy | Gov | CLI |")
-        lines.append("| --- | --- | --- | --- | --- |")
+        lines.append("| Template | What it does | Scope | Deploy |")
+        lines.append("| --- | --- | --- | --- |")
         for tpl in by_cat[cat]:
             star = " ⭐" if tpl.get("recommended") else ""
-            first = " **(deploy first)**" if tpl.get("deployFirst") else ""
+            first = "<br><sub>deploy first</sub>" if tpl.get("deployFirst") else ""
             lines.append(
-                f"| **{tpl['title']}**{star}{first} | {SCOPE_LABEL[tpl['scope']]} | "
-                f"{button(manifest, tpl)} | {button(manifest, tpl, gov=True)} | "
-                f"`{cli_command(tpl)}` |"
+                f"| **{tpl['title']}**{star}{first} | {tpl.get('tagline', '')} | "
+                f"{SCOPE_LABEL[tpl['scope']]} | {button(manifest, tpl)} |"
             )
         lines.append("")
     return "\n".join(lines).rstrip()
@@ -160,9 +183,12 @@ def template_detail(manifest: dict) -> str:
         lines.append("")
         lines.append(f"- **Scope:** {SCOPE_LABEL[tpl['scope']]} "
                      f"· **Portal UI:** `{tpl['ui']}`")
-        lines.append(f"- **Files:** `{tpl['path']}.bicep` · "
-                     f"`{tpl['path']}.azuredeploy.json` · "
-                     f"`{tpl['path']}.{tpl['ui']}.json`")
+        lines.append(f"- **Deploy:** {button(manifest, tpl)}")
+        lines.append(f"- **CLI:** `{cli_command(tpl)}`")
+        files = [f"`{tpl['path']}.bicep`", f"`{tpl['path']}.azuredeploy.json`"]
+        if tpl["ui"] != "none":
+            files.append(f"`{tpl['path']}.{tpl['ui']}.json`")
+        lines.append(f"- **Files:** {' · '.join(files)}")
         if tpl.get("prerequisite"):
             lines.append(f"- **Prerequisite:** {tpl['prerequisite']}")
         if tpl.get("driver"):
@@ -204,7 +230,7 @@ def template_spec_table(manifest: dict) -> str:
         return "_No Form-view templates in this solution._"
 
     lines = [
-        "The buttons above use `uiFormDefinitionUri`, which the portal accepts but which",
+        "The deploy buttons use `uiFormDefinitionUri`, which the portal accepts but which",
         "Microsoft does **not** document for Deploy-to-Azure links. Template specs are the",
         "documented delivery path for the identical wizard — use these when a customer's",
         "policy allows only documented Microsoft flows, or if the button form ever changes:",
@@ -251,6 +277,11 @@ def main() -> int:
         return 0
 
     stale: list[str] = []
+    for form in sync_portal_logos(manifest, write=args.write):
+        if args.check:
+            stale.append(f"{form}: portal logo")
+        else:
+            print(f"updated {form}: portal logo")
     for target in targets:
         if not target.exists():
             continue

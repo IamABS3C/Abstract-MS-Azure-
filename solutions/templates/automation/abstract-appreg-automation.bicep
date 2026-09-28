@@ -165,8 +165,7 @@ var graphAppId = '00000003-0000-0000-c000-000000000000'
 var effectiveVaultUri = keyVaultInThisSubscription ? 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/' : keyVaultUri
 var armResource = environment().resourceManager
 // Key Vault data-plane audience differs by cloud (vault.azure.net / vault.usgovcloudapi.net /
-// vault.azure.cn), so resolve it from environment() rather than hardcoding - this template
-// ships an Azure Gov deploy button.
+// vault.azure.cn), so resolve it from environment() rather than hardcoding a cloud's endpoint.
 var vaultAudience = 'https://${replace(replace(environment().suffixes.keyvaultDns, '.vault', 'vault'), '..', '.')}'
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -412,7 +411,7 @@ resource workflow 'Microsoft.Logic/workflows@2019-05-01' = {
                       type: 'Http'
                       inputs: {
                         method: 'GET'
-                        uri: '${graphResource}/v1.0/applications?$filter=displayName eq \'@{replace(parameters(\'appNamePattern\'), \'{sub}\', outputs(\'Resolve_subscription\'))}\'&$select=id,appId'
+                        uri: '${graphResource}/v1.0/applications?$filter=displayName eq \'@{replace(parameters(\'appNamePattern\'), \'{sub}\', outputs(\'Resolve_subscription\'))}\'&$select=id,appId,tags'
                         authentication: {
                           type: 'ManagedServiceIdentity'
                           identity: managedIdentityResourceId
@@ -449,6 +448,10 @@ resource workflow 'Microsoft.Logic/workflows@2019-05-01' = {
                             body: {
                               displayName: '@replace(parameters(\'appNamePattern\'), \'{sub}\', outputs(\'Resolve_subscription\'))'
                               signInAudience: 'AzureADMyOrg'
+                              // Marks apps this workflow created; only marked apps are ever reused.
+                              tags: [
+                                'abstract:appreg'
+                              ]
                               requiredResourceAccess: [
                                 {
                                   resourceAppId: graphAppId
@@ -466,26 +469,65 @@ resource workflow 'Microsoft.Logic/workflows@2019-05-01' = {
                       }
                       else: {
                         actions: {
-                          Patch_existing_app_permissions: {
-                            type: 'Http'
-                            inputs: {
-                              method: 'PATCH'
-                              uri: '${graphResource}/v1.0/applications/@{first(body(\'Find_existing_app\')?[\'value\'])?[\'id\']}'
-                              headers: {
-                                'Content-Type': 'application/json'
-                              }
-                              body: {
-                                requiredResourceAccess: [
-                                  {
-                                    resourceAppId: graphAppId
-                                    resourceAccess: '@body(\'Build_resource_access\')'
+                          // The name is predictable and any user who may register apps
+                          // could pre-create it. Reuse only a single app that carries the
+                          // marker tag this workflow writes; otherwise stop, so tenant-wide
+                          // Graph consent never goes to an app someone else owns.
+                          Guard_existing_app: {
+                            type: 'If'
+                            expression: {
+                              and: [
+                                {
+                                  equals: [
+                                    '@length(body(\'Find_existing_app\')?[\'value\'])'
+                                    1
+                                  ]
+                                }
+                                {
+                                  contains: [
+                                    '@coalesce(first(body(\'Find_existing_app\')?[\'value\'])?[\'tags\'], json(\'[]\'))'
+                                    'abstract:appreg'
+                                  ]
+                                }
+                              ]
+                            }
+                            actions: {
+                              Patch_existing_app_permissions: {
+                                type: 'Http'
+                                inputs: {
+                                  method: 'PATCH'
+                                  uri: '${graphResource}/v1.0/applications/@{first(body(\'Find_existing_app\')?[\'value\'])?[\'id\']}'
+                                  headers: {
+                                    'Content-Type': 'application/json'
                                   }
-                                ]
+                                  body: {
+                                    requiredResourceAccess: [
+                                      {
+                                        resourceAppId: graphAppId
+                                        resourceAccess: '@body(\'Build_resource_access\')'
+                                      }
+                                    ]
+                                  }
+                                  authentication: {
+                                    type: 'ManagedServiceIdentity'
+                                    identity: managedIdentityResourceId
+                                    audience: graphResource
+                                  }
+                                }
                               }
-                              authentication: {
-                                type: 'ManagedServiceIdentity'
-                                identity: managedIdentityResourceId
-                                audience: graphResource
+                            }
+                            else: {
+                              actions: {
+                                Refuse_unmarked_app: {
+                                  type: 'Terminate'
+                                  inputs: {
+                                    runStatus: 'Failed'
+                                    runError: {
+                                      code: 'AppNotCreatedByAutomation'
+                                      message: 'An app with this name exists but does not carry the abstract:appreg tag, or more than one does. It gets no permissions or credential. Delete it, or tag it if an earlier version of this automation created it.'
+                                    }
+                                  }
+                                }
                               }
                             }
                           }
@@ -730,8 +772,18 @@ resource workflow 'Microsoft.Logic/workflows@2019-05-01' = {
                       }
                       actions: {
                         // ---- 7. Secret -> Key Vault. Only if none is usable. ----
+                        // The GET returns the secret VALUE: keep its inputs and outputs
+                        // out of the run history. Downstream expressions still see them.
                         Check_existing_secret: {
                           type: 'Http'
+                          runtimeConfiguration: {
+                            secureData: {
+                              properties: [
+                                'inputs'
+                                'outputs'
+                              ]
+                            }
+                          }
                           inputs: {
                             method: 'GET'
                             uri: '@{parameters(\'vaultUri\')}secrets/abstract-@{outputs(\'Resolve_subscription\')}?api-version=7.4'
@@ -772,8 +824,17 @@ resource workflow 'Microsoft.Logic/workflows@2019-05-01' = {
                             ]
                           }
                           actions: {
+                            // The response carries the new secretText: secure it too.
                             Add_password: {
                               type: 'Http'
+                              runtimeConfiguration: {
+                                secureData: {
+                                  properties: [
+                                    'inputs'
+                                    'outputs'
+                                  ]
+                                }
+                              }
                               inputs: {
                                 method: 'POST'
                                 uri: '${graphResource}/v1.0/applications/@{outputs(\'App_identifiers\')?[\'objectId\']}/addPassword'

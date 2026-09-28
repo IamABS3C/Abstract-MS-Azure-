@@ -44,8 +44,14 @@ the solution. Keep the API key out of the package — playbooks take it as a
 
 ## What this repo's `Package/mainTemplate.json` does today
 
-Registers the solution `contentPackages` record and deploys the connector tile,
-ASIM parser (savedSearch), analytics rule, and workbook with linked `metadata`,
-so the solution shows as installed and the content appears in the workspace.
-Sufficient for a lab / private install; not a substitute for the certified
-package above.
+Registers the solution's `contentPackages` record and deploys, with linked `metadata`:
+- two connector tiles;
+- the `ASim_AbstractEvent` function and three hunting queries;
+- two analytics rules and three automation rules, all **disabled**, with the automation
+  rules scoped to the pack's own rules by rule ID;
+- three workbooks;
+- three playbooks.
+
+That is enough for a lab or private install. It is not a substitute for the certified
+package above: a certified solution ships its analytics rules as templates, which the
+customer enables, rather than as rules.

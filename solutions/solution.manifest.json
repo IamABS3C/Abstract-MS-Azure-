@@ -9,24 +9,23 @@
     "",
     "TO PORT THIS SOLUTION TO A NEW REPO: change `repo` below and run",
     "  python3 scripts/gen-deploy-links.py --write",
-    "Nothing else needs editing. Every Deploy-to-Azure URL, Gov URL and docs link is",
+    "Nothing else needs editing. Every Deploy-to-Azure URL and docs link is",
     "derived from these three fields, so there is no second place for them to go stale."
   ],
   "schemaVersion": "1.0",
   "name": "Abstract Security — Microsoft Azure & Sentinel integration",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations.",
   "repo": {
     "owner": "IamABS3C",
     "name": "Abstract-MS-Azure-",
     "branch": "main",
     "solutionPath": "solutions",
-    "pagesUrl": "https://iamabs3c.github.io/Abstract-MS-Azure-/docs/",
-    "$pagesUrlNote": "Pages source path is '/', so Jekyll serves the root README at the site root and docs/index.html at /docs/. If Pages is ever repointed to /docs, drop the trailing /docs/ here."
+    "pagesUrl": "https://iamabs3c.github.io/Abstract-MS-Azure-/",
+    "$pagesUrlNote": "Pages is published by .github/workflows/pages.yml from the docs/ folder only, so docs/index.html is the site root. docs/docs/index.html redirects the old /docs/ address."
   },
   "portal": {
-    "public": "https://portal.azure.com",
-    "government": "https://portal.azure.us"
+    "public": "https://portal.azure.com"
   },
   "templates": [
     {
@@ -43,7 +42,8 @@
         "abstractDiagnosticsAuthRuleId",
         "eventHubNames"
       ],
-      "notes": "Deploy this first — every other source template consumes its outputs. Azure Policy never creates hubs, so hub names you pass elsewhere must exist here."
+      "notes": "Deploy this first — every other source template consumes its outputs. Azure Policy never creates hubs, so hub names you pass elsewhere must exist here.",
+      "tagline": "The Event Hubs namespace and hubs every other source writes to"
     },
     {
       "id": "activitylog",
@@ -54,7 +54,8 @@
       "category": "source",
       "order": 20,
       "summary": "Streams ONE subscription's Azure Activity Log to the Abstract Event Hub. For a whole estate, use the log-stream governance pack instead.",
-      "notes": "Subscription scope, so it uses a Form view — createUiDefinition cannot bind a portal deployment to a subscription."
+      "notes": "Subscription scope, so it uses a Form view — createUiDefinition cannot bind a portal deployment to a subscription.",
+      "tagline": "Streams one subscription's Activity Log to the hub"
     },
     {
       "id": "abstract-logstreams-policy",
@@ -66,7 +67,8 @@
       "order": 30,
       "summary": "Assign once at a management group and every subscription in it — current and future — streams Activity Log, resource logs, SQL auditing and Defender for Cloud to the Abstract Event Hub, and self-heals if a setting is deleted.",
       "driver": "scripts/Deploy-AbstractLogStreams.sh",
-      "notes": "Three gotchas decide whether this works: the region rule (one namespace per region), remediation is not optional, and new subscriptions must land in the right management group. See docs/azure-log-streams.md."
+      "notes": "Three gotchas decide whether this works: the region rule (one namespace per region), remediation is not optional, and new subscriptions must land in the right management group. See docs/azure-log-streams.md.",
+      "tagline": "Onboards every subscription and resource under a management group"
     },
     {
       "id": "pipeline-health-alerts",
@@ -78,7 +80,8 @@
       "order": 35,
       "summary": "Alerts on the failure this pipeline cannot otherwise show you: Event Hubs publishes NO consumer-lag metric, so a stalled Abstract consumer leaves incoming messages healthy and every dashboard green while retention quietly expires the backlog. Infers the stall from outgoing traffic collapsing while incoming continues, plus ingestion-stopped, throttling, credential errors and quota ceilings.",
       "prerequisite": "An existing Event Hubs namespace (deploy the Event Hub source template first), and ideally an Action Group to notify.",
-      "notes": "The consumer-stall rule is a scheduled QUERY rule, not a metric alert, and deliberately so: Event Hubs metrics are sparse, so a metric alert on 'outgoing < threshold' has no data to evaluate and sits in Insufficient Data forever. The KQL synthesises a zero row when the metric is silent. Does NOT cover the Auto-Inflate cost ratchet — there is no platform metric for provisioned throughput units, only the AutoScaleLogs diagnostic category, which needs a diagnostic setting on the namespace itself."
+      "notes": "The consumer-stall rule is a scheduled QUERY rule, not a metric alert, and deliberately so: Event Hubs metrics are sparse, so a metric alert on 'outgoing < threshold' has no data to evaluate and sits in Insufficient Data forever. The KQL synthesises a zero row when the metric is silent. Does NOT cover the Auto-Inflate cost ratchet — there is no platform metric for provisioned throughput units, only the AutoScaleLogs diagnostic category, which needs a diagnostic setting on the namespace itself.",
+      "tagline": "Alerts when the hub stops receiving, throttles or stalls"
     },
     {
       "id": "entra-diagnostics",
@@ -89,7 +92,8 @@
       "category": "source",
       "order": 40,
       "summary": "Tenant-wide Entra ID diagnostic setting: sign-ins (interactive, non-interactive, SP, MI), directory audit, provisioning, Identity Protection risk, and Microsoft Graph activity.",
-      "notes": "No Azure Policy can manage this — Entra diagnostic settings are tenant-level, so there is no per-subscription object to evaluate. Expect up to three days for the first records."
+      "notes": "No Azure Policy can manage this — Entra diagnostic settings are tenant-level, so there is no per-subscription object to evaluate. Expect up to three days for the first records.",
+      "tagline": "Sign-in, audit, provisioning and risk logs for the whole tenant"
     },
     {
       "id": "abstract-appreg-automation",
@@ -103,7 +107,8 @@
       "summary": "One central Logic App creates an Entra app + service principal per subscription, grants AND VERIFIES admin consent, writes the client secret to Key Vault, and assigns Azure RBAC on the target subscription.",
       "driver": "scripts/Deploy-AbstractAppReg.sh",
       "prerequisite": "scripts/Deploy-AbstractAppReg.sh -a Bootstrap (Global Administrator, once per tenant)",
-      "notes": "Recommended over the policy variant: one tier-0 identity in one place, one run history as the audit trail, no per-subscription compute. Live-tested end to end."
+      "notes": "Recommended over the policy variant: one tier-0 identity in one place, one run history as the audit trail, no per-subscription compute. Live-tested end to end.",
+      "tagline": "A Logic App that creates a Graph app registration per subscription"
     },
     {
       "id": "abstract-appreg-policy",
@@ -116,7 +121,8 @@
       "summary": "Same outcome as the event-driven path, delivered through Azure Policy: a DeployIfNotExists policy deploys a deploymentScript container into each subscription which then calls Graph.",
       "driver": "scripts/Deploy-AbstractAppReg.sh",
       "prerequisite": "scripts/Deploy-AbstractAppReg.sh -a Bootstrap (Global Administrator, once per tenant)",
-      "notes": "Only when governance mandates Azure Policy. It spawns a privileged container in every subscription, needs Owner on each, and cannot see the Entra app it created."
+      "notes": "Only when governance mandates Azure Policy. It spawns a privileged container in every subscription, needs Owner on each, and cannot see the Entra app it created.",
+      "tagline": "The same, delivered by Azure Policy"
     },
     {
       "id": "eventhub-destination",
@@ -127,7 +133,8 @@
       "category": "destination",
       "order": 70,
       "summary": "Where Abstract WRITES processed events: namespace, destination hub, least-privilege Send SAS rule, optional Entra ID (RBAC) delivery, Safe Mode networking.",
-      "notes": "Keys are never emitted in deployment outputs — fetch the Send connection string from the portal or CLI."
+      "notes": "Keys are never emitted in deployment outputs — fetch the Send connection string from the portal or CLI.",
+      "tagline": "An Event Hub that Abstract writes enriched output to"
     },
     {
       "id": "sentinel-destination",
@@ -139,22 +146,51 @@
       "order": 80,
       "summary": "Abstract writes to Sentinel via the Logs Ingestion API: Log Analytics workspace, Sentinel onboarding, Data Collection Endpoint, custom _CL table, Data Collection Rule, and the DCR role assignments.",
       "prerequisite": "Create a single-tenant Entra app and client secret first — scripts/New-AbstractSentinelApp.ps1. Pass the service principal object ID (not the client ID) for DCR role assignments.",
-      "notes": "The table has one column per top-level key of the Abstract Common Schema event, as the Abstract Azure Sentinel Destination sends it (nested objects are dynamic), generated from the ACS catalog by scripts/gen-sentinel-schema.py. The DCR transformation sets TimeGenerated and stores the reserved id and type keys as acs_id and acs_type. Override tableColumns only for a custom payload shape. Enter the client ID, secret value, tenant ID, DCR immutable ID, DCE ingestion URL, and exact stream name (Custom-<table name>) in Abstract. Use the with-app variant to create the app in the same deployment. Every event is also mapped from the Abstract schema into Microsoft's ASIM tables (enableAsim, asimSchemas), so Microsoft's ASIM analytics rules, hunting queries and workbooks work on Abstract data from every vendor; see docs/sentinel-asim.md. customTablePlan sets the Abstract table to Analytics, Basic or Auxiliary (data lake), and ingestion errors go to DCRLogErrors by default."
+      "notes": "The table has one column per top-level key of the Abstract Common Schema event, as the Abstract Azure Sentinel Destination sends it (nested objects are dynamic), generated from the ACS catalog by scripts/gen-sentinel-schema.py. The DCR transformation sets TimeGenerated and stores the reserved id and type keys as acs_id and acs_type. Override tableColumns only for a custom payload shape. Enter the client ID, secret value, tenant ID, DCR immutable ID, DCE ingestion URL, and exact stream name (Custom-<table name>) in Abstract. To create the app in the same deployment, use 'Sentinel Destination + app registration (no managed identity)'. Optionally (enableAsim, off by default) each event is also mapped into Microsoft's ASIM tables, so Microsoft's ASIM content works on Abstract data from every vendor; turning it on makes existing ASIM rules read Abstract data, so stage it first (docs/sentinel-asim.md). Only Monitoring Metrics Publisher is granted on the DCR unless grantMonitoringContributor is set. A redeploy keeps the Abstract table's retention and plan unless customTableRetentionDays or customTablePlan is set. Nothing touches existing analytics rules, automation, parsers, workbooks or workspace settings: see docs/sentinel-destination-assurance.md.",
+      "tagline": "The table, DCE and DCR Abstract writes to Sentinel through"
+    },
+    {
+      "id": "sentinel-destination-graph",
+      "title": "Sentinel Destination + app registration (no managed identity)",
+      "path": "templates/destinations/sentinel-destination-graph",
+      "scope": "resourceGroup",
+      "ui": "none",
+      "category": "destination",
+      "order": 90,
+      "recommended": true,
+      "tagline": "Creates the app registration too, with no privileged identity (CLI)",
+      "summary": "The Sentinel destination plus the Entra app registration and service principal Abstract signs in as, created with the Microsoft Graph Bicep extension as the person deploying. No managed identity has to exist first. Optionally (automateSecret) it also creates a managed identity that owns only this app, with Graph Application.ReadWrite.OwnedBy, and stores a client secret in a new Key Vault.",
+      "prerequisite": "Deploy with Azure CLI or Azure PowerShell (Microsoft Graph Bicep is not supported by the portal's deploy button). The deployer needs rights to register an app and Owner (or Contributor plus User Access Administrator) on the resource group; with automateSecret, also Privileged Role Administrator or Global Administrator.",
+      "outputsNeededNext": [
+        "clientId",
+        "applicationTenantId",
+        "dataCollectionRuleImmutableId",
+        "dataCollectionEndpointUrl",
+        "logStreamName",
+        "secretCommand"
+      ],
+      "notes": "Without automateSecret, create the client secret afterwards with the secretCommand output (Microsoft Graph Bicep cannot create secrets). With it, give secretReaderObjectId to someone who will paste the secret into Abstract. Measured on a test tenant: the app, service principal and Monitoring Metrics Publisher on the DCR were created; a redeploy reused the same app and secret; the template-created identity could not add a secret to an app it did not own; the stored secret authenticated and ingested through the DCR. what-if does not preview Microsoft Graph resources, and deleting the resource group does not delete the app registration."
     },
     {
       "id": "sentinel-destination-with-app",
-      "title": "Sentinel Destination + app registration",
+      "title": "Sentinel Destination + app registration (bring your own identity)",
       "path": "templates/destinations/sentinel-destination-with-app",
       "scope": "resourceGroup",
       "ui": "createUiDefinition",
       "category": "destination",
-      "order": 90,
+      "order": 95,
       "summary": "The Sentinel destination plus the Entra app registration, created in one deployment via a deploymentScript. Choose a new Key Vault, an existing Key Vault, or no Key Vault.",
       "prerequisite": "A user-assigned managed identity whose service principal has the Microsoft Graph Application.ReadWrite.All application permission with tenant admin consent (AppRoleAssignment.ReadWrite.All is not needed). If that identity or an existing Key Vault is in another subscription or resource group, the deploying principal also needs Managed Identity Operator on the identity and role-assignment rights on the vault. The deploying principal needs Owner (or Contributor plus User Access Administrator) on the resource group.",
-      "notes": "Create and Existing Key Vault modes store the generated client secret; re-runs reuse it while more than 30 days remain. None mode creates no secret; create one in Entra after deployment and copy its value into Abstract. Secret values are never returned in ARM outputs. A new secret is generated only when none is usable or it expires within 30 days; forceSecretRotation is for deliberate rotation. Deployment outputs include the client ID, tenant ID, DCR immutable ID, DCE URL, and exact stream name (Custom-<table name>). Set secretReaderObjectId to grant an optional user or group Key Vault Secrets User access to retrieve the secret. Every event is also mapped from the Abstract schema into Microsoft's ASIM tables (enableAsim, asimSchemas), so Microsoft's ASIM analytics rules, hunting queries and workbooks work on Abstract data from every vendor; see docs/sentinel-asim.md. customTablePlan sets the Abstract table to Analytics, Basic or Auxiliary (data lake), and ingestion errors go to DCRLogErrors by default."
+      "notes": "Prefer 'Sentinel Destination + app registration (no managed identity)' when you can deploy from the CLI. Create and Existing Key Vault modes store the generated client secret; re-runs reuse it while more than 30 days remain. None mode creates no secret; create one in Entra after deployment and copy its value into Abstract. Secret values are never returned in ARM outputs. A new secret is generated only when none is usable or it expires within 30 days; forceSecretRotation is for deliberate rotation. Deployment outputs include the client ID, tenant ID, DCR immutable ID, DCE URL, and exact stream name (Custom-<table name>). Set secretReaderObjectId to grant an optional user or group Key Vault Secrets User access to retrieve the secret. Optionally (enableAsim, off by default) each event is also mapped into Microsoft's ASIM tables, so Microsoft's ASIM content works on Abstract data from every vendor; turning it on makes existing ASIM rules read Abstract data, so stage it first (docs/sentinel-asim.md). Only Monitoring Metrics Publisher is granted on the DCR unless grantMonitoringContributor is set. A redeploy keeps the Abstract table's retention and plan unless customTableRetentionDays or customTablePlan is set. Nothing touches existing analytics rules, automation, parsers, workbooks or workspace settings: see docs/sentinel-destination-assurance.md.",
+      "tagline": "Portal wizard; needs a pre-existing tier-0 managed identity"
     }
   ],
   "docs": [
+    {
+      "path": "docs/sentinel-destination-assurance.md",
+      "title": "Sentinel Destination assurance guide",
+      "summary": "Exactly what the Sentinel Destination templates and the Abstract destination create, change and can never touch in a Sentinel workspace; identities and blast radius; the ASIM switch; cost; a production rollout and rollback runbook; and the evidence behind each claim."
+    },
     {
       "path": "docs/azure-log-streams.md",
       "title": "Azure log streams at scale",
@@ -190,7 +226,7 @@
     {
       "path": "scripts/New-AbstractSentinelApp.ps1",
       "title": "Sentinel app registration (PowerShell)",
-      "summary": "Creates the Entra app for the Sentinel destination and grants both required DCR roles."
+      "summary": "Creates the Entra app for the Sentinel destination and, with -Deploy, the destination stack with Monitoring Metrics Publisher on the DCR."
     },
     {
       "path": "scripts/validate-templates.py",
@@ -200,7 +236,27 @@
     {
       "path": "scripts/gen-deploy-links.py",
       "title": "Deploy-link generator",
-      "summary": "Regenerates every README table and the Pages site from this manifest, so a repo rename can never leave a stale button behind."
+      "summary": "Regenerates the README deploy tables, template reference and portal logos from this manifest, so a repo rename can never leave a stale button behind."
+    },
+    {
+      "path": "scripts/new-abstract-sentinel-app.sh",
+      "title": "Sentinel app registration (bash)",
+      "summary": "Creates the Entra app for the Sentinel destination, optionally stores its secret in Key Vault, and with --deploy deploys the destination stack."
+    },
+    {
+      "path": "scripts/gen-pages.py",
+      "title": "Deployment console generator",
+      "summary": "Builds the GitHub Pages deployment console (docs/index.html) from this manifest."
+    },
+    {
+      "path": "scripts/gen-sentinel-schema.py",
+      "title": "Sentinel table schema generator",
+      "summary": "Builds the Abstract table's columns, the DCR transformation and the portal sample (all_fields.json) from the ACS field catalog."
+    },
+    {
+      "path": "scripts/gen-sentinel-asim.py",
+      "title": "ASIM mapping generator",
+      "summary": "Compiles solutions/asim into the templates' ASIM dataflows, refusing KQL Azure rejects and columns Microsoft's tables lack."
     }
   ]
 }

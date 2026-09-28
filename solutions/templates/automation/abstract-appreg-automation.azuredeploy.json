@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.44.1.10279",
-      "templateHash": "11166192023286904375"
+      "version": "0.47.16.16243",
+      "templateHash": "360418407766360759"
     }
   },
   "parameters": {
@@ -363,7 +363,7 @@
                           "type": "Http",
                           "inputs": {
                             "method": "GET",
-                            "uri": "[format('{0}/v1.0/applications?$filter=displayName eq ''@{{replace(parameters(''appNamePattern''), ''{{sub}}'', outputs(''Resolve_subscription''))}}''&$select=id,appId', variables('graphResource'))]",
+                            "uri": "[format('{0}/v1.0/applications?$filter=displayName eq ''@{{replace(parameters(''appNamePattern''), ''{{sub}}'', outputs(''Resolve_subscription''))}}''&$select=id,appId,tags', variables('graphResource'))]",
                             "authentication": {
                               "type": "ManagedServiceIdentity",
                               "identity": "[parameters('managedIdentityResourceId')]",
@@ -400,6 +400,9 @@
                                 "body": {
                                   "displayName": "@replace(parameters('appNamePattern'), '{sub}', outputs('Resolve_subscription'))",
                                   "signInAudience": "AzureADMyOrg",
+                                  "tags": [
+                                    "abstract:appreg"
+                                  ],
                                   "requiredResourceAccess": [
                                     {
                                       "resourceAppId": "[variables('graphAppId')]",
@@ -417,26 +420,61 @@
                           },
                           "else": {
                             "actions": {
-                              "Patch_existing_app_permissions": {
-                                "type": "Http",
-                                "inputs": {
-                                  "method": "PATCH",
-                                  "uri": "[format('{0}/v1.0/applications/@{{first(body(''Find_existing_app'')?[''value''])?[''id'']}}', variables('graphResource'))]",
-                                  "headers": {
-                                    "Content-Type": "application/json"
-                                  },
-                                  "body": {
-                                    "requiredResourceAccess": [
-                                      {
-                                        "resourceAppId": "[variables('graphAppId')]",
-                                        "resourceAccess": "@body('Build_resource_access')"
+                              "Guard_existing_app": {
+                                "type": "If",
+                                "expression": {
+                                  "and": [
+                                    {
+                                      "equals": [
+                                        "@length(body('Find_existing_app')?['value'])",
+                                        1
+                                      ]
+                                    },
+                                    {
+                                      "contains": [
+                                        "@coalesce(first(body('Find_existing_app')?['value'])?['tags'], json('[]'))",
+                                        "abstract:appreg"
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "actions": {
+                                  "Patch_existing_app_permissions": {
+                                    "type": "Http",
+                                    "inputs": {
+                                      "method": "PATCH",
+                                      "uri": "[format('{0}/v1.0/applications/@{{first(body(''Find_existing_app'')?[''value''])?[''id'']}}', variables('graphResource'))]",
+                                      "headers": {
+                                        "Content-Type": "application/json"
+                                      },
+                                      "body": {
+                                        "requiredResourceAccess": [
+                                          {
+                                            "resourceAppId": "[variables('graphAppId')]",
+                                            "resourceAccess": "@body('Build_resource_access')"
+                                          }
+                                        ]
+                                      },
+                                      "authentication": {
+                                        "type": "ManagedServiceIdentity",
+                                        "identity": "[parameters('managedIdentityResourceId')]",
+                                        "audience": "[variables('graphResource')]"
                                       }
-                                    ]
-                                  },
-                                  "authentication": {
-                                    "type": "ManagedServiceIdentity",
-                                    "identity": "[parameters('managedIdentityResourceId')]",
-                                    "audience": "[variables('graphResource')]"
+                                    }
+                                  }
+                                },
+                                "else": {
+                                  "actions": {
+                                    "Refuse_unmarked_app": {
+                                      "type": "Terminate",
+                                      "inputs": {
+                                        "runStatus": "Failed",
+                                        "runError": {
+                                          "code": "AppNotCreatedByAutomation",
+                                          "message": "An app with this name exists but does not carry the abstract:appreg tag, or more than one does. It gets no permissions or credential. Delete it, or tag it if an earlier version of this automation created it."
+                                        }
+                                      }
+                                    }
                                   }
                                 }
                               }
@@ -673,6 +711,14 @@
                           "actions": {
                             "Check_existing_secret": {
                               "type": "Http",
+                              "runtimeConfiguration": {
+                                "secureData": {
+                                  "properties": [
+                                    "inputs",
+                                    "outputs"
+                                  ]
+                                }
+                              },
                               "inputs": {
                                 "method": "GET",
                                 "uri": "@{parameters('vaultUri')}secrets/abstract-@{outputs('Resolve_subscription')}?api-version=7.4",
@@ -712,6 +758,14 @@
                               "actions": {
                                 "Add_password": {
                                   "type": "Http",
+                                  "runtimeConfiguration": {
+                                    "secureData": {
+                                      "properties": [
+                                        "inputs",
+                                        "outputs"
+                                      ]
+                                    }
+                                  },
                                   "inputs": {
                                     "method": "POST",
                                     "uri": "[format('{0}/v1.0/applications/@{{outputs(''App_identifiers'')?[''objectId'']}}/addPassword', variables('graphResource'))]",

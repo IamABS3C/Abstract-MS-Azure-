@@ -2,11 +2,12 @@
 
 Abstract collects each source and normalizes it into the Abstract Common Schema (ACS).
 The Sentinel Destination sends every event to Sentinel once, and the Data Collection Rule
-the templates deploy writes it to two places:
+the templates deploy writes it to the Abstract table and, if you turn it on, to
+Microsoft's ASIM tables:
 
 - **The Abstract table** (`AbstractEventLogs_CL`): every event, every ACS field, for the
   Abstract content pack and your own KQL.
-- **Microsoft's ASIM tables**: each event that is a sign-in, a network session, a DNS
+- **Microsoft's ASIM tables** (`enableAsim`, off by default): each event that is a sign-in, a network session, a DNS
   query and so on is mapped from ACS into Microsoft's normalized table for that activity
   (`ASimAuthenticationEventLogs`, `ASimNetworkSessionLogs`, ...). Microsoft's built-in
   ASIM parsers (`_Im_Authentication`, `_Im_NetworkSession`, ...) read those tables, so
@@ -35,7 +36,9 @@ customer's own workspace.
 An event goes to an ASIM table when its ACS says what kind of activity it is. That is
 `event.category`, set by the Abstract parser, plus the field that makes the activity
 meaningful. Events that match none of these stay in the Abstract table only. Abstract
-findings and alerts (`type` = `finding` or `alert`) never go to the activity tables.
+findings and alerts (`type` = `finding` or `alert`) never go to the activity tables, and
+neither do events more than two days old: Azure restamps those with their arrival time, so a
+replay or backfill would otherwise look like live activity to every ASIM rule.
 
 | ASIM schema | Microsoft table | Selected when |
 | --- | --- | --- |
@@ -75,11 +78,12 @@ AbstractEventLogs_CL | where acs_id == "<AdditionalFields.AbstractEventId>"
 - **Coverage depends on the Abstract parser.** An event without `event.category` stays in
   the Abstract table only. Fixing the parser in Abstract fixes it for Sentinel and for
   Abstract's own detections at the same time.
-- **Cost.** Mapped events are stored twice: in the Abstract table and in an ASIM table. To
+- **Cost.** Mapped events are stored at least twice: in the Abstract table and in each ASIM
+  table they match (an event whose category spans two schemas lands in both). To
   pay full price for one copy, set the Abstract table to the Auxiliary plan
   (`customTablePlan`) and keep the ASIM tables on Analytics. That only suits workspaces that
   do not use the Abstract content pack, which reads the Abstract table. `asimSchemas`
-  limits which ASIM tables are written, and `enableAsim` turns them off.
+  limits which ASIM tables are written, and `enableAsim` turns them on or off.
 - **Do not trim events with a `SELECT_KEYS` function on the route to Sentinel.** The ASIM
   mappings read the ACS fields, so a trimmed event lands in no ASIM table.
 - **A template redeploy takes about 15 minutes to settle.** In testing, events kept going
@@ -91,8 +95,10 @@ AbstractEventLogs_CL | where acs_id == "<AdditionalFields.AbstractEventId>"
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `enableAsim` | true | Write the ASIM tables. Needs Microsoft Sentinel on the workspace, where the ASim tables come from: a new workspace needs `enableSentinel`, and an existing one is assumed to have it (the deployment fails if it does not; set `enableAsim` to false). Also needs the generated Abstract schema (`tableColumns` left empty) |
+| `enableAsim` | false | Write the ASIM tables. Turning it on makes every ASIM rule already in the workspace read Abstract data; stage it first ([assurance guide](sentinel-destination-assurance.md#8-asim-the-one-setting-that-changes-existing-detections)). Needs Microsoft Sentinel on the workspace, where the ASim tables come from: a new workspace needs `enableSentinel`, and an existing one is assumed to have it (the deployment fails if it does not; set `enableAsim` to false). Also needs the generated Abstract schema (`tableColumns` left empty) |
 | `asimSchemas` | `['*']` (all) | Which ASIM schemas to write, by name; `[]` writes none. The portal form lists every schema, all selected |
+| `customTableRetentionDays` | 0 (keep) | 0 sends no retention, so an existing table keeps its retention and a new one uses the workspace default. A value sets total retention; a shorter one deletes older data |
+| `grantMonitoringContributor` | false | Monitoring Metrics Publisher on the DCR is all ingestion needs; Monitoring Contributor would let a leaked credential rewrite the DCR |
 | `customTablePlan` | Keep | Keep leaves an existing Abstract table's plan alone and creates a new one as Analytics. Pick Analytics, Basic or Auxiliary (the data lake tier) to set it. Picking a plan for an existing table switches the whole table |
 | `enableDcrErrorLogs` | true | Rejected and malformed ingestion goes to `DCRLogErrors` |
 

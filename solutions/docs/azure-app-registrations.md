@@ -243,7 +243,7 @@ problems, now fixed in
    confirmed present before the script reports success.
 
 This app needs **no** Graph permissions and **no** admin consent — it is purely an
-identity that receives DCR RBAC (Monitoring Metrics Publisher + Monitoring Contributor).
+identity that receives DCR RBAC (Monitoring Metrics Publisher).
 That is why there is no consent logic in it.
 
 ---

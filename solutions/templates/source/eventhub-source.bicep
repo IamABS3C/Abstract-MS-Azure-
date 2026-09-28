@@ -4,7 +4,7 @@
 //  Author  : Abstract Security - Solutions Engineering
 //
 //  Deploys EVERYTHING the Abstract "Azure Event Hub" integration needs, per
-//  the official documentation (docs.abstract.security -> Azure Event Hub):
+//  the official documentation (docs.abstractsecurity.app -> Azure Event Hub):
 //
 //    1. Event Hubs namespace        (Standard minimum per Abstract docs)
 //    2. One or many Event Hubs      (auto-named per log source, or explicit)
@@ -592,7 +592,7 @@ output privateEndpointEnabled bool = enablePrivateEndpoint
 output abstractDiagnosticsAuthRuleId string = (enableSas && createDiagnosticsSendRule) ? diagnosticsSendRule!.id : '(diagnostics Send rule not created - enableSas is false / local auth disabled)'
 
 // Field-for-field answers for the Abstract integration modal
-// (docs.abstract.security -> Azure Event Hub -> Event Hub Connection Details)
+// (docs.abstractsecurity.app -> Azure Event Hub -> Event Hub Connection Details)
 output abstractOnboarding object = {
   authenticationMethods: {
     connectionString: enableSas
@@ -605,5 +605,5 @@ output abstractOnboarding object = {
   storageAccountUrl: createStorageAccount ? checkpointStorage!.properties.primaryEndpoints.blob : '(bring your own)'
   eventHubConnectionString: enableSas ? 'Portal: Event Hubs Namespace > Shared access policies > ${sasRuleName} > Connection string-primary key (or run the companion script with -Action Credentials)' : '(SAS disabled)'
   storageAccountConnectionString: createStorageAccount && storageAllowSharedKeyAccess ? 'Portal: Storage Account > Security + networking > Access keys > Connection string (or run the companion script with -Action Credentials)' : '(shared key access disabled)'
-  docs: 'https://docs.abstract.security -> Integrations -> Azure Event Hub'
+  docs: 'https://docs.abstractsecurity.app -> Integrations -> Azure Event Hub'
 }

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Stub az: scripted by env vars, logs every call to $AZLOG
+echo "az $*" >> "$AZLOG"
+args="$*"
+case "$args" in
+  "account show"*) echo tenant-1 ;;
+  "ad app list"*) echo "${APPS_JSON:-[]}" ;;
+  "ad app create"*) echo app-new ;;
+  "rest --method PATCH"*) : ;;
+  "ad app show"*"--query id"*) echo obj-1 ;;
+  "ad app show"*) echo name ;;
+  "ad sp show"*) [ "${SP_EXISTS:-1}" = 1 ] && echo sp-1 || exit 1 ;;
+  "ad sp create"*) echo sp-1 ;;
+  "keyvault secret show"*"--query id"*) echo secret-id ;;
+  "keyvault secret show"*)
+     case "${KV_SHOW:-notfound}" in
+       notfound) echo "ERROR: (SecretNotFound) A secret with (name/id) x was not found" >&2; exit 1 ;;
+       forbidden) echo "ERROR: (Forbidden) Caller is not authorized" >&2; exit 1 ;;
+       *) echo "$KV_SHOW" ;;
+     esac ;;
+  "ad app credential list"*"endDateTime"*) echo "${CREDS_JSON:-[]}" ;;
+  "ad app credential list"*"keyId"*)
+     n=$(cat "$STATE/listcount" 2>/dev/null || echo 0); echo $((n+1)) > "$STATE/listcount"
+     if [ "$n" = 0 ]; then printf '%s\n' ${KEYS_BEFORE:-}; else printf '%s\n' ${KEYS_AFTER:-}; fi ;;
+  "ad app credential reset"*) echo "s3cr3t-value" ;;
+  "keyvault secret set"*) [ "${KV_SET_FAIL:-0}" = 1 ] && { echo "ERROR: (Forbidden)" >&2; exit 1; } || exit 0 ;;
+  "ad app credential delete"*) : ;;
+  *) echo "UNSTUBBED: $args" >&2; exit 99 ;;
+esac
