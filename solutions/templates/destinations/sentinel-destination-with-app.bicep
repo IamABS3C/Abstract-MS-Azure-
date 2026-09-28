@@ -139,6 +139,10 @@ param enableDcrErrorLogs bool = true
 @description('Sources whose raw record (event.original) Sentinel should parse with the vendor\'s own published connector logic, by name from parameters/sentinel-source-routes.json (for example [\'okta\']). Each adds a DCR route into the vendor\'s table and creates that table if it is a custom table. Every event still also lands in the Abstract table.')
 param sourceRoutes array = []
 
+@description('Table plan for the Abstract table. Analytics (default) runs analytics rules and our content pack on it. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Set at creation; changing an existing Analytics table to Auxiliary is not supported by Azure.')
+@allowed(['Analytics', 'Basic', 'Auxiliary'])
+param customTablePlan string = 'Analytics'
+
 // ---------------------------------------------------------------------------
 // Derived values + role definition IDs
 // ---------------------------------------------------------------------------
@@ -333,6 +337,7 @@ resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2026-03-01
       }]
     }
     totalRetentionInDays: workspaceRetentionDays
+    plan: customTablePlan
   }
   dependsOn: createWorkspace ? [workspace] : []
 }

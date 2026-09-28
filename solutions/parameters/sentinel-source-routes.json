@@ -10,8 +10,11 @@
         "dcr": "Solutions/Okta Single Sign-On/Data Connectors/OktaNativePollerConnectorV2/OktaSSOv2_DCR.json",
         "tables": "Solutions/Okta Single Sign-On/Data Connectors/OktaNativePollerConnectorV2/OktaSSOv2_Tables.json"
       },
-      "defaults": {"DomainName": ""},
-      "requires": "The customer installs the Okta Single Sign-On solution from Content Hub for its OktaSSO parser, analytics rules and workbooks. Set DomainName to the customer's Okta domain."
+      "defaults": {
+        "DomainName": ""
+      },
+      "requires": "The customer installs the Okta Single Sign-On solution from Content Hub for its OktaSSO parser, analytics rules and workbooks. Set DomainName to the customer's Okta domain.",
+      "label": "Okta (Okta Single Sign-On solution → OktaV2_CL)"
     }
   ]
 }

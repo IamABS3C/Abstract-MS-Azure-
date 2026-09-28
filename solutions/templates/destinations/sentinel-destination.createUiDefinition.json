@@ -29,8 +29,14 @@
             "constraints": {
               "required": true,
               "allowedValues": [
-                { "label": "Create a new workspace", "value": "Create" },
-                { "label": "Use an existing workspace (in this resource group)", "value": "Existing" }
+                {
+                  "label": "Create a new workspace",
+                  "value": "Create"
+                },
+                {
+                  "label": "Use an existing workspace (in this resource group)",
+                  "value": "Existing"
+                }
               ]
             }
           },
@@ -81,7 +87,10 @@
             "constraints": {
               "required": true,
               "allowedValues": [
-                { "label": "Pay-as-you-go (PerGB2018)", "value": "PerGB2018" }
+                {
+                  "label": "Pay-as-you-go (PerGB2018)",
+                  "value": "PerGB2018"
+                }
               ]
             },
             "visible": "[equals(steps('workspace').mode, 'Create')]"
@@ -175,6 +184,55 @@
             }
           },
           {
+            "name": "customTablePlan",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Abstract table plan",
+            "defaultValue": "Analytics",
+            "toolTip": "Analytics runs analytics rules and the Abstract content pack. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Azure does not allow changing an existing Analytics table to Auxiliary.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                {
+                  "label": "Analytics",
+                  "value": "Analytics"
+                },
+                {
+                  "label": "Basic",
+                  "value": "Basic"
+                },
+                {
+                  "label": "Auxiliary (data lake)",
+                  "value": "Auxiliary"
+                }
+              ]
+            }
+          },
+          {
+            "name": "sourceRoutes",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Parse these sources into their vendor tables (optional)",
+            "multiselect": true,
+            "selectAll": false,
+            "filter": true,
+            "toolTip": "For each source selected, the rule unpacks the event's raw record and runs that vendor's published Microsoft Sentinel connector parsing into the vendor's own table. Install the vendor's Content Hub solution for its parsers, rules and workbooks. Every event still lands in the Abstract table.",
+            "constraints": {
+              "required": false,
+              "allowedValues": [
+                {
+                  "label": "Okta (Okta Single Sign-On solution → OktaV2_CL)",
+                  "value": "okta"
+                }
+              ]
+            }
+          },
+          {
+            "name": "enableDcrErrorLogs",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Log ingestion errors to the workspace (DCRLogErrors)",
+            "defaultValue": true,
+            "toolTip": "Records why Azure refused a request or dropped a row. Without it these failures show only as metric counts."
+          },
+          {
             "name": "tagsByResource",
             "type": "Microsoft.Common.TagsByResource",
             "label": "Resource-specific tags (optional)",
@@ -228,7 +286,10 @@
       "tableColumns": "[parse(steps('ingestion').tableColumnsJson)]",
       "tagsByResource": "[steps('ingestion').tagsByResource]",
       "principalId": "[coalesce(steps('auth').principalId, '')]",
-      "principalType": "ServicePrincipal"
+      "principalType": "ServicePrincipal",
+      "customTablePlan": "[steps('ingestion').customTablePlan]",
+      "sourceRoutes": "[coalesce(steps('ingestion').sourceRoutes, parse('[]'))]",
+      "enableDcrErrorLogs": "[steps('ingestion').enableDcrErrorLogs]"
     }
   }
 }

@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.8.0 — 2026-09-28
+
+### Added
+- **`customTablePlan`** on both Sentinel templates: Analytics (default), Basic or Auxiliary
+  (the Sentinel data lake tier) for the Abstract table.
+- **Portal form controls** for the Abstract table plan, the vendor-table source routes (a
+  multi-select the generator keeps in sync with the source list) and DCR error logging.
+- **Per-source modes** in `docs/sentinel-source-routes.md`: vendor table (trim to the raw
+  record and let the vendor's published connector parse it) or ACS (full Abstract schema for
+  the Abstract content pack), with Microsoft first-party data left on its native connectors.
+  States that none of it needs a Microsoft partnership.
+- MIT attribution for the reused Microsoft transformations on every generated route.
+
+### Verified live
+- An Auxiliary Abstract table accepted the full schema through the DCR transformation: 10 of
+  10 captured Okta events with every field present and `TimeGenerated` from the event.
+- Found while testing: the standard `/query` API and `az monitor log-analytics query` return 0
+  for an Auxiliary table that holds data; the `/search` API returns it. Documented in the guide.
+
 ## 3.7.0 — 2026-09-28
 
 ### Added
