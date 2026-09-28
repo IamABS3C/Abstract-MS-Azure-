@@ -165,8 +165,7 @@ var graphAppId = '00000003-0000-0000-c000-000000000000'
 var effectiveVaultUri = keyVaultInThisSubscription ? 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/' : keyVaultUri
 var armResource = environment().resourceManager
 // Key Vault data-plane audience differs by cloud (vault.azure.net / vault.usgovcloudapi.net /
-// vault.azure.cn), so resolve it from environment() rather than hardcoding - this template
-// ships an Azure Gov deploy button.
+// vault.azure.cn), so resolve it from environment() rather than hardcoding a cloud's endpoint.
 var vaultAudience = 'https://${replace(replace(environment().suffixes.keyvaultDns, '.vault', 'vault'), '..', '.')}'
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {

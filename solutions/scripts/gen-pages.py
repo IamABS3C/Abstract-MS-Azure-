@@ -69,9 +69,9 @@ def raw_url(repo: dict, rel: str) -> str:
             f"{repo['branch']}/{repo['solutionPath']}/{rel}")
 
 
-def portal_url(manifest: dict, tpl: dict, gov: bool = False) -> str:
+def portal_url(manifest: dict, tpl: dict) -> str:
     repo = manifest["repo"]
-    base = manifest["portal"]["government" if gov else "public"]
+    base = manifest["portal"]["public"]
     arm = enc(raw_url(repo, f"{tpl['path']}.azuredeploy.json"))
     if tpl["ui"] == "createUiDefinition":
         seg = f"/createUIDefinitionUri/{enc(raw_url(repo, tpl['path'] + '.createUiDefinition.json'))}"
@@ -138,9 +138,6 @@ def card(manifest: dict, tpl: dict) -> str:
         <div class="actions">
           <a class="btn primary" href="{portal_url(manifest, tpl)}" target="_blank" rel="noopener">
             Deploy to Azure
-          </a>
-          <a class="btn ghost" href="{portal_url(manifest, tpl, gov=True)}" target="_blank" rel="noopener">
-            Azure&nbsp;Gov
           </a>
           <a class="btn ghost" href="{gh_url(repo, tpl['path'] + '.bicep')}" target="_blank" rel="noopener">
             Source

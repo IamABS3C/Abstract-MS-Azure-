@@ -9,7 +9,7 @@
     "",
     "TO PORT THIS SOLUTION TO A NEW REPO: change `repo` below and run",
     "  python3 scripts/gen-deploy-links.py --write",
-    "Nothing else needs editing. Every Deploy-to-Azure URL, Gov URL and docs link is",
+    "Nothing else needs editing. Every Deploy-to-Azure URL and docs link is",
     "derived from these three fields, so there is no second place for them to go stale."
   ],
   "schemaVersion": "1.0",
@@ -25,8 +25,7 @@
     "$pagesUrlNote": "Pages source path is '/', so Jekyll serves the root README at the site root and docs/index.html at /docs/. If Pages is ever repointed to /docs, drop the trailing /docs/ here."
   },
   "portal": {
-    "public": "https://portal.azure.com",
-    "government": "https://portal.azure.us"
+    "public": "https://portal.azure.com"
   },
   "templates": [
     {

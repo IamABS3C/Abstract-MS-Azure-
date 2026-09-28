@@ -77,12 +77,11 @@ def enc(url: str) -> str:
     return urllib.parse.quote(url, safe="")
 
 
-def button(manifest: dict, tpl: dict, gov: bool = False) -> str:
+def button(manifest: dict, tpl: dict) -> str:
     repo = manifest["repo"]
-    portal = manifest["portal"]["government" if gov else "public"]
-    img = ("https://aka.ms/deploytoazuregovbutton" if gov
-           else "https://aka.ms/deploytoazurebutton")
-    alt = "Deploy to Azure Gov" if gov else "Deploy to Azure"
+    portal = manifest["portal"]["public"]
+    img = "https://aka.ms/deploytoazurebutton"
+    alt = "Deploy to Azure"
 
     arm = enc(raw_url(repo, f"{tpl['path']}.azuredeploy.json"))
     if tpl["ui"] == "createUiDefinition":
@@ -136,14 +135,14 @@ def deploy_table(manifest: dict) -> str:
         lines.append("")
         lines.append(CATEGORY_BLURB[cat])
         lines.append("")
-        lines.append("| Template | Scope | Deploy | Gov | CLI |")
-        lines.append("| --- | --- | --- | --- | --- |")
+        lines.append("| Template | Scope | Deploy | CLI |")
+        lines.append("| --- | --- | --- | --- |")
         for tpl in by_cat[cat]:
             star = " ⭐" if tpl.get("recommended") else ""
             first = " **(deploy first)**" if tpl.get("deployFirst") else ""
             lines.append(
                 f"| **{tpl['title']}**{star}{first} | {SCOPE_LABEL[tpl['scope']]} | "
-                f"{button(manifest, tpl)} | {button(manifest, tpl, gov=True)} | "
+                f"{button(manifest, tpl)} | "
                 f"`{cli_command(tpl)}` |"
             )
         lines.append("")
