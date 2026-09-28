@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.6.1 — 2026-09-28
+
+### Added
+- **DCR error logs are on by default** (`enableDcrErrorLogs`, both Sentinel
+  templates). The rule's `LogErrors` go to `DCRLogErrors` in the workspace.
+  Without it, a request Azure refuses or a row it drops is visible only as a
+  metric count, with no reason, to the customer or to Abstract.
+
+### Verified live (QA1 → real Sentinel destination → this template)
+- Field fidelity, event by event and leaf by leaf, on real Abstract output: 390
+  of 423 leaves exact and 24 equal after date/number formatting, across 114 paths
+  including 77 `ext.*` paths nested several levels and lists inside `ext`. The
+  only absent path is `@timestamp`, which lands as `timestamp` and `TimeGenerated`.
+- Values of 130 KB in a string column, in a dynamic column and nested under `ext`
+  were stored in full, not truncated at the 64 KB Microsoft documents for the Logs
+  Ingestion API (Analytics plan, eastus, 2026-09-28).
+- Re-running the template over an existing install keeps the same DCR immutable
+  ID, so the Abstract destination keeps working.
+
+### Known behaviour worth knowing
+- The workspace name is derived from the resource group. Deleting the resource
+  group soft-deletes the workspace for 14 days, and redeploying into a group of the
+  same name RECOVERS it with its old data rather than creating an empty one.
+
 ## 3.6.0 — 2026-09-27
 
 The Sentinel Destination table now matches what Abstract actually sends. The
