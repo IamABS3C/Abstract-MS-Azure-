@@ -1,5 +1,73 @@
 # Changelog
 
+## 4.1.0 — 2026-09-28
+
+Review by cloud-architecture, security-engineering and Sentinel reviewers; every finding
+below is fixed or documented.
+
+### Changed: the Sentinel Destination is safe for an existing production workspace
+- **ASIM tables are off by default** (`enableAsim` = false). The portal shows what turning
+  them on does to existing ASIM rules, duplicates and cost.
+- **Events more than two days old never reach the ASIM tables**, so a replay or backfill
+  cannot look like live activity to ASIM rules.
+- **A redeploy no longer resets the Abstract table's retention.** New
+  `customTableRetentionDays` (default 0 = keep). Measured: a real deployment left a table
+  at 60 / 120 days.
+- **Monitoring Contributor on the DCR is opt-in** (`grantMonitoringContributor`).
+  Monitoring Metrics Publisher is all ingestion needs; measured: Abstract kept delivering
+  with Publisher only.
+- With-app variant:
+  - Key Vault purge protection;
+  - the deployment script's container is always cleaned up;
+  - the secret is written through a file, never on the command line;
+  - the script refuses to overwrite another app's secret;
+  - the provisioning identity is documented as tier-0.
+
+### Changed: the content pack only ever acts on its own items
+- Its analytics rules and automation rules install **disabled**.
+- The automation rules are scoped to the pack's two rules by rule ID, not by an incident
+  title containing "Abstract".
+- The Verdict playbook no longer sets incident status, so it cannot reopen a closed
+  incident.
+- The Key Vault secret default no longer points at a specific vault.
+
+### Security
+- **Both app-registration paths now reuse only apps they created.** An app they create is
+  tagged `abstract:appreg`; any other app with the predictable `Abstract-<subscription>`
+  name is refused. Before, a user who pre-created that name could receive tenant-wide Graph
+  consent.
+- **The event-driven Logic App keeps secrets out of its run history.**
+  `Check_existing_secret` and `Add_password` now have secure inputs and outputs. Rotate
+  any `abstract-<subscription>` secret minted by an earlier version.
+- **The Azure Policy app-registration path uses a durable existence check** (a
+  resource-group tag written after consent and RBAC are verified), fails on a role
+  assignment error, and always cleans up its container.
+- The log-streams policy no longer grants an unneeded Monitoring Contributor to the
+  resource-log assignments.
+
+### Added
+- `solutions/docs/sentinel-destination-assurance.md`: what the Sentinel templates create,
+  change and never touch; identities and blast radius; ASIM; cost; rollout and rollback;
+  evidence.
+- `CONTRIBUTING.md`.
+- Official brand assets in `solutions/brand/`.
+
+### Removed
+- **Azure Government deploy buttons and links.**
+- The SOC demo (`docs/threat-model/`), internal planning documents (`docs/superpowers/`),
+  sales material (`solution/sales/`), notebooks and the SE integration profile. They
+  remain in git history at tag `archive/pre-cleanup-2026-09-28`.
+
+### Fixed
+- The portal wizards' logo was hot-linked from a third-party site; it is now served from
+  this repository and generated from the manifest.
+- GitHub Pages published every file in the repository; it now publishes only the deployment
+  console (`docs/`). The old `/docs/` address redirects.
+- `docs.abstract.security` links (which do not resolve) now point to
+  `docs.abstractsecurity.app`.
+- README: a branded overview with a "Start here" guide. The template reference moved to
+  `solutions/README.md` and maintainer material to `CONTRIBUTING.md`.
+
 ## 4.0.0 — 2026-09-28
 
 ### Changed
@@ -25,8 +93,8 @@
   must drop the parameter.
 
 ### Verified live
-- Live AWS CloudTrail and Okta feeds from QA1: 95% and 100% of events landed in an ASIM
-  table; the rest carry no ASIM-relevant category. Stored QA1 test events for the other
+- Live AWS CloudTrail and Okta feeds from an Abstract test tenant: 95% and 100% of events landed in an ASIM
+  table; the rest carry no ASIM-relevant category. Stored test-tenant events for the other
   schemas all landed. Microsoft's built-in `_Im_*` parsers returned every row, and
   Microsoft's `ASimDataTester` passed Authentication, AuditEvent, NetworkSession and
   FileEvent with no errors or warnings (details in the guide).
@@ -76,7 +144,7 @@
 - `docs/sentinel-source-routes.md`: the design, how to add a source, and which Microsoft
   first-party tables no outside sender can write, with how to reduce those instead.
 
-### Verified live (QA1 → Abstract Sentinel Destination → test workspace)
+### Verified live (Abstract test tenant → Abstract Sentinel Destination → test workspace)
 - An Abstract route function (`SELECT_KEYS`, `raw: false`) trimmed a live feed to the raw
   record and routing fields: on the events after it was attached, those fields were present
   on 100% and every other parsed field on 0%.
@@ -93,7 +161,7 @@
   Without it, a request Azure refuses or a row it drops is visible only as a
   metric count, with no reason, to the customer or to Abstract.
 
-### Verified live (QA1 → real Sentinel destination → this template)
+### Verified live (Abstract test tenant → real Sentinel destination → this template)
 - Field fidelity, event by event and leaf by leaf, on real Abstract output: 390
   of 423 leaves exact and 24 equal after date/number formatting, across 114 paths
   including 77 `ext.*` paths nested several levels and lists inside `ext`. The

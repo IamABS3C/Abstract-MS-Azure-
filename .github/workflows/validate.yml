@@ -15,6 +15,10 @@ on:
 # quote-heavy regex inside a YAML block scalar is a reliable way to break a workflow
 # file in a way that is hard to see in review.
 
+# Read-only: CI never needs to write to the repository.
+permissions:
+  contents: read
+
 jobs:
   json-lint:
     name: JSON parses

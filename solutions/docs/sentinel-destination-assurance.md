@@ -180,7 +180,7 @@ places.
 **Monitoring Metrics Publisher** grants `Microsoft.Insights/Telemetry/Write`, the only
 permission the Logs Ingestion API needs. **Measured:** with Monitoring Contributor removed
 from the destination's service principal, Abstract kept delivering events to the test
-workspace for as long as it was watched (over 15 minutes). Monitoring Contributor is
+workspace for the 25 minutes it was watched, including through a DCR redeploy. Monitoring Contributor is
 therefore off by default; it would let the identity rewrite or delete the DCR and its
 error-log setting.
 
@@ -308,6 +308,10 @@ is where the savings come from.
      --template-file solutions/templates/destinations/sentinel-destination.bicep \
      --parameters createWorkspace=false workspaceName=<ws> principalId=<sp-object-id>
    ```
+   what-if lists the table's `retentionInDays`, `totalRetentionInDays` and `plan` as
+   removed, because the template does not send them. Azure keeps them. **Measured:** a
+   real deployment with the defaults left a table at 60 days interactive / 120 days total
+   and Analytics.
 
 **Deploy:**
 
@@ -397,8 +401,9 @@ originals. Review each item before enabling it.
 **Measured on a test Sentinel workspace fed by an Abstract test tenant, 2026-09-28:**
 
 - End-to-end field fidelity of the real destination (section 1).
-- A table update without retention kept 60 / 180 days. Redeploying over an Auxiliary
-  table kept it Auxiliary and kept the DCR's immutable ID.
+- A table update without retention kept 60 / 180 days, and a full template deployment with
+  the defaults kept 60 / 120 days and the Analytics plan. Redeploying over an Auxiliary
+  table kept it Auxiliary. Redeploys kept the DCR's immutable ID.
 - Existing-workspace mode keeps every ASIM dataflow while the portal sends
   `enableSentinel = false`. `asimSchemas = []` produces no ASIM dataflows
   (`az deployment group what-if`).

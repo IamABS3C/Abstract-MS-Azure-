@@ -481,7 +481,7 @@ def build(manifest: dict) -> str:
   <section class="band" id="docs">
     <div class="wrap">
       <h2>Deep references</h2>
-      <p>Both documents distinguish what was <em>tested against a live tenant</em> from what was
+      <p>Every guide distinguishes what was <em>tested against a live tenant</em> from what was
          read in documentation, and name the bugs that testing exposed.</p>
       <div class="docs">
 {doc_cards}      </div>

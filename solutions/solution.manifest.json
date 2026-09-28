@@ -14,7 +14,7 @@
   ],
   "schemaVersion": "1.0",
   "name": "Abstract Security — Microsoft Azure & Sentinel integration",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Production Azure infrastructure for Abstract Security source and destination integrations: Event Hub collection, Sentinel ingestion, estate-wide log-stream governance, and automated per-subscription Entra app registrations.",
   "repo": {
     "owner": "IamABS3C",
