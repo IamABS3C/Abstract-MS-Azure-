@@ -41,12 +41,12 @@ findings and alerts (`type` = `finding` or `alert`) never go to the activity tab
 | --- | --- | --- |
 | Authentication | ASimAuthenticationEventLogs | `event.category` is authentication or session, and the event has a user |
 | AuditEvent | ASimAuditEventLogs | `event.category` is iam, configuration or audit, or the event is a cloud control-plane call (`cloud.provider` set and no category); either way it needs an action |
-| NetworkSession | ASimNetworkSessionLogs | `event.category` is network, with a source or destination IP, and it is not a DNS query |
+| NetworkSession | ASimNetworkSessionLogs | `event.category` is network, with a source or destination IP (typed or in `source_address`/`dest_address`), and it is not a DNS query |
 | Dns | ASimDnsActivityLogs | `dns.question.name` is set |
 | WebSession | ASimWebSessionLogs | `event.category` is web, or the event has a URL and an HTTP method |
 | ProcessEvent | ASimProcessEventLogs | `event.category` is process, with a process name, executable or command line |
 | FileEvent | ASimFileEventLogs | `event.category` is file, with a file path or name |
-| RegistryEvent | ASimRegistryEventLogs | `registry.path` or `registry.key` is set |
+| RegistryEvent | ASimRegistryEventLogs | `registry.path` or `registry.key` is set, and the action is a change (reads are left out) |
 
 The mappings are in [solutions/asim](../asim), one DCR transformation per schema, each
 readable on its own.
@@ -91,8 +91,8 @@ AbstractEventLogs_CL | where acs_id == "<AdditionalFields.AbstractEventId>"
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `enableAsim` | true | Write the ASIM tables. Needs Microsoft Sentinel on the workspace (the ASim tables come with it) and the generated Abstract schema (`tableColumns` left empty) |
-| `asimSchemas` | all | Which ASIM schemas to write |
+| `enableAsim` | true | Write the ASIM tables. Needs Microsoft Sentinel on the workspace, where the ASim tables come from: a new workspace needs `enableSentinel`, and an existing one is assumed to have it (the deployment fails if it does not; set `enableAsim` to false). Also needs the generated Abstract schema (`tableColumns` left empty) |
+| `asimSchemas` | `['*']` (all) | Which ASIM schemas to write, by name; `[]` writes none. The portal form lists every schema, all selected |
 | `customTablePlan` | Keep | Keep leaves an existing Abstract table's plan alone and creates a new one as Analytics. Pick Analytics, Basic or Auxiliary (the data lake tier) to set it. Picking a plan for an existing table switches the whole table |
 | `enableDcrErrorLogs` | true | Rejected and malformed ingestion goes to `DCRLogErrors` |
 

@@ -30,7 +30,7 @@ source
     Dvc = case(isnotempty(host_name), host_name, isnotempty(host_ipv4), host_ipv4, isnotempty(product), product, vendor),
     DvcIpAddr = case(isnotempty(host_ipv4), host_ipv4, host_ipv6),
     EventType = 'Query',
-    EventSubType = iif(isnotempty(_rcode), 'response', 'request'),
+    EventSubType = iif(isnotempty(_rcode) or tolower(tostring(dns.type)) in ('answer', 'response'), 'response', 'request'),
     DnsQuery = tostring(dns.question.name),
     DnsQueryTypeName = toupper(tostring(dns.question.type)),
     DnsQueryClassName = toupper(tostring(dns.question.class)),

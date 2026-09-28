@@ -19,7 +19,7 @@ source
     EventCount = iif(isnull(aggregation_count) or aggregation_count < 1, toint(1), toint(aggregation_count)),
     EventStartTime = case(isnotnull(todatetime(event.start)), todatetime(event.start), isnotnull(aggregation_start), aggregation_start, _time),
     EventEndTime = case(isnotnull(todatetime(event.end)), todatetime(event.end), isnotnull(aggregation_end), aggregation_end, _time),
-    EventType = iif(_action has 'logout' or _action has 'logoff' or _action has 'signout' or _action has 'session.end' or _action has 'session_end', 'Logoff', 'Logon'),
+    EventType = iif(_action contains 'logout' or _action contains 'logoff' or _action contains 'signout' or _action contains 'sign_out' or _action contains 'session.end' or _action contains 'session_end', 'Logoff', 'Logon'),
     EventResult = _result,
     EventResultDetails = iif(_result == 'Failure', 'Other', ''),
     EventOriginalResultDetails = tostring(event.reason),

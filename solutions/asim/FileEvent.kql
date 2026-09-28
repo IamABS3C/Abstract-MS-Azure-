@@ -31,7 +31,7 @@ source
     EventSchema = 'FileEvent',
     DvcHostname = host_name,
     DvcIpAddr = case(isnotempty(host_ipv4), host_ipv4, host_ipv6),
-    EventType = case(_action has 'delete' or _action has 'remove' or _action startswith 'delete', 'FileDeleted', _action has 'rename' or _action startswith 'rename', 'FileRenamed', _action has 'create' or _action startswith 'create' or _action has 'upload', 'FileCreated', _action has 'modif' or _action has 'write' or _action has 'update', 'FileModified', _action has 'copy', 'FileCopied', _action has 'move', 'FileMoved', 'FileAccessed'),
+    EventType = case(_action contains 'delet' or _action contains 'remov', 'FileDeleted', _action contains 'renam', 'FileRenamed', _action contains 'creat' or _action contains 'upload', 'FileCreated', _action contains 'modif' or _action contains 'writ' or _action contains 'updat' or _action contains 'chang', 'FileModified', _action contains 'copy' or _action contains 'copied', 'FileCopied', _action has 'move' or _action has 'moved', 'FileMoved', 'FileAccessed'),
     TargetFilePath = _path,
     TargetFilePathType = case(_path contains '://', 'URL', _path startswith '\\\\', 'Windows Share', _path contains ':\\', 'Windows Local', _path startswith '/', 'Unix', ''),
     TargetFileName = tostring(file.name),

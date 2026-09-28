@@ -136,11 +136,13 @@ param transformKql string = 'source'
 @description('Send the Data Collection Rule\'s ingestion errors (rejected requests, malformed payloads, limit and transformation errors) to the DCRLogErrors table in the workspace. Without it, data Azure refuses or drops is invisible to the customer and to Abstract.')
 param enableDcrErrorLogs bool = true
 
-@description('Also write each event into Microsoft\'s ASIM normalized tables (ASimAuthenticationEventLogs and the others listed in asimSchemas), mapped from the Abstract Common Schema by solutions/asim. Microsoft\'s built-in ASIM parsers read those tables, so Microsoft\'s ASIM analytics rules, hunting queries and workbooks work on Abstract data from every vendor. Needs Microsoft Sentinel on the workspace and the generated Abstract schema (tableColumns left empty). Every event still also lands in the Abstract table.')
+@description('Also write each event into Microsoft\'s ASIM normalized tables (ASimAuthenticationEventLogs and the others listed in asimSchemas), mapped from the Abstract Common Schema by solutions/asim. Microsoft\'s built-in ASIM parsers read those tables, so Microsoft\'s ASIM analytics rules, hunting queries and workbooks work on Abstract data from every vendor. Needs Microsoft Sentinel on the workspace (a new workspace needs enableSentinel; an existing one is assumed to have it) and the generated Abstract schema (tableColumns left empty). Every event still also lands in the Abstract table.')
 param enableAsim bool = true
 
-@description('ASIM schemas to write, by name (for example [\'Authentication\']). Leave empty for every schema solutions/asim maps.')
-param asimSchemas array = []
+@description('ASIM schemas to write, by name (for example [\'Authentication\', \'NetworkSession\']). [\'*\'] (default) writes every schema solutions/asim maps; [] writes none.')
+param asimSchemas array = [
+  '*'
+]
 
 @description('Table plan for the Abstract table. Keep (default) keeps the plan an existing table already has, and create a new table as Analytics: a redeploy then never changes a table\'s plan, or its cost, by accident. Analytics runs analytics rules and our content pack on it. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Setting a plan on an existing table switches it; Azure applies the new plan to the whole table.')
 @allowed(['Keep', 'Analytics', 'Basic', 'Auxiliary'])
@@ -180,7 +182,8 @@ var effectiveTransformKql = useGeneratedSchema ? generatedSchema.transformKql : 
 // read the generated ACS stream columns, so they are skipped when tableColumns overrides
 // the schema, and the ASim tables exist only when Microsoft Sentinel is on the workspace.
 var asimRouteCatalog = loadJsonContent('../../parameters/sentinel-asim-routes.generated.json').routes
-var enabledAsimRoutes = enableAsim && enableSentinel && useGeneratedSchema ? filter(asimRouteCatalog, route => empty(asimSchemas) || contains(asimSchemas, route.name)) : []
+// An existing workspace is assumed to run Sentinel already (the portal sends enableSentinel=false for it).
+var enabledAsimRoutes = enableAsim && (enableSentinel || !createWorkspace) && useGeneratedSchema ? filter(asimRouteCatalog, route => contains(asimSchemas, '*') || contains(asimSchemas, route.name)) : []
 var asimFlows = [for route in enabledAsimRoutes: {
   streams: [
     streamName
