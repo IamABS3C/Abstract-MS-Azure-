@@ -61,6 +61,12 @@ jobs:
       - name: Sentinel schema is current
         run: python3 solutions/scripts/gen-sentinel-schema.py --check
 
+      # Source routes reuse Microsoft's published connector parsing, fetched from
+      # Azure/Azure-Sentinel at the pinned ref. A hand edit, or a ref bump without a
+      # regenerate, would route a source through parsing nobody reviewed.
+      - name: Sentinel source routes are current
+        run: python3 solutions/scripts/gen-sentinel-source-routes.py --check
+
   shell-lint:
     name: Shell scripts parse
     runs-on: ubuntu-latest

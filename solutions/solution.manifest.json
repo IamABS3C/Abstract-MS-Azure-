@@ -164,6 +164,11 @@
       "path": "docs/azure-app-registrations.md",
       "title": "Per-subscription app registrations",
       "summary": "Both automation paths with their real trade-offs, the verified Graph permission catalogue, and the four bugs live testing exposed."
+    },
+    {
+      "path": "docs/sentinel-source-routes.md",
+      "title": "Sentinel's own tables from Abstract",
+      "summary": "Send the raw record plus routing fields and let each vendor's published Sentinel connector parse it into its own table, so Content Hub parsers, rules and workbooks work unchanged, with every event also kept in the Abstract table. Includes which Microsoft first-party tables no outside sender can write, and how to reduce those instead."
     }
   ],
   "scripts": [
