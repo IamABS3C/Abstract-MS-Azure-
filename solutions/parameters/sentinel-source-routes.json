@@ -1,0 +1,17 @@
+{
+  "description": "Sources whose raw record Sentinel parses with the vendor's own published connector logic. Each entry names the Content Hub connector's DCR (and table definition, for a custom _CL target) in github.com/Azure/Azure-Sentinel at the pinned ref, the KQL condition that selects that source's Abstract events, and values for any column Microsoft's own poller adds that the raw record does not carry. Regenerate with solutions/scripts/gen-sentinel-source-routes.py.",
+  "ref": "f6cc4352c34b84d781735967808cfc953376e7f2",
+  "sources": [
+    {
+      "name": "okta",
+      "match": "tostring(vendor) =~ 'okta'",
+      "connector": {
+        "solution": "Okta Single Sign-On",
+        "dcr": "Solutions/Okta Single Sign-On/Data Connectors/OktaNativePollerConnectorV2/OktaSSOv2_DCR.json",
+        "tables": "Solutions/Okta Single Sign-On/Data Connectors/OktaNativePollerConnectorV2/OktaSSOv2_Tables.json"
+      },
+      "defaults": {"DomainName": ""},
+      "requires": "The customer installs the Okta Single Sign-On solution from Content Hub for its OktaSSO parser, analytics rules and workbooks. Set DomainName to the customer's Okta domain."
+    }
+  ]
+}

@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.7.0 — 2026-09-28
+
+### Added
+- **Source routes** (`sourceRoutes`, both Sentinel templates). For each listed source the
+  DCR selects its events, unpacks `event.original` into the columns that vendor's published
+  Sentinel connector expects, and runs Microsoft's own transformation into the vendor's table,
+  so the vendor's Content Hub parsers, analytics rules and workbooks work unchanged. Every
+  event still also lands in the Abstract table. Off by default.
+- `solutions/scripts/gen-sentinel-source-routes.py` builds the routes from
+  github.com/Azure/Azure-Sentinel at a pinned commit, from the list in
+  `parameters/sentinel-source-routes.json`; CI fails if the generated file drifts. First
+  source: Okta (`OktaV2_CL`).
+- `docs/sentinel-source-routes.md`: the design, how to add a source, and which Microsoft
+  first-party tables no outside sender can write, with how to reduce those instead.
+
+### Verified live (QA1 → Abstract Sentinel Destination → test workspace)
+- An Abstract route function (`SELECT_KEYS`, `raw: false`) trimmed a live feed to the raw
+  record and routing fields: on the events after it was attached, those fields were present
+  on 100% and every other parsed field on 0%.
+- The generated Okta route, whose Microsoft transformation is identical to the one run by
+  hand first, filled `OktaV2_CL`. Microsoft's `OktaSSO` parser and all 9 Okta Content Hub
+  rules ran as published; columns left empty were empty in Okta's own raw records.
+- Redeploying with `sourceRoutes` kept the same DCR immutable ID.
+
 ## 3.6.1 — 2026-09-28
 
 ### Added
