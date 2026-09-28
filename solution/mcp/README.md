@@ -37,7 +37,7 @@ or add to your MCP config (key supplied via env, **not** in the file):
       "args": ["/abs/path/solution/mcp/abstract_mcp_server.py"],
       "env": {
         "ABSTRACT_API_KEY": "${ABSTRACT_API_KEY}",
-        "ABSTRACT_VENDOR_ACCOUNT_ID": "12jW5BDyQR",
+        "ABSTRACT_VENDOR_ACCOUNT_ID": "<your-vendor-account-id>",
         "ABSTRACT_BASE_URL": "https://api.abstractsecurity.app"
       }
     }

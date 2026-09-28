@@ -11,8 +11,8 @@
 #         Abstract + its service principal.
 #      2. Generates a client secret (shown ONCE, or pushed to Key Vault).
 #      3. Optionally deploys templates/destinations/sentinel-destination so the
-#         SP is granted BOTH Monitoring Metrics Publisher AND Monitoring
-#         Contributor on the DCR (per the Abstract docs), then prints the exact
+#         SP is granted Monitoring Metrics Publisher on the DCR (all the Logs
+#         Ingestion API needs), then prints the exact
 #         values for the Abstract "Azure Sentinel Destination" modal.
 #
 #  The Abstract app needs NO Graph API permissions / admin consent - it is
@@ -139,14 +139,17 @@ SECRET_VALUE="$(az ad app credential reset --id "$APP_ID" --append \
 SECRET_SINK="printed below (copy it now - it cannot be retrieved again)"
 if [[ -n "$KEYVAULT" ]]; then
   info "Storing secret in Key Vault '$KEYVAULT' as secret 'abstract-sentinel-client-secret'…"
+  # Through a 0600 file, not the command line, so the value never shows in the process list.
+  SECRET_FILE="$(mktemp)"; chmod 600 "$SECRET_FILE"; printf '%s' "$SECRET_VALUE" > "$SECRET_FILE"
   KV_URI="$(az keyvault secret set --vault-name "$KEYVAULT" \
-      --name abstract-sentinel-client-secret --value "$SECRET_VALUE" \
-      --query id -o tsv)"
+      --name abstract-sentinel-client-secret --file "$SECRET_FILE" --encoding utf-8 \
+      --expires "$(date -u -v+"${SECRET_YEARS}"y +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "+${SECRET_YEARS} years" +%Y-%m-%dT%H:%M:%SZ)" \
+      --query id -o tsv)"; rm -f "$SECRET_FILE"
   SECRET_SINK="stored in Key Vault: $KV_URI"
   SECRET_VALUE="(stored in Key Vault - not shown)"
 fi
 
-# ---- 4. optional deployment (grants BOTH DCR roles to the SP) ---------------
+# ---- 4. optional deployment (grants Monitoring Metrics Publisher on the DCR) --
 DCR_IMMUTABLE_ID=""; DCE_URL=""; STREAM_NAME="Custom-${TABLE_NAME}"
 if $DEPLOY; then
   az group create -n "$RESOURCE_GROUP" -l "$LOCATION" -o none
@@ -191,7 +194,7 @@ if $DEPLOY; then
    Data Collection Endpoint     : $DCE_URL
    Log Stream Name              : $STREAM_NAME
 
- RBAC granted on the DCR: Monitoring Metrics Publisher + Monitoring Contributor
+ RBAC granted on the DCR: Monitoring Metrics Publisher
 EOF
 else
   cat >&2 <<EOF

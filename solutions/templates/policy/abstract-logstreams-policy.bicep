@@ -435,15 +435,9 @@ resource resourceLogAssignments 'Microsoft.Authorization/policyAssignments@2024-
   }
 }]
 
-resource resourceLogMonitoringRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (region, i) in regions: if (enableResourceLogs) {
-  name: guid(managementGroup().id, 'res', string(region.location), roles.monitoringContributor)
-  properties: {
-    principalId: resourceLogAssignments[i]!.identity!.principalId
-    roleDefinitionId: tenantResourceId('Microsoft.Authorization/roleDefinitions', roles.monitoringContributor)
-    principalType: 'ServicePrincipal'
-  }
-}]
-
+// No Monitoring Contributor here: every member policy of the resource-log initiatives
+// declares only Log Analytics Contributor (below) and Azure Event Hubs Data Owner
+// (granted on the namespace by Deploy-AbstractLogStreams.sh -a Grant).
 resource resourceLogLawRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (region, i) in regions: if (enableResourceLogs) {
   name: guid(managementGroup().id, 'res', string(region.location), roles.logAnalyticsContributor)
   properties: {

@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.44.1.10279",
-      "templateHash": "3816246464847716870"
+      "version": "0.47.16.16243",
+      "templateHash": "13506679351663874097"
     }
   },
   "parameters": {
@@ -426,24 +426,6 @@
         "enforcementMode": "[parameters('enforcementMode')]",
         "parameters": "[union(createObject('effect', createObject('value', parameters('effect')), 'eventHubAuthorizationRuleId', createObject('value', parameters('regions')[copyIndex()].authorizationRuleId), 'eventHubName', createObject('value', parameters('regions')[copyIndex()].eventHubName), 'resourceLocation', createObject('value', parameters('regions')[copyIndex()].location), 'diagnosticSettingName', createObject('value', parameters('diagnosticSettingName'))), if(empty(parameters('resourceTypeList')), createObject(), createObject('resourceTypeList', createObject('value', parameters('resourceTypeList')))))]"
       }
-    },
-    {
-      "copy": {
-        "name": "resourceLogMonitoringRole",
-        "count": "[length(parameters('regions'))]"
-      },
-      "condition": "[parameters('enableResourceLogs')]",
-      "type": "Microsoft.Authorization/roleAssignments",
-      "apiVersion": "2022-04-01",
-      "name": "[guid(managementGroup().id, 'res', string(parameters('regions')[copyIndex()].location), variables('roles').monitoringContributor)]",
-      "properties": {
-        "principalId": "[reference(extensionResourceId(managementGroup().id, 'Microsoft.Authorization/policyAssignments', format('{0}-r-{1}', parameters('namePrefix'), uniqueString(string(parameters('regions')[copyIndex()].location)))), '2024-04-01', 'full').identity.principalId]",
-        "roleDefinitionId": "[tenantResourceId('Microsoft.Authorization/roleDefinitions', variables('roles').monitoringContributor)]",
-        "principalType": "ServicePrincipal"
-      },
-      "dependsOn": [
-        "[extensionResourceId(managementGroup().id, 'Microsoft.Authorization/policyAssignments', format('{0}-r-{1}', parameters('namePrefix'), uniqueString(string(parameters('regions')[copyIndex()].location))))]"
-      ]
     },
     {
       "copy": {

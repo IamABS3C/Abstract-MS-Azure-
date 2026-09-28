@@ -56,7 +56,7 @@
           {
             "name": "cw-rbac-info",
             "type": "Microsoft.Common.InfoBox",
-            "options": { "icon": "Warning", "text": "Enterprise prerequisite — Entra app registration (RBAC): Abstract publishes events to the Sentinel DCR through an Entra ID app registration and its service principal. Azure Resource Manager cannot create the app registration, so create it in Entra ID first, then grant its service principal BOTH 'Monitoring Metrics Publisher' AND 'Monitoring Contributor' scoped to the Data Collection Rule — not the subscription or resource group. Scoping both roles to the DCR is the least-privilege posture: it is the only identity the pipeline needs, and it can do nothing beyond publishing to that rule. Store the client secret in Azure Key Vault." }
+            "options": { "icon": "Warning", "text": "Enterprise prerequisite — Entra app registration (RBAC): Abstract publishes events to the Sentinel DCR through an Entra ID app registration and its service principal. Azure Resource Manager cannot create the app registration, so create it in Entra ID first, then grant its service principal 'Monitoring Metrics Publisher' on the Data Collection Rule only — not the subscription or resource group. That is all the Logs Ingestion API needs: the identity can publish to that rule and nothing else. Do not add Monitoring Contributor unless your Abstract setup asks for it; it would let a leaked credential rewrite or delete the rule. Store the client secret in Azure Key Vault." }
           }
         ]
       },

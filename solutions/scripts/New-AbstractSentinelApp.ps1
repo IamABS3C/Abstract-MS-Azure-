@@ -15,9 +15,8 @@
          -KeyVault. The secret is NEVER written to disk or a transcript.
       3. With -Deploy, deploys the Sentinel Destination stack (Log Analytics
          workspace + Microsoft Sentinel + Data Collection Endpoint + custom _CL
-         table + Data Collection Rule) and grants the SP BOTH
-         "Monitoring Metrics Publisher" AND "Monitoring Contributor" on the DCR
-         (exactly what the Abstract docs require), then prints the values for the
+         table + Data Collection Rule) and grants the SP "Monitoring Metrics
+         Publisher" on the DCR (all the Logs Ingestion API needs), then prints the values for the
          Abstract "Azure Sentinel Destination" modal.
 
     The Abstract app needs NO Graph API permissions or admin consent - it is
@@ -177,7 +176,7 @@ if ($Deploy) {
     Write-Host "   Data Collection Endpoint     : $DceUrl"
     Write-Host "   Log Stream Name              : $StreamName"
     Write-Host ''
-    Write-Host ' RBAC granted on the DCR: Monitoring Metrics Publisher + Monitoring Contributor'
+    Write-Host ' RBAC granted on the DCR: Monitoring Metrics Publisher'
 } else {
     Write-Host ''
     Warn ' Next: deploy the ingestion stack and grant RBAC to this SP, e.g.'
