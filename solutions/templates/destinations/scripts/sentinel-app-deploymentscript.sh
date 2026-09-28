@@ -69,8 +69,17 @@ ok "tenant $TENANT_ID"
 # marker tag this template writes.
 MARKER="abstract:sentinel-destination"
 log "Ensuring app registration '$APP_NAME'"
-MATCHES=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query "[].{appId:appId, tags:tags}" -o json) \
-  || die "cannot list app registrations - does the script identity hold Application.ReadWrite.All with admin consent?"
+# A Graph permission granted to the identity in the same deployment can take a few
+# minutes to reach its tokens, so a refused list is retried before it is fatal.
+MATCHES=""
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  if MATCHES=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query "[].{appId:appId, tags:tags}" -o json 2>/tmp/app-list.err); then
+    break
+  fi
+  MATCHES=""
+  [ "$attempt" -lt 10 ] && { warn "cannot list app registrations yet (attempt $attempt/10), retrying in 30s"; sleep 30; }
+done
+[ -n "$MATCHES" ] || die "cannot list app registrations - does the script identity hold Application.ReadWrite.All (or, for an app it owns, Application.ReadWrite.OwnedBy) with admin consent? $(head -c 300 /tmp/app-list.err)"
 read -r MATCH_COUNT APP_ID MARKED <<<"$(printf '%s' "$MATCHES" | python3 -c "
 import json, sys
 apps = json.load(sys.stdin) or []

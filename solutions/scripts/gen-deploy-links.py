@@ -101,6 +101,8 @@ def enc(url: str) -> str:
 
 
 def button(manifest: dict, tpl: dict) -> str:
+    if tpl["ui"] == "none":
+        return "CLI only"
     repo = manifest["repo"]
     portal = manifest["portal"]["public"]
     img = "https://aka.ms/deploytoazurebutton"
@@ -183,9 +185,10 @@ def template_detail(manifest: dict) -> str:
                      f"· **Portal UI:** `{tpl['ui']}`")
         lines.append(f"- **Deploy:** {button(manifest, tpl)}")
         lines.append(f"- **CLI:** `{cli_command(tpl)}`")
-        lines.append(f"- **Files:** `{tpl['path']}.bicep` · "
-                     f"`{tpl['path']}.azuredeploy.json` · "
-                     f"`{tpl['path']}.{tpl['ui']}.json`")
+        files = [f"`{tpl['path']}.bicep`", f"`{tpl['path']}.azuredeploy.json`"]
+        if tpl["ui"] != "none":
+            files.append(f"`{tpl['path']}.{tpl['ui']}.json`")
+        lines.append(f"- **Files:** {' · '.join(files)}")
         if tpl.get("prerequisite"):
             lines.append(f"- **Prerequisite:** {tpl['prerequisite']}")
         if tpl.get("driver"):

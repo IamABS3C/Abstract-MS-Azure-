@@ -94,7 +94,7 @@ def esc(s: str) -> str:
 def card(manifest: dict, tpl: dict) -> str:
     repo = manifest["repo"]
     scope = tpl["scope"]
-    ui_label = "Wizard" if tpl["ui"] == "createUiDefinition" else "Form&nbsp;view"
+    ui_label = {"createUiDefinition": "Wizard", "uiFormDefinition": "Form&nbsp;view"}.get(tpl["ui"], "CLI&nbsp;only")
     badges = [f'<span class="badge scope-{scope}">{SCOPE_LABEL[scope]}</span>',
               f'<span class="badge ui">{ui_label}</span>']
     if tpl.get("recommended"):
@@ -130,15 +130,19 @@ def card(manifest: dict, tpl: dict) -> str:
     if tpl.get("notes"):
         meta_rows.append(f'<p class="note">{esc(tpl["notes"])}</p>')
 
+    # CLI-only templates (for example Microsoft Graph Bicep, which the portal's
+    # deploy button does not support) get no portal button.
+    deploy_button = ("<span class=\"btn ghost\">CLI only</span>" if tpl["ui"] == "none" else
+                     f'<a class="btn primary" href="{portal_url(manifest, tpl)}" target="_blank" rel="noopener">\n'
+                     "            Deploy to Azure\n          </a>")
+
     return f"""      <article class="card" data-category="{tpl['category']}" data-scope="{scope}">
         <div class="card-badges">{''.join(badges)}</div>
         <h3>{esc(tpl['title'])}</h3>
         <p class="summary">{esc(tpl['summary'])}</p>
         {''.join(meta_rows)}
         <div class="actions">
-          <a class="btn primary" href="{portal_url(manifest, tpl)}" target="_blank" rel="noopener">
-            Deploy to Azure
-          </a>
+          {deploy_button}
           <a class="btn ghost" href="{gh_url(repo, tpl['path'] + '.bicep')}" target="_blank" rel="noopener">
             Source
           </a>

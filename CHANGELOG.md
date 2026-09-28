@@ -46,6 +46,12 @@ below is fixed or documented.
   resource-log assignments.
 
 ### Added
+- **`sentinel-destination-graph`**: the Sentinel destination with the app registration
+  created by the template itself (Microsoft Graph Bicep, as the person deploying), so **no
+  managed identity has to exist beforehand**. Optional `automateSecret` creates an identity
+  that owns only this app (`Application.ReadWrite.OwnedBy`) and stores the secret in a new
+  Key Vault. Measured on a test tenant: that identity cannot add a secret to any other app,
+  and the stored secret ingested through the DCR. Azure CLI or PowerShell only.
 - `solutions/docs/sentinel-destination-assurance.md`: what the Sentinel templates create,
   change and never touch; identities and blast radius; ASIM; cost; rollout and rollback;
   evidence.

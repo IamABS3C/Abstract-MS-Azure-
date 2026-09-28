@@ -8,7 +8,8 @@ Azure for it:
 | Template | Use it when |
 | --- | --- |
 | [`sentinel-destination`](../templates/destinations/sentinel-destination.bicep) | **Recommended for production.** You create the Entra app registration yourself (or with [`new-abstract-sentinel-app.sh`](../scripts/new-abstract-sentinel-app.sh)) and pass its service principal. No privileged identity is involved. |
-| [`sentinel-destination-with-app`](../templates/destinations/sentinel-destination-with-app.bicep) | Labs and fast proofs of concept. A deployment script creates the app registration and client secret for you, which needs a tier-0 provisioning identity (see [Identities](#6-identities-and-permissions)). |
+| [`sentinel-destination-graph`](../templates/destinations/sentinel-destination-graph.bicep) | **Recommended when you want the app created for you.** Creates the app registration and service principal as the person deploying, with the Microsoft Graph Bicep extension. **No managed identity has to exist first.** Optionally creates a managed identity that owns only this app to generate the secret. Azure CLI or PowerShell only. |
+| [`sentinel-destination-with-app`](../templates/destinations/sentinel-destination-with-app.bicep) | Portal wizard alternative. A deployment script creates the app registration and client secret, running as a **tier-0 managed identity you must create beforehand** (see [Identities](#6-identities-and-permissions)). |
 
 Every statement below comes from one of three places, and says which when it matters:
 - the templates and scripts in this repository, which are the source of truth;
@@ -87,13 +88,16 @@ formatting.
 
 ## 2. Choosing a deployment
 
-| Question | Standard template | With-app template |
-| --- | --- | --- |
-| Who creates the app registration? | You, before deploying | A deployment script, during deployment |
-| Privileged identity needed? | No | Yes: a managed identity holding Microsoft Graph `Application.ReadWrite.All` |
-| Where does the client secret live? | Wherever you put it (Key Vault recommended) | A new or existing Key Vault, or nowhere (you create it in Entra afterwards) |
-| Deploying principal needs | Owner, or Contributor + User Access Administrator, on the resource group | The same, plus rights to use the provisioning identity |
-| Recommended for | Production | Labs, proofs of concept |
+| Question | Standard | Graph (no managed identity) | With-app (bring your own identity) |
+| --- | --- | --- | --- |
+| Who creates the app registration? | You, before deploying | The template, as the person deploying | A deployment script, as your managed identity |
+| Managed identity needed beforehand? | No | **No** | **Yes**, holding Graph `Application.ReadWrite.All` |
+| Managed identity afterwards? | None | None; or, with `automateSecret`, one that owns only this app (Graph `Application.ReadWrite.OwnedBy`) | Yours, still tier-0 |
+| Client secret | You create it | You create it (the `secretCommand` output), or `automateSecret` stores one in a new Key Vault | New or existing Key Vault, or you create it |
+| Deployer needs (Entra) | Rights to register an app | Rights to register an app; with `automateSecret`, Privileged Role Administrator or Global Administrator | Nothing extra beyond using the identity |
+| Deployer needs (Azure) | Owner, or Contributor + User Access Administrator, on the resource group | The same | The same |
+| How to deploy | Portal wizard or CLI | Azure CLI or PowerShell only | Portal wizard or CLI |
+| Recommended for | Production, when you create the app yourself | Production, when the template should create the app | Portal-only teams, labs |
 
 Both templates deploy at resource-group scope and can create a new workspace or target an
 existing one. For an existing workspace, the DCE and DCR must be in the same region as the
@@ -117,6 +121,38 @@ workspace (set `existingWorkspaceLocation`).
 | Role assignment: Monitoring Contributor on the DCR | `principalId` supplied **and** `grantMonitoringContributor` (default off) | Same principal | Scoped to the new DCR only |
 
 Source: `solutions/templates/destinations/sentinel-destination.bicep`.
+
+### Graph template (`sentinel-destination-graph`)
+
+Everything in the standard table above (it calls the standard template as a module, with
+the new service principal as `principalId`). In addition:
+
+| Resource | Created when | Notes |
+| --- | --- | --- |
+| **Entra app registration** (Microsoft Graph Bicep) | Always | No API permissions; tagged `abstract:sentinel-destination`; `uniqueName` keeps redeploys on the same app |
+| **Service principal** for the app | Always | Receives Monitoring Metrics Publisher on the DCR |
+| User-assigned managed identity `abstract-sentinel-secret-writer` | `automateSecret` | Made an owner of the app and its service principal, and nothing else |
+| Graph app role `Application.ReadWrite.OwnedBy` for that identity | `automateSecret` | Lets it manage only apps it owns |
+| Key Vault (RBAC authorization, soft delete, purge protection) | `automateSecret` | Holds only the client secret |
+| Role: Key Vault Secrets Officer for the identity; Secrets User for `secretReaderObjectId` | `automateSecret` (reader only if supplied) | On the new vault only |
+| Deployment script `abstract-create-secret` | `automateSecret` | Runs the same script as the with-app template, as the identity, to add the secret and store it |
+
+Microsoft Graph Bicep cannot create client secrets (**Microsoft docs**), which is why the
+secret is either created by you or by the optional deployment script. `what-if` does not
+preview the Graph resources, and deleting the resource group does not delete the app.
+
+**Measured on a test tenant (2026-09-28):**
+- **Without `automateSecret`:**
+  - the deployment created the app and service principal with no API permissions and no
+    managed identity, and granted Monitoring Metrics Publisher on the DCR;
+  - a redeploy reused the same app.
+- **With `automateSecret`:**
+  - the identity's only Graph permission was `Application.ReadWrite.OwnedBy`;
+  - the secret was stored with the app's `appId` tag;
+  - a redeploy reused it rather than adding another;
+  - running as that identity, adding a secret to an app it did not own failed with
+    *Insufficient privileges* (it can still read app registrations' properties);
+  - the stored secret signed in and ingested a row through the DCR (HTTP 204).
 
 ### With-app template (`sentinel-destination-with-app`)
 
@@ -185,6 +221,7 @@ places.
 | Identity | Created by | Microsoft Graph | Azure roles (scope) | Least privilege? |
 | --- | --- | --- | --- | --- |
 | **Abstract runtime app** (the one Abstract authenticates as) | You, the operator scripts, or the with-app script | **None** | Monitoring Metrics Publisher (the DCR). Monitoring Contributor (the DCR) only if `grantMonitoringContributor` | Yes, by default |
+| **Secret writer** (Graph template with `automateSecret`) | The template | `Application.ReadWrite.OwnedBy`, and owner of this one app only | Key Vault Secrets Officer (the new vault) | Yes |
 | **Provisioning identity** (with-app only) | You, before deploying | `Application.ReadWrite.All` | Key Vault Secrets Officer (the new vault, or your existing vault) | No — see below |
 | **Secret reader** (optional) | You name it | None | Key Vault Secrets User (the vault) | Acceptable |
 
@@ -204,8 +241,10 @@ the with-app template:
 - in Existing Key Vault mode, remove its Key Vault Secrets Officer role afterwards (it
   applies to the whole vault).
 
-`Application.ReadWrite.OwnedBy` would be narrower. **Not verified** that it covers every
-step the script performs.
+To avoid that identity altogether, use the **Graph template**. It creates the app as the
+person deploying, and for secret automation it creates an identity that owns only this app
+with `Application.ReadWrite.OwnedBy`. **Measured:** that is enough for the script, and the
+identity cannot add a secret to any other app.
 
 ### If a credential leaked
 
@@ -213,6 +252,7 @@ step the script performs.
 | --- | --- | --- |
 | Abstract runtime secret (default roles) | Send made-up rows to the Abstract table and, if ASIM is on, to the ASIM tables | Read any data; change rules, tables, the DCR or workspace settings |
 | The same, with Monitoring Contributor granted | The above, plus rewrite or delete the DCR (stopping ingestion) and remove its error logs | Read workspace data; touch Sentinel content |
+| Secret writer (Graph template) | Add or remove secrets on this one app, and read app registrations' properties | Change any app it does not own (**Measured**) |
 | Provisioning identity (with-app) | Add a secret to any app registration in the tenant | — treat as a tenant-compromise risk |
 
 ---
@@ -404,8 +444,9 @@ originals. Review each item before enabling it.
 
 ## 12. Recommendations checklist
 
-- [ ] Use the **standard** template in production. Create the app yourself; no
-      privileged identity.
+- [ ] Use the **standard** template (create the app yourself) or the **Graph** template
+      (the template creates the app) in production. Neither needs a pre-existing privileged
+      identity.
 - [ ] Grant **Monitoring Metrics Publisher on the DCR only**. Leave
       `grantMonitoringContributor` off.
 - [ ] Store the client secret in **Key Vault**; limit who can read it; rotate it before
@@ -452,7 +493,8 @@ originals. Review each item before enabling it.
 - The with-app template's latest changes against a live tenant: purge protection,
   `cleanupPreference: Always`, and file-based secret writes. The script logic was tested
   only against the stubbed CLI.
-- Whether `Application.ReadWrite.OwnedBy` is enough for the provisioning identity.
+- The Graph template from the portal: Microsoft documents Microsoft Graph Bicep only for
+  Azure CLI and PowerShell, so it has no Deploy-to-Azure button.
 - Whether any Microsoft ASIM rule has alerted on Abstract rows. The test data held none of
   the activity the ten rules that were run look for.
 - DCE and DCR billing.
