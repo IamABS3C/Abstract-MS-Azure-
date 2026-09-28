@@ -50,9 +50,9 @@
     },
     "keyVaultSecretUri": {
       "type": "string",
-      "defaultValue": "https://kv-abs-507fb9e4.vault.azure.net/secrets/abstract-api-key?api-version=7.4",
+      "defaultValue": "",
       "metadata": {
-        "description": "Key Vault secret URI for the Abstract API key. Playbooks fetch it at runtime via their managed identity (grant each 'Key Vault Secrets User'). Never stores the key in the template."
+        "description": "Key Vault secret URI for the Abstract API key, for example https://<vault>.vault.azure.net/secrets/abstract-api-key. Playbooks fetch it at runtime through their managed identity (grant each 'Key Vault Secrets User'). The key is never stored in the template. Leave empty to install the playbooks without it; they fail until it is set."
       }
     },
     "lookbackHours": {
@@ -78,7 +78,7 @@
         "packageId": "ffb59bbb-ab7c-5964-8c86-22d7b5df331b",
         "contentProductId": "abstractsecurity-abstract-security-sentinel-sl-33b5df331b",
         "contentKind": "Solution",
-        "descriptionHtml": "<p><strong>Abstract Security</strong> \u2014 the world's first Composable SIEM. Normalized, enriched, cost-reduced telemetry into Microsoft Sentinel, with <strong>two data connectors</strong> (pipeline destination + Insights &amp; Detections API), an ASIM parser, two analytics rules, three hunting queries (incl. a daily value &amp; reduction summary), three workbooks (Pipeline Overview, Value &amp; ROI, and a Competitive &amp; TCO Command Center), three SOAR playbooks, an incident automation rule, and a Security Copilot plugin/agent that call the Abstract API to close the loop and prove value.</p>",
+        "descriptionHtml": "<p><strong>Abstract Security</strong> — the world's first Composable SIEM. Normalized, enriched, cost-reduced telemetry into Microsoft Sentinel, with <strong>two data connectors</strong> (pipeline destination + Insights &amp; Detections API), an ASIM parser, two analytics rules, three hunting queries (incl. a daily value &amp; reduction summary), three workbooks (Pipeline Overview, Value &amp; ROI, and a Competitive &amp; TCO Command Center), three SOAR playbooks, an incident automation rule, and a Security Copilot plugin/agent that call the Abstract API to close the loop and prove value.</p>",
         "icon": "<img src=\"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJBYnN0cmFjdCBTZWN1cml0eSI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9Imdsb3ciIGN4PSI1MCUiIGN5PSI0MiUiIHI9IjU1JSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI0ZGMjE2QiIgc3RvcC1vcGFjaXR5PSIwLjQ1Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMC41NSIgc3RvcC1jb2xvcj0iI0U4MDA1RCIgc3RvcC1vcGFjaXR5PSIwLjEyIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzA2MDYwOCIgc3RvcC1vcGFjaXR5PSIwIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJhYm0tZ3JhZCIgeDE9IjY2LjA0MTciIHkxPSI5LjA2NzQiIHgyPSIxMTIuOTkyIiB5Mj0iNTguNDU5MSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgogICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjRkYyMTZCIi8+PHN0b3Agb2Zmc2V0PSIwLjY3MTcwMiIgc3RvcC1jb2xvcj0iI0U4MDA1RCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0id20iIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIwIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjRkZGRkZGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjRkZFM0VFIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iMTk2IiBoZWlnaHQ9IjE5NiIgcng9IjQwIiBmaWxsPSIjMDYwNjA4IiBzdHJva2U9IiNGRjIxNkIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLW9wYWNpdHk9IjAuNTUiLz4KICA8cmVjdCB4PSIyIiB5PSIyIiB3aWR0aD0iMTk2IiBoZWlnaHQ9IjE5NiIgcng9IjQwIiBmaWxsPSJ1cmwoI2dsb3cpIi8+CiAgPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDMuNSAyMCkgc2NhbGUoMC43OSkiPgogICAgPHBhdGggZmlsbD0iI0U4MDA1RCIgZD0iTTE1My4yNjggMTQ2LjYyNUwxMzMuMjI4IDEwOS42MjJDMTQyLjI1IDEwNy45NzggMTUyLjY0MSAxMDcuODY0IDE2MC45NzEgMTEyLjEyOUMxNjMuMTY0IDExMy4yNTIgMTY1LjIyNiAxMTQuNzE3IDE2Ni41OTUgMTE2LjczNkMxNzEuMDY1IDEyMy4yOTcgMTY4LjUyNSAxMzQuMzY3IDE2NC4wNTUgMTQwLjI2QzE2MS42OCAxNDMuMzg1IDE1OC4zOTcgMTQ2LjIwMSAxNTQuMjkxIDE0OC42MjdDMTU0LjA2IDE0OC4xODggMTUzLjc0NiAxNDcuNTY5IDE1My4yODQgMTQ2LjYyNUgxNTMuMjY4WiIvPgogICAgPHBhdGggZmlsbD0iI0MyMDA0QyIgZD0iTTE2LjQwOTYgMTE4LjQxMUMxNS41MzU0IDExOC4zMTMgMTQuNjk0MiAxMTguMDg1IDEzLjkwMjUgMTE3LjY5NEMxMi4wODgyIDExNi43ODIgMTAuNzg1MiAxMTUuMDc0IDEwLjAxIDExMy4yMThDNy4xMDY5OCAxMDYuMjMzIDkuMTUyMjggOTcuMjk2IDExLjc3NDggOTAuNTU2NkMxNC4yNjU0IDg0LjE3NTQgMTguNTA0MyA3OC4zNDcxIDIyLjAxNzYgNzIuNDg2NUMyNS40MzE5IDY1Ljc0NzEgMjkuOTAxNyA1OS4zNjU2IDMzLjc5NDMgNTIuODg2NUMzNS45MDU1IDQ5LjM1MzkgMzkuMDU1OCA0Ni42MzUyIDQyLjg4MjUgNDUuMDIzNkM0Ny4xNzA5IDQzLjIxNjYgNTMuNzAyNSA0MS4wODQgNjAuNTE0NSA0MS4wODRDNjAuNTE0NSA0MS4wODQgNjEuMDc1MyA0MS4wODQgNjEuMjIzNyA0MS4wODRINjEuNTg2Nkg2MS43MTg2SDYyLjA0ODVDNjYuOTMwOCA0MS4yNzk0IDcxLjYxNTEgNDIuNDM1MiA3Ni4wMTg5IDQ0LjUxODlDNzUuNDU4IDQ0LjI1ODUgNjkuMzIyMSA1Mi4yNjc4IDY4Ljc3ODEgNTIuOTUxNkM2NS40NDU5IDU3LjA3MDMgNjIuMjk1OSA2MS4zMTkxIDU5LjI3NzUgNjUuNjY1OUM1My43ODUgNzMuNTQ0NiA0OC44MjAzIDgxLjc2NjEgNDQuMjAyIDkwLjE4MjJDNDEuOTkxOCA5NC4yMDMxIDM5LjY0OTcgOTguMjU2OCAzNy42ODY5IDEwMi4zOTJDMzUuNzI0MSAxMDYuNTI3IDM0LjQzNzUgMTEwLjQwMSAzMS4wMDY4IDExMy4zOEMyOC41NjU3IDExNS40OTcgMjUuNDk3OCAxMTYuNzM0IDIyLjM4MDUgMTE3LjY0NUMyMC40NTA3IDExOC4xOTkgMTguMzcyNCAxMTguNjM4IDE2LjQwOTYgMTE4LjQxMVoiLz4KICAgIDxwYXRoIGZpbGw9InVybCgjYWJtLWdyYWQpIiBkPSJNMTA4LjQ1OCA2NC42NjFDMTAzLjkyMiA1Ny40OTgxIDk2LjI4NTIgNDcuNjQ5MSA4NS40NDg3IDQwLjkwOTVMODMuMDU3NCAzOS40NzY5Qzc2LjU1ODQgMzUuNjM1IDY5LjQ4MjggMzMuNTgzOCA2Mi4wMjc1IDMzLjM1NTlDNjEuNTY1NyAzMy4zMzk2IDYxLjA3MDggMzMuMzM5NiA2MC41OTI1IDMzLjMzOTZDNTQuMjQyMyAzMy4zMzk2IDQ4LjUwMjQgMzQuNjI1NyA0My43ODUyIDM2LjIyMTFMNDcuMjY1NCAzMC40NDE5TDQ4LjcxNjggMjguMDgxNEw1MC44NDQ2IDI0LjUzMjVMNTEuODM0MiAyMi44ODg0QzU0LjYwNTIgMTguMjY1IDU3LjcwNjEgMTQuMjI3OCA2MS4wMjE0IDEwLjg1NzlMNjEuMzY3NyAxMC41MTYxQzYyLjA2MDUgOS44NDg2NCA2Mi43MzY1IDkuMTk3NDQgNjMuNDI5NSA4LjU5NTE1QzY0LjIwNDUgNy45MTE0MSA2NS4wMjk1IDcuMjQzOTcgNjUuODg3MSA2LjYwOTA4QzY2Ljc3NzkgNS45NDE2IDY3LjY1MTggNS4zMzkyNyA2OC41MjYzIDQuNzg1NzdDNjguODcyNSA0LjU1Nzg2IDY5LjE1MjkgNC4zNzg3OSA2OS40MzM0IDQuMjQ4NTZMNjkuODc4NCA0LjAyMDY1TDY5Ljk2MTEgMy45MzkyNUM3MC4xMjYzIDMuODQxNTggNzAuMjkxIDMuNzQzOSA3MC40NTYyIDMuNjQ2MjJMNzAuOTE3NiAzLjQxODMyQzcxLjY0MzcgMy4wNDM4OSA3Mi40MTg3IDIuNjY5NDcgNzMuMzc1MiAyLjI0NjIxTDczLjUyMzYgMi4xODEwOUM3NC43MTExIDEuNzA4OTkgNzUuNzk5NyAxLjMzNDU3IDc2LjgzODggMS4wMjUyNkw3Ny4wNTM1IDAuOTc2NDIzQzc3LjYzMDcgMC44Mjk5MTMgNzguMTU4NCAwLjY4MzM5NiA3OC43MzYyIDAuNTg1NzIyTDgwLjY5ODcgMC4yNDM4NTdDODEuODAzNiAwLjA5NzM0MzggODIuOTA5MSAwLjAzMjIyNjYgODQuMDEzOSAwLjAzMjIyNjZDODUuMDE5OSAwLjAzMjIyNjYgODYuMDkyMiAwLjA5NzM0MzkgODcuMjE0IDAuMjI3NTc4Qzg3LjYwOTYgMC4yNzY0MTYgODguMDIyMSAwLjM0MTUzMyA4OC40MTc4IDAuNDA2NjVMODguNDUxIDAuNDM5MjA5TDg5LjQ0MDYgMC42MDIwMDFDODkuNjM4NSAwLjYzNDU1OSA4OS44MzYzIDAuNjgzMzk2IDkwLjA2NzMgMC43MzIyMzNDOTAuNTQ1NSAwLjg0NjE5IDkwLjk3NDMgMC45NjAxNDYgOTEuMzcwNiAxLjA5MDM4TDkxLjc2NjIgMS4yMDQzNEM5Mi4wNjI5IDEuMzAyMDEgOTIuMzc2NSAxLjM4MzQxIDkyLjY3MzMgMS40OTczNkw5My4zMTY4IDEuNzI1MjdMOTMuOTU5NyAxLjk2OTQ2Qzk0LjM1NTkgMi4xMzIyNSA5NC43ODQ3IDIuMzExMzIgOTUuMjEzNSAyLjUwNjY4Qzk2LjEwNDMgMi44OTczOCA5Ny4wMTE0IDMuMzUzMiA5Ny45MzQ3IDMuODkwNDFDOTguODI1NSA0LjM5NTA3IDk5LjcxNjMgNC45NDg1NyAxMDAuNjczIDUuNTk5NzRDMTAzLjM5NSA3LjUwNDQzIDEwNi4wNSA5LjkxMzczIDEwOC41NCAxMi43MTM4QzEwOS44MjcgMTQuMTYyNiAxMTEuMDk3IDE1Ljc5MDYgMTEyLjMzNCAxNy41MzI0QzExMy43MzYgMTkuNTAyMyAxMTQuOTU3IDIxLjc5NzYgMTE1Ljk4IDI0LjM4NkMxMTYuNDA4IDI1LjQ0NDIgMTE2LjcyMSAyNi41NTExIDExNi45MiAyNy42NzQ0QzExNy4zMzIgMjkuOTM3MiAxMTcuNjEyIDMxLjc2MDUgMTE3LjcxMSAzMi45MzI2QzExNy43NDQgMzMuMjkwOCAxMTcuNzc3IDMzLjY0ODkgMTE3Ljc3NyAzMy45OTA4VjM0LjE4NjFDMTE3LjgxIDM0LjQzMDQgMTE3LjgyNyAzNC42NTgzIDExNy44MjcgMzQuOTE4N1YzNS4wODE1QzExNy44NTkgMzUuNjgzOCAxMTcuODc2IDM2LjMwMjQgMTE3Ljg3NiAzNi45NTM2QzExNy44NzYgNDIuNzgxNiAxMTYuODA0IDQ4LjQxNDMgMTE0LjY5MiA1My43MDVMMTE0LjYyNyA1My44Njc4QzExNC41NzcgNTMuOTk4IDExNC41MjggNTQuMTEyIDExNC40NzggNTQuMjI1OUwxMTQuMzk2IDU0LjQwNUwxMTQuMzMgNTQuNTg0MUwxMTQuMjY0IDU0LjczMDZMMTE0LjIxNCA1NC44NzcxQzExNC4yMTQgNTQuODc3MSAxMTQuMTQ4IDU1LjAzOTkgMTE0LjExNSA1NS4xMjEzQzExMi42NDcgNTguNDc0OCAxMTAuNzUxIDYxLjY4MTggMTA4LjQ0MSA2NC43MjYxTDEwOC40NTggNjQuNjYxWiIvPgogICAgPHBhdGggZmlsbD0iI0ZGMjE2QiIgZD0iTTI4LjI5MyAxNDkuOTc3QzI2LjU2MTEgMTQ5Ljk3NyAyNC44MjkyIDE0OS44MyAyMy4xMzAzIDE0OS41MDVDMTkuMDA2OCAxNDguNzIzIDE1LjExNDIgMTQ2Ljk0OSAxMS43MzMgMTQ0LjUyM0M4LjM1MTcxIDE0Mi4wOTggNS4zNjYzIDEzOC44OTEgMy4yODgwNSAxMzUuMjI4QzIuODA5NzMgMTM0LjM5OCAyLjM5NzM4IDEzMy41MzUgMi4wMTgwMiAxMzIuNjU1QzEuNDI0MjMgMTMxLjIzOSAwLjk2MjQwMyAxMjkuNzkxIDAuNjMyNTI1IDEyOC4yOTNDMC41NTAwNTMgMTI3Ljg3IDAuNDY3NTgzIDEyNy40NDYgMC4zODUxMTMgMTI3LjAwN0wwLjMwMjY0MyAxMjYuNTY3QzAuMjM2NjY4IDEyNi4xNzYgMC4xODcxODYgMTI1LjcyMSAwLjEzNzcwNCAxMjUuMjQ4QzAuMDg4MjIxNSAxMjQuNzQ0IDAuMDU1MjMzNyAxMjQuMjA3IDAuMDM4NzM5NyAxMjMuNzE5VjEyMy4zMjhDMC4wMDU3NTE3OCAxMjIuODU2IC0wLjAxMDc0MjIgMTIyLjQ2NSAtMC4wMTA3NDIyIDEyMi4wOUMtMC4wMTA3NDIyIDEyMS41MjEgMC4wODgyMjE1IDExOS4xMTEgMC4xMzc3MDQgMTE4Ljc1M0MwLjEzNzcwNCAxMTguNzUzIDAuMjIwMTczIDExNy45MDcgMC4yNjk2NTYgMTE3LjYxNEwwLjQxODEwMSAxMTYuNTIzQzAuNDE4MTAxIDExNi41MjMgMC41ODMwNDEgMTE1LjUzIDAuNTgzMDQxIDExNS40OTdDMC41ODMwNDEgMTE1LjQ5NyAxLjIyNjMxIDExMi4zMjMgMS4zMDg3OCAxMTIuMDNDMS44MjAwOSAxMTUuMTg4IDIuNzkzMjMgMTE3Ljg1OCA0LjIxMTcxIDExOS45OUM2LjM1NTkzIDEyMy4wNjcgOS40ODk3NiAxMjUuMDg2IDEzLjE4NDQgMTI1Ljg2N0MxNi4zODQzIDEyNi41MzUgMTkuNzMyNSAxMjYuMjkgMjIuOTE1OSAxMjUuNjA3QzI4LjkxOTcgMTI0LjMwNCAzNC4xODEzIDEyMS40MDcgMzkuNjI0MyAxMTguNzM3QzQyLjQ3NzggMTE3LjMzNyA0NS4yNjUyIDExNS44MjMgNDguMDM2MiAxMTQuMjkzQzU2LjA2ODggMTA5LjkxNCA2My45ODU4IDEwNS4zMDcgNzEuODUzMyAxMDAuNjUxQzc4LjY2NTMgOTYuNjI5NSA4NS42NTg4IDkyLjc3MTYgOTIuMjU2OCA4OC40MjQ3TDkzLjE0NjkgODcuODcxMkw5My43OTA1IDg3LjQ5NjhMOTMuODIzNiA4Ny40NjQ2Qzk0LjEwNDEgODcuMzAxNiA5NC4zODQ1IDg3LjEyMjQgOTQuNjY1IDg2Ljk0MzNMOTUuNzIwNCA4Ni4zMDg2TDk1LjgwMyA4Ni4yMTEzQzEwMS41NzYgODIuNTMxOSAxMDYuNTczIDc4LjQ0NiAxMTAuNjk3IDc0LjAxNzlDMTE1LjMxNSA2OS4wNTI0IDExOC45MjcgNjMuNTgzIDEyMS40MTggNTcuNzM4NUMxMjMuODEgNTIuMTg3MyAxMjUuMTk1IDQ2LjI3NzkgMTI1LjU1OCA0MC4xNDA2TDEzNC4xMTggNTUuMjgwNEwxMzYuMTMxIDU4Ljc0NzlMMTUyLjE5NSA4Ny4wMDg0TDE1My4wMzcgODguNTA2NUMxNTQuNDM5IDkwLjk5NyAxNTcuOTg1IDk3LjQxMTEgMTYxLjE4NSAxMDMuODI1QzE1OS45OTcgMTAzLjM3IDE1OC43NDQgMTAyLjk3OCAxNTcuMzkxIDEwMi42MjFDMTU2LjkzIDEwMi40NzQgMTU2LjQ2OCAxMDIuMzYgMTU1Ljk5IDEwMi4yNDZDMTU1LjI2MyAxMDIuMDgzIDE1NC41NTQgMTAxLjkyIDE1My43OTUgMTAxLjc5TDE1Mi43NCAxMDEuNTk1QzE1MS44NjYgMTAxLjQ0OSAxNTAuOTI2IDEwMS4zMTggMTQ5Ljk4NiAxMDEuMjA0TDE0OS43NzEgMTAxLjE3MkgxNDkuNTU3QzE0OS4yOTMgMTAxLjEyMyAxNDkuMDEyIDEwMS4wOSAxNDguNzE1IDEwMS4wNzRDMTQ4LjMwMyAxMDEuMDI1IDE0Ny44OTEgMTAxLjAwOSAxNDcuNDc5IDEwMC45NzZDMTQ2LjE5MiAxMDAuODk1IDE0NS4wMjEgMTAwLjg2MiAxNDMuOCAxMDAuODYyQzEzOC4zMDggMTAwLjg2MiAxMzIuNDIgMTAxLjY0NCAxMjYuMzE3IDEwMy4xNzRDMTE3Ljg4OCAxMDUuMzIzIDEwOC45MTYgMTA4LjkzNyA5OS41OTY1IDExMy45NjdMOTkuMTM0NSAxMTQuMTE0TDk4LjkzNjcgMTE0LjI5M0w5OC44NzA0IDExNC4zMjVMOTguODIwOSAxMTQuMzc0Qzk0LjU5ODYgMTE2Ljg4MSA5MC4zNiAxMTkuMzg4IDg2LjEzNzEgMTIxLjg5NUM4Mi4xNjIxIDEyNC4yNTUgNzguMTg3IDEyNi42IDc0LjIxMiAxMjguOTQ0QzcwLjYgMTMxLjA3NyA2Ni45NzEyIDEzMy4yMjYgNjMuMzQyOSAxMzUuMzU4QzYwLjE3NTggMTM3LjIzIDU3LjAwOSAxMzkuMDg2IDUzLjg0MjEgMTQwLjk0MkM1MC4zNzgzIDE0Mi45NzcgNDYuOTQ3NiAxNDUuMDYxIDQzLjIzNjUgMTQ2LjY0QzQxLjMwNjcgMTQ3LjQ3IDM5LjM0MzkgMTQ4LjE3IDM3LjMxNTIgMTQ4LjcyM0MzNC4zNjI3IDE0OS41MjEgMzEuMjk0OCAxNDkuOTkzIDI4LjIyNyAxNDkuOTc3SDI4LjI5M1oiLz4KICA8L2c+CiAgPHRleHQgeD0iMTAwIiB5PSIxODIiIGZvbnQtZmFtaWx5PSInQmFybG93IFNlbWkgQ29uZGVuc2VkJywnQmFybG93JyxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjIyIiBmb250LXdlaWdodD0iNzAwIiBsZXR0ZXItc3BhY2luZz0iMS41IiBmaWxsPSJ1cmwoI3dtKSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QUJTVFJBQ1Q8L3RleHQ+Cjwvc3ZnPgo=\" width=\"75px\" height=\"75px\">",
         "author": {
           "name": "Abstract Security",
@@ -331,7 +331,7 @@
         "displayName": "ASim_AbstractEvent",
         "category": "ASIM",
         "FunctionAlias": "ASim_AbstractEvent",
-        "query": "// =============================================================================\n// ASim_AbstractEvent  \u2014  ASIM-style normalizing parser for Abstract Security\n// -----------------------------------------------------------------------------\n// Source : AbstractEventLogs_CL  (the custom table the Sentinel Destination\n//          template creates: one column per top-level ACS key, as the Abstract\n//          integration sends the event, with nested objects as dynamic).\n//          Tables created with the older wrapped schema (TimeGenerated,\n//          Message, AbstractEvent:dynamic) are read the same way: the first\n//          extend uses the AbstractEvent column when it exists, and otherwise\n//          packs the row's columns into one bag.\n// Purpose: project the Abstract Common Schema (ACS) into ASIM-aligned column\n//          names so Abstract-delivered data lights up Microsoft's ASIM-based\n//          analytics, and add convenient ACS pass-through fields.\n//\n// Deploy : Logs > New query > paste > Save as function, Function alias:\n//          ASim_AbstractEvent   (Legacy category: ASIM)\n//          Then query it like a table:  ASim_AbstractEvent | take 50\n//\n// Field mapping is grounded in the live ACS catalog (473 fields). Log Analytics\n// reserves the id and type column names, so the destination's transformation\n// stores them as acs_id and acs_type; the coalesce() calls read either form.\n// =============================================================================\nlet ASim_AbstractEvent = (disabled: bool = false) {\n    AbstractEventLogs_CL\n    | extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', ''))\n    | where not(disabled)\n    | extend e = AbstractEvent\n    // ---- core / ASIM common ----\n    | extend\n        EventVendor      = tostring(e.vendor),\n        EventProduct     = tostring(e.product),\n        EventType        = coalesce(tostring(e.type), tostring(e.acs_type)),\n        EventResult      = tostring(e.action),\n        EventSeverity    = tostring(e.severity),\n        EventMessage     = coalesce(tostring(e.message), Message),\n        EventCount       = toreal(e.aggregation_count),\n        EventRiskScore   = toreal(e.risk_score)\n    // ---- network ----\n    | extend\n        SrcIpAddr        = coalesce(tostring(e.source_ipv4), tostring(e.source_ipv6), tostring(e.source_address)),\n        DstIpAddr        = coalesce(tostring(e.dest_ipv4), tostring(e.dest_ipv6), tostring(e.dest_address)),\n        SrcPortNumber    = toint(e.source_port),\n        DstPortNumber    = toint(e.dest_port),\n        DvcIpAddr        = coalesce(tostring(e.host_ipv4), tostring(e.host_ipv6), tostring(e.host_address)),\n        DvcHostname      = tostring(e.host_name)\n    // ---- identity ----\n    | extend\n        ActorUsername    = coalesce(tostring(e.user_name), tostring(e.user_id)),\n        TargetUsername   = coalesce(tostring(e.user.target.name), tostring(e['user.target.name'])),\n        UserAgent        = tostring(e.user_agent)\n    // ---- correlation back to Abstract ----\n    | extend\n        AbstractEventId    = coalesce(tostring(e.id), tostring(e.acs_id)),\n        AbstractIdentity   = tostring(e.identity),\n        AbstractMatchedRules = e.matched_rules,\n        AbstractTags       = e.tags,\n        AbstractTimestamp  = coalesce(todatetime(e['@timestamp']), todatetime(e.timestamp))\n    | project-reorder\n        TimeGenerated, EventVendor, EventProduct, EventType, EventResult, EventSeverity,\n        SrcIpAddr, DstIpAddr, SrcPortNumber, DstPortNumber, ActorUsername, EventMessage,\n        EventRiskScore, AbstractEventId, AbstractIdentity\n};\nASim_AbstractEvent\n",
+        "query": "// =============================================================================\n// ASim_AbstractEvent  —  ASIM-style normalizing parser for Abstract Security\n// -----------------------------------------------------------------------------\n// Source : AbstractEventLogs_CL  (the custom table the Sentinel Destination\n//          template creates: one column per top-level ACS key, as the Abstract\n//          integration sends the event, with nested objects as dynamic).\n//          Tables created with the older wrapped schema (TimeGenerated,\n//          Message, AbstractEvent:dynamic) are read the same way: the first\n//          extend uses the AbstractEvent column when it exists, and otherwise\n//          packs the row's columns into one bag.\n// Purpose: project the Abstract Common Schema (ACS) into ASIM-aligned column\n//          names so Abstract-delivered data lights up Microsoft's ASIM-based\n//          analytics, and add convenient ACS pass-through fields.\n//\n// Deploy : Logs > New query > paste > Save as function, Function alias:\n//          ASim_AbstractEvent   (Legacy category: ASIM)\n//          Then query it like a table:  ASim_AbstractEvent | take 50\n//\n// Field mapping is grounded in the live ACS catalog (473 fields). Log Analytics\n// reserves the id and type column names, so the destination's transformation\n// stores them as acs_id and acs_type; the coalesce() calls read either form.\n// =============================================================================\nlet ASim_AbstractEvent = (disabled: bool = false) {\n    AbstractEventLogs_CL\n    | extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', ''))\n    | where not(disabled)\n    | extend e = AbstractEvent\n    // ---- core / ASIM common ----\n    | extend\n        EventVendor      = tostring(e.vendor),\n        EventProduct     = tostring(e.product),\n        EventType        = coalesce(tostring(e.type), tostring(e.acs_type)),\n        EventResult      = tostring(e.action),\n        EventSeverity    = tostring(e.severity),\n        EventMessage     = coalesce(tostring(e.message), Message),\n        EventCount       = toreal(e.aggregation_count),\n        EventRiskScore   = toreal(e.risk_score)\n    // ---- network ----\n    | extend\n        SrcIpAddr        = coalesce(tostring(e.source_ipv4), tostring(e.source_ipv6), tostring(e.source_address)),\n        DstIpAddr        = coalesce(tostring(e.dest_ipv4), tostring(e.dest_ipv6), tostring(e.dest_address)),\n        SrcPortNumber    = toint(e.source_port),\n        DstPortNumber    = toint(e.dest_port),\n        DvcIpAddr        = coalesce(tostring(e.host_ipv4), tostring(e.host_ipv6), tostring(e.host_address)),\n        DvcHostname      = tostring(e.host_name)\n    // ---- identity ----\n    | extend\n        ActorUsername    = coalesce(tostring(e.user_name), tostring(e.user_id)),\n        TargetUsername   = coalesce(tostring(e.user.target.name), tostring(e['user.target.name'])),\n        UserAgent        = tostring(e.user_agent)\n    // ---- correlation back to Abstract ----\n    | extend\n        AbstractEventId    = coalesce(tostring(e.id), tostring(e.acs_id)),\n        AbstractIdentity   = tostring(e.identity),\n        AbstractMatchedRules = e.matched_rules,\n        AbstractTags       = e.tags,\n        AbstractTimestamp  = coalesce(todatetime(e['@timestamp']), todatetime(e.timestamp))\n    | project-reorder\n        TimeGenerated, EventVendor, EventProduct, EventType, EventResult, EventSeverity,\n        SrcIpAddr, DstIpAddr, SrcPortNumber, DstPortNumber, ActorUsername, EventMessage,\n        EventRiskScore, AbstractEventId, AbstractIdentity\n};\nASim_AbstractEvent\n",
         "functionParameters": "",
         "version": 2
       }
@@ -373,7 +373,7 @@
       "kind": "Scheduled",
       "properties": {
         "displayName": "Abstract Security - High or Critical event",
-        "enabled": true,
+        "enabled": false,
         "severity": "High",
         "description": "High/critical Abstract event; surfaces AbstractInsightId for the Verdict playbook.",
         "query": "AbstractEventLogs_CL\n| extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', ''))\n| where TimeGenerated > ago(1h)\n| extend e = AbstractEvent\n| extend AbstractSeverity=tolower(tostring(e.severity)), SrcIpAddr=coalesce(tostring(e.source_ipv4),tostring(e.source_address)), ActorUsername=coalesce(tostring(e.user_name),tostring(e.user_id)), AbstractInsightId=coalesce(tostring(e.id), tostring(e.acs_id)), EventProduct=tostring(e.product), EventMessage=coalesce(tostring(e.message),Message)\n| where AbstractSeverity in (\"high\",\"critical\")\n| project TimeGenerated, AbstractSeverity, EventProduct, EventMessage, SrcIpAddr, ActorUsername, AbstractInsightId",
@@ -472,7 +472,7 @@
       ],
       "properties": {
         "displayName": "Abstract - Repeated auth failures followed by success",
-        "enabled": true,
+        "enabled": false,
         "severity": "High",
         "description": "Detects a likely successful brute force / password spray: many failed authentication events followed by a success from the same source IP within a short window, using Abstract-normalized auth telemetry (ASim_AbstractEvent). Tune the EventResult terms to your products.",
         "query": "let failures = ASim_AbstractEvent\n  | where TimeGenerated > ago(1h)\n  | where EventType has_any (\"auth\", \"login\", \"logon\") or EventResult has \"fail\"\n  | where EventResult has_any (\"fail\", \"failure\", \"denied\")\n  | summarize Failures = count(), FailUsers = make_set(ActorUsername, 25) by SrcIpAddr, bin(TimeGenerated, 10m)\n  | where Failures >= 10;\nlet successes = ASim_AbstractEvent\n  | where TimeGenerated > ago(1h)\n  | where EventResult has_any (\"success\", \"succeeded\", \"allowed\")\n  | project SuccessTime = TimeGenerated, SrcIpAddr, ActorUsername, AbstractInsightId = AbstractEventId, EventProduct;\nfailures\n| join kind=inner successes on SrcIpAddr\n| where SuccessTime between (TimeGenerated .. (TimeGenerated + 10m))\n| where set_has_element(FailUsers, ActorUsername)\n| project SuccessTime, SrcIpAddr, ActorUsername, Failures, EventProduct, AbstractInsightId\n| sort by Failures desc",
@@ -635,7 +635,7 @@
         "tags": [
           {
             "name": "description",
-            "value": "Aggregates Abstract risk_score by identity over 7 days and surfaces identities whose cumulative, pipeline-scored risk crosses a threshold across multiple products \u2014 a cross-source signal the SIEM rarely sees."
+            "value": "Aggregates Abstract risk_score by identity over 7 days and surfaces identities whose cumulative, pipeline-scored risk crosses a threshold across multiple products — a cross-source signal the SIEM rarely sees."
           },
           {
             "name": "tactics",
@@ -983,7 +983,7 @@
                         "path": "/Incidents/Comment",
                         "body": {
                           "incidentArmId": "@triggerBody()?['object']?['id']",
-                          "message": "<h3>Abstract Security \u2014 related pipeline events (last @{parameters('lookbackHours')}h)</h3><p>Returned <b>@{length(coalesce(body('Search_Abstract_events')?['events'], json('[]')))}</b> events from the Abstract pipeline. Top matches:</p><pre>@{substring(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))), 0, min(2800, length(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))))))}</pre>"
+                          "message": "<h3>Abstract Security — related pipeline events (last @{parameters('lookbackHours')}h)</h3><p>Returned <b>@{length(coalesce(body('Search_Abstract_events')?['events'], json('[]')))}</b> events from the Abstract pipeline. Top matches:</p><pre>@{substring(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))), 0, min(2800, length(string(coalesce(body('Search_Abstract_events')?['events'], json('[]'))))))}</pre>"
                         }
                       }
                     },
@@ -1296,7 +1296,7 @@
                             "path": "/Incidents/Comment",
                             "body": {
                               "incidentArmId": "@triggerBody()?['object']?['id']",
-                              "message": "<h3>Abstract ASTRO \u2014 Verdict</h3><p><b>Verdict:</b> @{coalesce(body('Get_verdict_status')?['verdict'], 'UNKNOWN')} &nbsp; <b>Confidence:</b> @{coalesce(body('Get_verdict_status')?['confidence'], 0)}%</p><p>@{coalesce(body('Get_verdict_status')?['summary'], 'No summary returned.')}</p><p><b>Recommended actions:</b></p><pre>@{string(coalesce(body('Get_verdict_status')?['recommended_actions'], json('[]')))}</pre><p><i>Events analyzed: @{coalesce(body('Get_verdict_status')?['total_events_analyzed'], 0)} \u00b7 IOCs enriched: @{coalesce(body('Get_verdict_status')?['iocs_enriched'], 0)}</i></p>"
+                              "message": "<h3>Abstract ASTRO — Verdict</h3><p><b>Verdict:</b> @{coalesce(body('Get_verdict_status')?['verdict'], 'UNKNOWN')} &nbsp; <b>Confidence:</b> @{coalesce(body('Get_verdict_status')?['confidence'], 0)}%</p><p>@{coalesce(body('Get_verdict_status')?['summary'], 'No summary returned.')}</p><p><b>Recommended actions:</b></p><pre>@{string(coalesce(body('Get_verdict_status')?['recommended_actions'], json('[]')))}</pre><p><i>Events analyzed: @{coalesce(body('Get_verdict_status')?['total_events_analyzed'], 0)} · IOCs enriched: @{coalesce(body('Get_verdict_status')?['iocs_enriched'], 0)}</i></p>"
                             }
                           }
                         },
@@ -1326,8 +1326,7 @@
                                 "path": "/Incidents",
                                 "body": {
                                   "incidentArmId": "@triggerBody()?['object']?['id']",
-                                  "severity": "High",
-                                  "status": "Active"
+                                  "severity": "High"
                                 }
                               }
                             }
@@ -1603,7 +1602,7 @@
                             "Compose_tuning_filter": {
                               "type": "Compose",
                               "inputs": {
-                                "title": "@{concat('Sentinel FP \u2014 incident #', string(coalesce(triggerBody()?['object']?['properties']?['incidentNumber'], 0)), ' (', coalesce(triggerBody()?['object']?['properties']?['additionalData']?['customDetails']?['EventProduct'], 'abstract'), ')')}",
+                                "title": "@{concat('Sentinel FP — incident #', string(coalesce(triggerBody()?['object']?['properties']?['incidentNumber'], 0)), ' (', coalesce(triggerBody()?['object']?['properties']?['additionalData']?['customDetails']?['EventProduct'], 'abstract'), ')')}",
                                 "tuning_filter_combination": {
                                   "operator": "and",
                                   "source": "sentinel-disposition",
@@ -1662,7 +1661,7 @@
                                 "path": "/Incidents/Comment",
                                 "body": {
                                   "incidentArmId": "@triggerBody()?['object']?['id']",
-                                  "message": "<h3>Abstract \u2014 tuned at source</h3><p>Incident classified <b>@{outputs('Read_classification')}</b>. Created an Abstract rule tuning filter so this pattern is down-sampled upstream (fewer ingested GB + fewer future incidents).</p><p><b>Source IP:</b> @{outputs('Get_source_ip')} &nbsp; <b>Tuning filter:</b> @{coalesce(body('Create_tuning_filter')?['nanoid'], body('Create_tuning_filter')?['title'], 'see Abstract')}</p>"
+                                  "message": "<h3>Abstract — tuned at source</h3><p>Incident classified <b>@{outputs('Read_classification')}</b>. Created an Abstract rule tuning filter so this pattern is down-sampled upstream (fewer ingested GB + fewer future incidents).</p><p><b>Source IP:</b> @{outputs('Get_source_ip')} &nbsp; <b>Tuning filter:</b> @{coalesce(body('Create_tuning_filter')?['nanoid'], body('Create_tuning_filter')?['title'], 'see Abstract')}</p>"
                                 }
                               }
                             }
@@ -1797,10 +1796,10 @@
       "properties": {
         "connectorUiConfig": {
           "id": "AbstractSecurityInsightsAPI",
-          "title": "Abstract Security \u2014 Insights & Detections (API)",
+          "title": "Abstract Security — Insights & Detections (API)",
           "publisher": "Abstract Security",
           "logo": "[parameters('logoUrl')]",
-          "descriptionMarkdown": "Pulls **Abstract insights, ASTRO verdicts, tune-at-source filters and pipeline metrics** into Sentinel via the Abstract API \u2014 so you get Abstract's higher-order signal **even when Sentinel is not the raw-telemetry destination**. Powers the Competitive & TCO Command Center. Deploy the Abstract API Sync Logic App (below) to populate `AbstractInsights_CL`.",
+          "descriptionMarkdown": "Pulls **Abstract insights, ASTRO verdicts, tune-at-source filters and pipeline metrics** into Sentinel via the Abstract API — so you get Abstract's higher-order signal **even when Sentinel is not the raw-telemetry destination**. Powers the Competitive & TCO Command Center. Deploy the Abstract API Sync Logic App (below) to populate `AbstractInsights_CL`.",
           "graphQueriesTableName": "AbstractInsights_CL",
           "graphQueries": [
             {
@@ -1914,12 +1913,12 @@
         "etag": "*",
         "displayName": "Abstract - Daily value & reduction summary",
         "category": "Hunting Queries",
-        "query": "// Abstract \u2014 Daily value & reduction summary (roll up per day for outbrief).\nlet events = AbstractEventLogs_CL | extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', '')) | extend agg=todouble(coalesce(toreal(AbstractEvent.aggregation_count),1.0)), b=todouble(estimate_data_size(AbstractEvent))\n  | summarize RawRepresented=sum(agg), Ingested=count(), IngestedGB=round(sum(b)/1024.0/1024/1024,4) by Day=bin(TimeGenerated,1d);\nlet insights = AbstractInsights_CL | summarize Insights=count(), HighCritical=countif(Severity_s in ('high','critical')) by Day=bin(TimeGenerated,1d);\nlet incidents = SecurityIncident | summarize Incidents=count() by Day=bin(TimeGenerated,1d);\nevents\n| join kind=leftouter insights on Day\n| join kind=leftouter incidents on Day\n| extend AggregationRatio=round(RawRepresented/Ingested,1)\n| project Day, RawRepresented, Ingested, AggregationRatio, IngestedGB, Insights, HighCritical, Incidents\n| sort by Day desc",
+        "query": "// Abstract — Daily value & reduction summary (roll up per day for outbrief).\nlet events = AbstractEventLogs_CL | extend AbstractEvent = iff(isnotnull(column_ifexists('AbstractEvent', dynamic(null))), column_ifexists('AbstractEvent', dynamic(null)), pack_all()), Message = tostring(column_ifexists('Message', '')) | extend agg=todouble(coalesce(toreal(AbstractEvent.aggregation_count),1.0)), b=todouble(estimate_data_size(AbstractEvent))\n  | summarize RawRepresented=sum(agg), Ingested=count(), IngestedGB=round(sum(b)/1024.0/1024/1024,4) by Day=bin(TimeGenerated,1d);\nlet insights = AbstractInsights_CL | summarize Insights=count(), HighCritical=countif(Severity_s in ('high','critical')) by Day=bin(TimeGenerated,1d);\nlet incidents = SecurityIncident | summarize Incidents=count() by Day=bin(TimeGenerated,1d);\nevents\n| join kind=leftouter insights on Day\n| join kind=leftouter incidents on Day\n| extend AggregationRatio=round(RawRepresented/Ingested,1)\n| project Day, RawRepresented, Ingested, AggregationRatio, IngestedGB, Insights, HighCritical, Incidents\n| sort by Day desc",
         "version": 2,
         "tags": [
           {
             "name": "description",
-            "value": "Per-day rollup: raw represented vs ingested, aggregation ratio, GB, insights, high/critical, incidents \u2014 the SE outbrief summary."
+            "value": "Per-day rollup: raw represented vs ingested, aggregation ratio, GB, insights, high/critical, incidents — the SE outbrief summary."
           }
         ]
       }
@@ -1962,17 +1961,18 @@
         "displayName": "Abstract - Tag & prioritize Abstract-originated incidents",
         "order": 1,
         "triggeringLogic": {
-          "isEnabled": true,
+          "isEnabled": false,
           "triggersOn": "Incidents",
           "triggersWhen": "Created",
           "conditions": [
             {
               "conditionType": "Property",
               "conditionProperties": {
-                "propertyName": "IncidentTitle",
+                "propertyName": "IncidentRelatedAnalyticRuleIds",
                 "operator": "Contains",
                 "propertyValues": [
-                  "Abstract"
+                  "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'), 'Microsoft.SecurityInsights', 'c0543ccb-b53d-5e56-917f-9210def2c413')]",
+                  "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'), 'Microsoft.SecurityInsights', '7918c399-841e-5466-ade1-8dc5ac08a6c5')]"
                 ]
               }
             }
@@ -2034,17 +2034,18 @@
         "displayName": "Abstract - Run ASTRO Verdict on Abstract incidents",
         "order": 2,
         "triggeringLogic": {
-          "isEnabled": true,
+          "isEnabled": false,
           "triggersOn": "Incidents",
           "triggersWhen": "Created",
           "conditions": [
             {
               "conditionType": "Property",
               "conditionProperties": {
-                "propertyName": "IncidentTitle",
+                "propertyName": "IncidentRelatedAnalyticRuleIds",
                 "operator": "Contains",
                 "propertyValues": [
-                  "Abstract"
+                  "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'), 'Microsoft.SecurityInsights', 'c0543ccb-b53d-5e56-917f-9210def2c413')]",
+                  "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'), 'Microsoft.SecurityInsights', '7918c399-841e-5466-ade1-8dc5ac08a6c5')]"
                 ]
               }
             }
@@ -2103,17 +2104,18 @@
         "displayName": "Abstract - Tune at source on closed Abstract incidents",
         "order": 3,
         "triggeringLogic": {
-          "isEnabled": true,
+          "isEnabled": false,
           "triggersOn": "Incidents",
           "triggersWhen": "Updated",
           "conditions": [
             {
               "conditionType": "Property",
               "conditionProperties": {
-                "propertyName": "IncidentTitle",
+                "propertyName": "IncidentRelatedAnalyticRuleIds",
                 "operator": "Contains",
                 "propertyValues": [
-                  "Abstract"
+                  "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'), 'Microsoft.SecurityInsights', 'c0543ccb-b53d-5e56-917f-9210def2c413')]",
+                  "[resourceId('Microsoft.OperationalInsights/workspaces/providers/alertRules', parameters('workspace'), 'Microsoft.SecurityInsights', '7918c399-841e-5466-ade1-8dc5ac08a6c5')]"
                 ]
               }
             },

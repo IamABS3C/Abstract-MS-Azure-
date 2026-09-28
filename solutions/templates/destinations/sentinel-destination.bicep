@@ -16,9 +16,15 @@
 //    3. Data Collection Endpoint    (DCE - the ingestion endpoint)
 //    4. Custom log table (*_CL)     (DCR-based, with a parameterizable schema)
 //    5. Data Collection Rule (DCR)  (stream declaration -> workspace table)
-//    6. RBAC on the DCR             (Monitoring Metrics Publisher + Monitoring
-//                                     Contributor) for the supplied service
-//                                     principal, per the Abstract docs.
+//    6. RBAC on the DCR             (Monitoring Metrics Publisher, plus Monitoring
+//                                     Contributor only if grantMonitoringContributor)
+//                                     for the supplied service principal.
+//    7. Optional ASIM dataflows     (enableAsim, off by default) and DCR error logs.
+//
+//  WHAT IT NEVER TOUCHES: analytics rules, automation rules, hunting queries,
+//  workbooks, watchlists, data connectors, parsers, other tables, workspace
+//  settings of an existing workspace, or the SecurityInsights solution of an
+//  existing workspace. See solutions/docs/sentinel-destination-assurance.md.
 //
 //  NOTE: an Entra app registration + client secret CANNOT be created in ARM.
 //  Create the app first (or have Abstract Solutions create it), pass its
@@ -59,7 +65,7 @@ param workspaceName string = ''
 @allowed(['PerGB2018', 'CapacityReservation', 'Free', 'Standalone', 'PerNode'])
 param workspaceSku string = 'PerGB2018'
 
-@description('Workspace data retention in days (only applied when creating a new workspace).')
+@description('Workspace data retention in days. Only applied when creating a new workspace; an existing workspace is never modified. The Abstract table\'s own retention is customTableRetentionDays.')
 @minValue(7)
 @maxValue(730)
 param workspaceRetentionDays int = 90
@@ -91,13 +97,18 @@ param transformKql string = 'source'
 @description('Send the Data Collection Rule\'s ingestion errors (rejected requests, malformed payloads, limit and transformation errors) to the DCRLogErrors table in the workspace. Without it, data Azure refuses or drops is invisible to the customer and to Abstract.')
 param enableDcrErrorLogs bool = true
 
-@description('Also write each event into Microsoft\'s ASIM normalized tables (ASimAuthenticationEventLogs and the others listed in asimSchemas), mapped from the Abstract Common Schema by solutions/asim. Microsoft\'s built-in ASIM parsers read those tables, so Microsoft\'s ASIM analytics rules, hunting queries and workbooks work on Abstract data from every vendor. Needs Microsoft Sentinel on the workspace (a new workspace needs enableSentinel; an existing one is assumed to have it) and the generated Abstract schema (tableColumns left empty). Every event still also lands in the Abstract table.')
-param enableAsim bool = true
+@description('Also write each event into Microsoft\'s ASIM normalized tables (ASimAuthenticationEventLogs and the others listed in asimSchemas), mapped from the Abstract Common Schema by solutions/asim. Off by default. Microsoft\'s built-in ASIM parsers read those tables, so once this is on every ASIM analytics rule, hunting query and workbook already running in the workspace also sees Abstract data: expect new alerts, duplicates where Microsoft\'s own connector collects the same vendor, and a second copy of each mapped event in billing. Turn it on in a staging workspace first, or one schema at a time with asimSchemas. Needs Microsoft Sentinel on the workspace and the generated Abstract schema (tableColumns left empty). Every event still also lands in the Abstract table.')
+param enableAsim bool = false
 
 @description('ASIM schemas to write, by name (for example [\'Authentication\', \'NetworkSession\']). [\'*\'] (default) writes every schema solutions/asim maps; [] writes none.')
 param asimSchemas array = [
   '*'
 ]
+
+@description('Retention of the Abstract table in days. 0 (default) sends no retention, so an existing table keeps its retention and a new table uses the workspace default. A value shortens or lengthens the table\'s total retention; shortening deletes data older than the new value.')
+@minValue(0)
+@maxValue(4383)
+param customTableRetentionDays int = 0
 
 @description('Table plan for the Abstract table. Keep (default) keeps the plan an existing table already has, and create a new table as Analytics: a redeploy then never changes a table\'s plan, or its cost, by accident. Analytics runs analytics rules and our content pack on it. Auxiliary is the Sentinel data lake tier: cheap long retention and KQL jobs, but no analytics rules or alerts. Basic sits between them. Setting a plan on an existing table switches it; Azure applies the new plan to the whole table.')
 @allowed(['Keep', 'Analytics', 'Basic', 'Auxiliary'])
@@ -106,6 +117,9 @@ param customTablePlan string = 'Keep'
 // ---------------------------------------------------------------------------
 // RBAC for the Abstract service principal (granted on the DCR)
 // ---------------------------------------------------------------------------
+@description('Also grant Monitoring Contributor on the DCR. Off by default: sending data through the Logs Ingestion API needs only Monitoring Metrics Publisher, and Monitoring Contributor would let a leaked Abstract credential rewrite or delete the DCR and its error-log setting. Turn on only if your Abstract destination setup specifically asks for it.')
+param grantMonitoringContributor bool = false
+
 @description('Object ID of the service principal Abstract authenticates as (the Enterprise Application object ID, NOT the Application/client ID). Leave empty to skip role assignments and grant them yourself later.')
 param principalId string = ''
 
@@ -137,6 +151,8 @@ var customTableArmColumns = [for col in effectiveTableColumns: {
 }]
 // customTablePlan 'Keep' sends no plan, so Azure keeps an existing table's plan (Analytics for a new table).
 var customTablePlanProperty = customTablePlan == 'Keep' ? {} : { plan: customTablePlan }
+// customTableRetentionDays 0 sends no retention, so a redeploy never shortens an existing table's retention.
+var customTableRetentionProperty = customTableRetentionDays > 0 ? { totalRetentionInDays: customTableRetentionDays } : {}
 var effectiveStreamColumns = useGeneratedSchema ? generatedSchema.streamColumns : tableColumns
 var effectiveTransformKql = useGeneratedSchema ? generatedSchema.transformKql : transformKql
 
@@ -161,7 +177,7 @@ var asimFlows = [for route in enabledAsimRoutes: {
 var streamName = 'Custom-${customTableName}'
 var logAnalyticsDestinationName = 'abstractSentinelWorkspace'
 
-// Built-in role definition IDs (per Abstract docs).
+// Built-in role definition IDs.
 var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
 var monitoringContributorRoleId = '749f88d5-cbae-40b8-bcfc-e573ddc772fa'
 
@@ -200,8 +216,7 @@ resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2026-03-01
       name: customTableName
       columns: customTableArmColumns
     }
-    totalRetentionInDays: workspaceRetentionDays
-  }, customTablePlanProperty)
+  }, customTablePlanProperty, customTableRetentionProperty)
   dependsOn: createWorkspace ? [
     workspace
   ] : []
@@ -288,7 +303,7 @@ resource dcrErrorLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview'
 }
 
 // ---------------------------------------------------------------------------
-// RBAC on the DCR for the Abstract service principal (both roles per docs)
+// RBAC on the DCR for the Abstract service principal
 // ---------------------------------------------------------------------------
 resource metricsPublisherAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
   name: guid(dcr.id, principalId, monitoringMetricsPublisherRoleId)
@@ -300,7 +315,7 @@ resource metricsPublisherAssignment 'Microsoft.Authorization/roleAssignments@202
   }
 }
 
-resource monitoringContributorAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
+resource monitoringContributorAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId) && grantMonitoringContributor) {
   name: guid(dcr.id, principalId, monitoringContributorRoleId)
   scope: dcr
   properties: {
@@ -332,6 +347,6 @@ output abstractSentinelOnboarding object = {
     clientSecretValue: '(Entra ID > App registrations > your app > Certificates & secrets)'
     applicationTenantId: subscription().tenantId
   }
-  rbac: !empty(principalId) ? 'Monitoring Metrics Publisher + Monitoring Contributor granted on the DCR to principal ${principalId}' : '(no principalId supplied - assign both roles on the DCR yourself)'
+  rbac: !empty(principalId) ? (grantMonitoringContributor ? 'Monitoring Metrics Publisher + Monitoring Contributor granted on the DCR to principal ${principalId}' : 'Monitoring Metrics Publisher granted on the DCR to principal ${principalId}') : '(no principalId supplied - assign Monitoring Metrics Publisher on the DCR yourself)'
   docs: 'https://docs.abstractsecurity.app/docs/integrations/destination-integrations/azure-sentinel-destination/'
 }

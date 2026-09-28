@@ -72,13 +72,31 @@ ok "resolved $(echo "$ROLE_IDS" | wc -w | tr -d ' ') permission(s)"
 
 # --- App registration (idempotent by display name) ------------------------
 log "Ensuring app registration '$APP_NAME'"
-APP_ID=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query '[0].appId' -o tsv 2>/dev/null || true)
-if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
+# The display name is predictable (Abstract-<subscription id>) and any user who may
+# register apps could pre-create one, so an app is reused only when exactly one has
+# the name AND it carries the marker tag this script writes on the apps it creates.
+# Otherwise this identity would consent tenant-wide Graph permissions to an app
+# someone else owns.
+MARKER="abstract:appreg"
+MATCHES=$(az ad app list --filter "displayName eq '${APP_NAME}'" --query "[].{appId:appId, tags:tags}" -o json) \
+  || die "cannot list app registrations"
+read -r MATCH_COUNT APP_ID MARKED <<<"$(printf '%s' "$MATCHES" | python3 -c "
+import json, sys
+apps = json.load(sys.stdin) or []
+first = apps[0] if apps else {}
+print(len(apps), first.get('appId') or '-', 'yes' if '$MARKER' in (first.get('tags') or []) else 'no')")"
+if [ "$MATCH_COUNT" -gt 1 ]; then
+  die "$MATCH_COUNT app registrations are named '$APP_NAME' - refusing to choose one"
+elif [ "$MATCH_COUNT" -eq 1 ]; then
+  [ "$MARKED" = yes ] || die "an app named '$APP_NAME' ($APP_ID) exists but was not created by this automation, so it gets no permissions or credential. Delete it, or if an earlier version of this automation created it, tag it: az rest --method PATCH --url \"${GRAPH}/applications(appId='$APP_ID')\" --body '{\"tags\":[\"$MARKER\"]}'"
+  ok "reusing existing app $APP_ID"
+else
   APP_ID=$(az ad app create --display-name "$APP_NAME" --sign-in-audience AzureADMyOrg --query appId -o tsv)
   ok "created app $APP_ID"
-  sleep 15   # directory replication before the SP create
-else
-  ok "reusing existing app $APP_ID"
+  sleep 15   # directory replication before the tag and the SP create
+  az rest --method PATCH --url "${GRAPH}/applications(appId='${APP_ID}')" \
+    --headers "Content-Type=application/json" --body "{\"tags\":[\"${MARKER}\"]}" -o none \
+    || die "could not tag app $APP_ID as created by this automation"
 fi
 APP_OBJ_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
 
@@ -207,9 +225,12 @@ for role in $RBAC_ROLES; do
       ok "role $role already assigned"
     else
       warn "role $role FAILED: $(tr -d '\n' < /tmp/rbac-err | head -c 300)"
+      RBAC_FAILED=true
     fi
   fi
 done
+
+: "${RBAC_FAILED:=false}"
 
 # --- Outputs (no secret, by design) --------------------------------------
 cat > "$AZ_SCRIPTS_OUTPUT_PATH" <<JSON
@@ -228,5 +249,15 @@ JSON
 
 if [ "$CONSENT_OK" != true ]; then
   die "app created but admin consent is incomplete (${VERIFIED}/${EXPECTED}) - failing so the deployment does not report success"
+fi
+if [ "$RBAC_FAILED" = true ]; then
+  die "app and consent are in place but a subscription role assignment failed - failing so the policy retries"
+fi
+# The policy's existence check reads this tag, so it is written only after everything
+# above is verified. Without it the subscription stays non-compliant and is retried.
+if [ -n "${MARKER_RG:-}" ]; then
+  az group update --name "$MARKER_RG" --subscription "$TARGET_SUB" --set tags.abstract-appreg=onboarded -o none \
+    || die "could not tag resource group $MARKER_RG as onboarded"
+  ok "marked $MARKER_RG as onboarded"
 fi
 ok "done"

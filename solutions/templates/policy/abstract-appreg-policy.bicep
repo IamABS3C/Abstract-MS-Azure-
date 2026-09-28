@@ -320,16 +320,17 @@ resource appRegPolicy 'Microsoft.Authorization/policyDefinitions@2023-04-01' = {
         effect: '[parameters(\'effect\')]'
         details: {
           // The ARM-visible PROXY for "does this subscription have an Abstract app".
-          // Policy cannot see the Entra app, so it checks for a successfully
-          // completed deploymentScript of a known name instead.
-          type: 'Microsoft.Resources/deploymentScripts'
-          name: scriptName
-          resourceGroupName: '[parameters(\'scriptResourceGroup\')]'
-          existenceScope: 'ResourceGroup'
+          // Policy cannot see the Entra app, so it checks for a tag the script writes
+          // on its resource group only after consent and RBAC are verified. The tag
+          // is durable; the deploymentScript resource itself is deleted when its
+          // retention interval ends, so it cannot be the proxy.
+          type: 'Microsoft.Resources/resourceGroups'
+          name: '[parameters(\'scriptResourceGroup\')]'
+          existenceScope: 'Subscription'
           evaluationDelay: 'AfterProvisioningSuccess'
           existenceCondition: {
-            field: 'Microsoft.Resources/deploymentScripts/provisioningState'
-            equals: 'Succeeded'
+            field: 'tags[\'abstract-appreg\']'
+            equals: 'onboarded'
           }
           roleDefinitionIds: [
             // Owner: the script's own deployment assigns RBAC on the subscription,
@@ -525,12 +526,18 @@ resource appRegPolicy 'Microsoft.Authorization/policyDefinitions@2023-04-01' = {
                             properties: {
                               azCliVersion: '[parameters(\'azCliVersion\')]'
                               retentionInterval: 'PT1H'
-                              cleanupPreference: 'OnSuccess'
+                              // Always: never leave the privileged identity attached to a
+                              // container after a failure.
+                              cleanupPreference: 'Always'
                               timeout: 'PT45M'
                               environmentVariables: [
                                 {
                                   name: 'TARGET_SUB'
                                   value: '[parameters(\'subscriptionId\')]'
+                                }
+                                {
+                                  name: 'MARKER_RG'
+                                  value: '[resourceGroup().name]'
                                 }
                                 {
                                   name: 'MI_CLIENT_ID'

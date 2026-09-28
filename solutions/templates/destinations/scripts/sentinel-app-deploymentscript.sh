@@ -22,7 +22,8 @@
 #    3. NO OUTPUT VERIFICATION. Nothing read back what it had created.
 #
 #  The app being created is Abstract's runtime identity. It receives DCR RBAC
-#  (Monitoring Metrics Publisher + Monitoring Contributor) from the template;
+#  (Monitoring Metrics Publisher, plus Monitoring Contributor only if the template
+#  is told to) from the template;
 #  it is distinct from the provisioning identity running this script.
 #
 #  Environment (set by the template):
@@ -170,7 +171,7 @@ PY
       case "$VERDICT" in
         reuse)         NEED_SECRET=false
                        ok "existing secret belongs to app $APP_ID and is valid for >30 days - NOT rotating (re-running this template is safe)" ;;
-        other-app)     warn "the vault secret $SECRET_NAME was stored for another app - minting one for $APP_ID" ;;
+        other-app)     die "the vault secret $SECRET_NAME belongs to another app - refusing to overwrite it. Choose a different secretName or vault." ;;
         expiring)      warn "existing secret expires within 30 days - rotating" ;;
         no-credential) warn "app $APP_ID holds no matching credential for the vault secret (was the app recreated?) - minting a new one" ;;
         *)             die "could not evaluate the existing secret" ;;
@@ -192,10 +193,15 @@ import datetime
 print((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365*int('$SECRET_YEARS'))).strftime('%Y-%m-%dT%H:%M:%SZ'))")
     STORED=false
     for attempt in 1 2 3; do
+      # The value goes through a 0600 file, never the command line, so it cannot be read
+      # from the process list.
+      SECRET_FILE=$(mktemp); chmod 600 "$SECRET_FILE"; printf '%s' "$SECRET" > "$SECRET_FILE"
       if az keyvault secret set --vault-name "$KV_NAME" --name "$SECRET_NAME" \
-           --value "$SECRET" --expires "$END" --tags appId="$APP_ID" -o none; then
+           --file "$SECRET_FILE" --encoding utf-8 --expires "$END" --tags appId="$APP_ID" -o none; then
+        rm -f "$SECRET_FILE"
         STORED=true; break
       fi
+      rm -f "$SECRET_FILE"
       warn "Key Vault write failed (attempt $attempt/3), retrying in 20s"
       sleep 20
     done

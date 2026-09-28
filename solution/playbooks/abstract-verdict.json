@@ -203,7 +203,7 @@
                     "path": "/Incidents/Comment",
                     "body": {
                       "incidentArmId": "@triggerBody()?['object']?['id']",
-                      "message": "<h3>Abstract ASTRO \u2014 Verdict</h3><p><b>Verdict:</b> @{coalesce(body('Get_verdict_status')?['verdict'], 'UNKNOWN')} &nbsp; <b>Confidence:</b> @{coalesce(body('Get_verdict_status')?['confidence'], 0)}%</p><p>@{coalesce(body('Get_verdict_status')?['summary'], 'No summary returned.')}</p><p><b>Recommended actions:</b></p><pre>@{string(coalesce(body('Get_verdict_status')?['recommended_actions'], json('[]')))}</pre><p><i>Events analyzed: @{coalesce(body('Get_verdict_status')?['total_events_analyzed'], 0)} \u00b7 IOCs enriched: @{coalesce(body('Get_verdict_status')?['iocs_enriched'], 0)}</i></p>"
+                      "message": "<h3>Abstract ASTRO — Verdict</h3><p><b>Verdict:</b> @{coalesce(body('Get_verdict_status')?['verdict'], 'UNKNOWN')} &nbsp; <b>Confidence:</b> @{coalesce(body('Get_verdict_status')?['confidence'], 0)}%</p><p>@{coalesce(body('Get_verdict_status')?['summary'], 'No summary returned.')}</p><p><b>Recommended actions:</b></p><pre>@{string(coalesce(body('Get_verdict_status')?['recommended_actions'], json('[]')))}</pre><p><i>Events analyzed: @{coalesce(body('Get_verdict_status')?['total_events_analyzed'], 0)} · IOCs enriched: @{coalesce(body('Get_verdict_status')?['iocs_enriched'], 0)}</i></p>"
                     }
                   }
                 },
@@ -233,8 +233,7 @@
                         "path": "/Incidents",
                         "body": {
                           "incidentArmId": "@triggerBody()?['object']?['id']",
-                          "severity": "High",
-                          "status": "Active"
+                          "severity": "High"
                         }
                       }
                     }

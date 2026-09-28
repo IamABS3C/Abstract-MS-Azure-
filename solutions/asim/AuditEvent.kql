@@ -13,6 +13,10 @@ source
 | extend _action = tolower(tostring(action)), _outcome = tolower(tostring(event.outcome)), _sev = tolower(case(isnotempty(severity), severity, tostring(event.severity)))
 | extend _result = case(_outcome in ('success', 'succeeded', 'allowed', 'allow'), 'Success', _outcome in ('failure', 'failed', 'fail', 'denied', 'blocked', 'deny'), 'Failure', _outcome == 'partial', 'Partial', 'NA')
 | extend _time = case(isnotnull(['timestamp']), ['timestamp'], isnotnull(ingested_time), ingested_time, now())
+// Azure restamps anything older than two days with its arrival time. A replay, backfill or
+// long catch-up would then look like live activity to every ASIM rule, so it stays out of
+// the ASIM tables (it still lands in the Abstract table).
+| where _time > ago(2d)
 | project
     TimeGenerated = _time,
     EventCount = iif(isnull(aggregation_count) or aggregation_count < 1, toint(1), toint(aggregation_count)),

@@ -203,10 +203,63 @@
             }
           },
           {
+            "name": "customTableRetentionDays",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Abstract table retention",
+            "defaultValue": "Keep the table's current retention",
+            "toolTip": "Keep sends no retention: an existing table keeps its retention and a new table uses the workspace default, so a redeploy never deletes data. Choosing a value sets the table's total retention; a shorter value deletes older data.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                {
+                  "label": "Keep the table's current retention",
+                  "value": 0
+                },
+                {
+                  "label": "30 days",
+                  "value": 30
+                },
+                {
+                  "label": "90 days",
+                  "value": 90
+                },
+                {
+                  "label": "180 days",
+                  "value": 180
+                },
+                {
+                  "label": "1 year",
+                  "value": 365
+                },
+                {
+                  "label": "2 years",
+                  "value": 730
+                },
+                {
+                  "label": "7 years",
+                  "value": 2556
+                },
+                {
+                  "label": "12 years",
+                  "value": 4383
+                }
+              ]
+            }
+          },
+          {
+            "name": "asimImpact",
+            "type": "Microsoft.Common.InfoBox",
+            "visible": true,
+            "options": {
+              "style": "Warning",
+              "text": "ASIM tables are off by default. When on, every ASIM analytics rule, hunting query and workbook already running in this workspace also reads Abstract data: expect new alerts, duplicate events where Microsoft's own connector collects the same vendor, and a second billed copy of each mapped event. Turn it on in a staging workspace first, or one schema at a time. Details: solutions/docs/sentinel-destination-assurance.md in the Abstract-MS-Azure repository."
+            }
+          },
+          {
             "name": "enableAsim",
             "type": "Microsoft.Common.CheckBox",
-            "label": "Write Microsoft ASIM normalized tables",
-            "defaultValue": true,
+            "label": "Also write Microsoft ASIM normalized tables (off by default)",
+            "defaultValue": false,
             "toolTip": "Also writes each event into Microsoft's ASIM tables (ASimAuthenticationEventLogs and others), mapped from the Abstract schema. Microsoft's ASIM analytics rules, hunting queries and workbooks then work on Abstract data from every vendor. Needs Microsoft Sentinel on the workspace."
           },
           {
@@ -283,6 +336,13 @@
               "Microsoft.KeyVault/vaults",
               "Microsoft.Resources/deploymentScripts"
             ]
+          },
+          {
+            "name": "grantMonitoringContributor",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Also grant Monitoring Contributor on the DCR",
+            "defaultValue": false,
+            "toolTip": "Not needed to send data: the Logs Ingestion API needs only Monitoring Metrics Publisher, which is always granted. Monitoring Contributor would let a leaked Abstract credential rewrite or delete the DCR. Turn on only if your Abstract setup asks for it."
           }
         ]
       },
@@ -457,7 +517,9 @@
       "customTablePlan": "[steps('ingestion').customTablePlan]",
       "enableDcrErrorLogs": "[steps('ingestion').enableDcrErrorLogs]",
       "enableAsim": "[steps('ingestion').enableAsim]",
-      "asimSchemas": "[coalesce(steps('ingestion').asimSchemas, parse('[]'))]"
+      "asimSchemas": "[coalesce(steps('ingestion').asimSchemas, parse('[]'))]",
+      "customTableRetentionDays": "[steps('ingestion').customTableRetentionDays]",
+      "grantMonitoringContributor": "[steps('ingestion').grantMonitoringContributor]"
     }
   }
 }
