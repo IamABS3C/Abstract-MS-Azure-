@@ -88,6 +88,9 @@ param tableColumns array = []
 @description('DCR transformation used only when tableColumns is supplied. The generated schema carries its own transformation.')
 param transformKql string = 'source'
 
+@description('Send the Data Collection Rule\'s ingestion errors (rejected requests, malformed payloads, limit and transformation errors) to the DCRLogErrors table in the workspace. Without it, data Azure refuses or drops is invisible to the customer and to Abstract.')
+param enableDcrErrorLogs bool = true
+
 // ---------------------------------------------------------------------------
 // RBAC for the Abstract service principal (granted on the DCR)
 // ---------------------------------------------------------------------------
@@ -228,6 +231,26 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2024-03-11' = {
   dependsOn: [
     customTable
   ]
+}
+
+
+// ---------------------------------------------------------------------------
+// DCR error logs -> DCRLogErrors in the workspace. The DCR metrics only count
+// failures; this is the only place that records WHY a request was refused or
+// a row dropped. Azure samples these per hour, so it is evidence, not a tally.
+// ---------------------------------------------------------------------------
+resource dcrErrorLogs 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (enableDcrErrorLogs) {
+  name: 'abstract-dcr-errors'
+  scope: dcr
+  properties: {
+    workspaceId: workspaceResourceId
+    logs: [
+      {
+        category: 'LogErrors'
+        enabled: true
+      }
+    ]
+  }
 }
 
 // ---------------------------------------------------------------------------

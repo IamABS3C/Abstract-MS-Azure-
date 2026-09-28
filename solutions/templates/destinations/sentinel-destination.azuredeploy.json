@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "16741231610478432929"
+      "templateHash": "2903755542138664166"
     }
   },
   "parameters": {
@@ -114,6 +114,13 @@
       "defaultValue": "source",
       "metadata": {
         "description": "DCR transformation used only when tableColumns is supplied. The generated schema carries its own transformation."
+      }
+    },
+    "enableDcrErrorLogs": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Send the Data Collection Rule's ingestion errors (rejected requests, malformed payloads, limit and transformation errors) to the DCRLogErrors table in the workspace. Without it, data Azure refuses or drops is invisible to the customer and to Abstract."
       }
     },
     "principalId": {
@@ -870,6 +877,25 @@
       "dependsOn": [
         "[resourceId('Microsoft.OperationalInsights/workspaces/tables', split(format('{0}/{1}', variables('effectiveWorkspaceName'), parameters('customTableName')), '/')[0], split(format('{0}/{1}', variables('effectiveWorkspaceName'), parameters('customTableName')), '/')[1])]",
         "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dataCollectionEndpointName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableDcrErrorLogs')]",
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "scope": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dataCollectionRuleName'))]",
+      "name": "abstract-dcr-errors",
+      "properties": {
+        "workspaceId": "[variables('workspaceResourceId')]",
+        "logs": [
+          {
+            "category": "LogErrors",
+            "enabled": true
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dataCollectionRuleName'))]"
       ]
     },
     {
