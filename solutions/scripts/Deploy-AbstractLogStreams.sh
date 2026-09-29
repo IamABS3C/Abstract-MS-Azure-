@@ -29,7 +29,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATE="${SCRIPT_DIR}/../templates/policy/abstract-logstreams-policy.bicep"
+# solutions/ keeps templates in ../templates; the per-cloud template repos keep them in ../bicep.
+TEMPLATES="${SCRIPT_DIR}/../templates"; [ -d "$TEMPLATES" ] || TEMPLATES="${SCRIPT_DIR}/../bicep"
+TEMPLATE="${TEMPLATES}/policy/abstract-logstreams-policy.bicep"
 
 ACTION=""
 MG_ID=""
