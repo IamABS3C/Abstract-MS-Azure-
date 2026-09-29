@@ -57,7 +57,9 @@ SECRET_DISPLAY_NAME="abstract-sentinel-secret"
 
 # Resolve the template that lives one directory up, regardless of CWD.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATE="${SCRIPT_DIR}/../templates/destinations/sentinel-destination.azuredeploy.json"
+# solutions/ keeps templates in ../templates; the per-cloud template repos keep them in ../bicep.
+TEMPLATES="${SCRIPT_DIR}/../templates"; [ -d "$TEMPLATES" ] || TEMPLATES="${SCRIPT_DIR}/../bicep"
+TEMPLATE="${TEMPLATES}/destinations/sentinel-destination.azuredeploy.json"
 
 # ---- args -------------------------------------------------------------------
 usage() { sed -n '2,50p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
