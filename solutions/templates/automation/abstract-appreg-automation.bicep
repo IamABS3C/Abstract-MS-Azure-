@@ -153,6 +153,9 @@ param tagValue string = 'true'
 @description('Create the Event Grid subscription for automatic triggering. Set false to deploy the workflow and drive it manually first - the safest way to start.')
 param enableEventTrigger bool = false
 
+@description('Renew client secrets before they expire. A second workflow runs daily, finds this automation\'s secrets in the vault that expire within 30 days, and re-runs the onboarder for each subscription, which mints a new secret. Without it a secret is never renewed after the first onboarding.')
+param enableRenewal bool = true
+
 @description('Optional webhook (Teams/Slack/ASTRO) that receives a message when an onboarding run fails or consent verification falls short.')
 @secure()
 param failureWebhookUrl string = ''
@@ -1092,6 +1095,118 @@ resource failureAlert 'Microsoft.Insights/actionGroups@2023-01-01' = if (!empty(
 }
 
 // ---------------------------------------------------------------------------
+// Renewal.
+//
+// The onboarder only runs when something calls it, so a subscription onboarded once
+// would keep its first secret until it expired. This workflow closes that gap: once a
+// day it lists the vault's secrets (every page), keeps the ones this automation wrote
+// (managedBy tag) that expire within 30 days, and calls the onboarder for each
+// subscription. The onboarder rotates exactly when a secret has 30 days or less left,
+// so the two agree on the threshold.
+// ---------------------------------------------------------------------------
+resource renewal 'Microsoft.Logic/workflows@2019-05-01' = if (enableRenewal) {
+  name: '${workflowName}-renewal'
+  location: location
+  tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentityResourceId}': {}
+    }
+  }
+  properties: {
+    state: 'Enabled'
+    definition: {
+      '$schema': 'https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#'
+      contentVersion: '1.0.0.0'
+      parameters: {
+        vaultUri: {
+          type: 'String'
+          defaultValue: effectiveVaultUri
+        }
+      }
+      triggers: {
+        Daily: {
+          type: 'Recurrence'
+          recurrence: {
+            frequency: 'Day'
+            interval: 1
+          }
+        }
+      }
+      actions: {
+        List_secrets: {
+          type: 'Http'
+          runAfter: {}
+          inputs: {
+            method: 'GET'
+            uri: '@{parameters(\'vaultUri\')}secrets?api-version=7.4'
+            authentication: {
+              type: 'ManagedServiceIdentity'
+              identity: managedIdentityResourceId
+              audience: vaultAudience
+            }
+          }
+          runtimeConfiguration: {
+            paginationPolicy: {
+              minimumItemCount: 5000
+            }
+          }
+        }
+        Expiring_soon: {
+          type: 'Query'
+          runAfter: {
+            List_secrets: [
+              'Succeeded'
+            ]
+          }
+          inputs: {
+            from: '@body(\'List_secrets\')?[\'value\']'
+            where: '@and(equals(item()?[\'tags\']?[\'managedBy\'], \'abstract-appreg-automation\'), not(empty(coalesce(item()?[\'tags\']?[\'subscriptionId\'], \'\'))), less(coalesce(item()?[\'attributes\']?[\'exp\'], 0), div(sub(ticks(addDays(utcNow(), 30)), ticks(\'1970-01-01T00:00:00Z\')), 10000000)))'
+          }
+        }
+        Renew_each: {
+          type: 'Foreach'
+          runAfter: {
+            Expiring_soon: [
+              'Succeeded'
+            ]
+          }
+          foreach: '@body(\'Expiring_soon\')'
+          runtimeConfiguration: {
+            concurrency: {
+              repetitions: 1
+            }
+          }
+          actions: {
+            // No retry: the onboarder answers 500 when it cannot finish a subscription
+            // (consent shortfall, missing subscription), and a retry repeats the same run.
+            // Once a day is the retry; the failure shows in this run's history meanwhile.
+            Run_onboarder: {
+              type: 'Workflow'
+              inputs: {
+                retryPolicy: {
+                  type: 'none'
+                }
+                host: {
+                  triggerName: 'manual'
+                  workflow: {
+                    id: workflow.id
+                  }
+                }
+                body: {
+                  subscriptionId: '@items(\'Renew_each\')?[\'tags\']?[\'subscriptionId\']'
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Event Grid trigger.
 //
 // Off by default: deploy the workflow, POST a subscription ID at it to prove the
@@ -1110,6 +1225,8 @@ resource systemTopic 'Microsoft.EventGrid/systemTopics@2023-12-15-preview' = if 
 
 output workflowName string = workflow.name
 
+output renewalWorkflowName string = enableRenewal ? renewal.name : ''
+
 @description('Grant this identity Key Vault Secrets Officer on the vault, and Owner (or Contributor + User Access Administrator) on each target subscription.')
 output identityPrincipalId string = identity.properties.principalId
 
@@ -1125,5 +1242,6 @@ output nextSteps object = {
   step4: 'Backfill existing subscriptions with the same POST, then set enableEventTrigger=true so new subscriptions onboard themselves.'
   tagGate: empty(tagName) ? 'NO TAG GATE - every subscription that raises an event is onboarded. Strongly consider setting tagName.' : 'Gated on ${tagName}=${tagValue}. Tag a subscription to opt it in; a tag write also raises the event, so tagging an existing subscription onboards it.'
   eventTrigger: enableEventTrigger ? 'Event Grid system topic created. Wire its event subscription to the workflow callback URL.' : 'Event trigger NOT created (recommended for the first deployment). Set enableEventTrigger=true once a manual run succeeds.'
+  renewal: enableRenewal ? 'Renewal workflow ${workflowName}-renewal runs daily and re-runs the onboarder for any secret expiring within 30 days. Run it now from the portal to check it: it lists what it would renew.' : 'Renewal is OFF: nothing renews a secret after onboarding. Re-run the onboarder for each subscription before its secret expires.'
   secretHandling: 'Secrets go to Key Vault only. The Store_secret action has secureData set on inputs AND outputs so the value never lands in run history.'
 }

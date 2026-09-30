@@ -72,6 +72,7 @@ which is why Path B exists.
 | Audit trail | scattered across N deployment histories | one Logic App run history |
 | Sees the Entra app? | **No** — gates on an ARM proxy that can drift | Yes, queries Graph directly |
 | Extra requirement | `Microsoft.ContainerInstance` + `Microsoft.Storage` registered per subscription | none |
+| Secret renewal | The subscription turns non-compliant 30 days before its secret expires; a remediation task renews it (policy never acts on existing resources by itself) | A daily renewal workflow renews every secret within 30 days of expiry, unattended |
 
 **Recommendation: Path B**, unless a customer's governance mandates that every control
 arrive through Azure Policy. Same outcome, far smaller attack surface, and one workflow
@@ -221,6 +222,33 @@ Selecting a permission the tenant doesn't license is harmless: it returns no dat
 Every step is idempotent. Re-running never mints a duplicate app, and never rotates a
 secret that still has more than 30 days left.
 
+### Renewal
+
+**Path B** deploys a second workflow, `<workflowName>-renewal` (on by default, `enableRenewal`).
+Once a day it lists the vault's secrets, keeps the ones this automation wrote that expire
+within 30 days, and re-runs the onboarder for each subscription, which mints a new secret.
+Run it from the portal to see what it would renew.
+
+**Path A** records each secret's expiry on the marker resource group
+(`abstract-appreg-secret-expires`). The subscription is compliant only while that date is
+more than 30 days away. After that it shows as non-compliant, and a remediation task re-runs
+the script:
+
+```bash
+az policy remediation create --name abstract-appreg-renew \
+  --management-group <mg> --policy-assignment <assignment-id> \
+  --resource-discovery-mode ReEvaluateCompliance
+```
+
+Schedule that command (or run it when compliance shows non-compliant subscriptions): Azure
+Policy does not remediate existing resources on its own. After upgrading Path A, every
+subscription onboarded before the upgrade shows as non-compliant until one remediation task
+runs; the script reuses a secret with more than 30 days left, so that run only writes the tag.
+
+**Either way, update Abstract.** Renewal adds a new secret to the app and to Key Vault; it
+does not remove the old one, which keeps working until its own expiry. Copy the new value
+from Key Vault into the Abstract integration within those 30 days.
+
 ---
 
 ## 7. Sentinel destination — the same hardening
@@ -260,9 +288,10 @@ The tier-0 identity is unavoidable in any automated design. What you control is 
   inputs and outputs, so no secret reaches run history, deployment outputs or stdout.
 - **The tag gate is the opt-in.** Without it, every subscription that appears gets a
   tier-0 credential created with no explicit decision. Keep it on.
-- **Rotation is a real gap.** Nothing here rotates secrets on a schedule; it only avoids
-  churning them. A scheduled re-run with `forceSecretRotation` plus an Abstract-side
-  credential update is the missing piece, and it is not built yet.
+- **Secrets are renewed, not rotated in Abstract.** Path B renews every secret 30 days before
+  it expires; Path A flags it for a remediation task. Neither updates the credential inside
+  Abstract, and the old secret is not revoked, so for 30 days both work. Updating Abstract is
+  the remaining manual step.
 
 ---
 

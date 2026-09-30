@@ -182,6 +182,7 @@ fi
 log "Checking for a usable secret in $KV_NAME"
 SECRET_NAME="abstract-${TARGET_SUB}"
 NEED_SECRET=true
+SECRET_EXPIRES=""
 if EXP=$(az keyvault secret show --vault-name "$KV_NAME" --name "$SECRET_NAME" --query 'attributes.expires' -o tsv 2>/dev/null); then
   if [ -n "$EXP" ] && [ "$EXP" != "None" ]; then
     if python3 -c "
@@ -190,6 +191,7 @@ exp=datetime.datetime.fromisoformat('$EXP'.replace('Z','+00:00'))
 now=datetime.datetime.now(datetime.timezone.utc)
 sys.exit(0 if (exp-now).days > 30 else 1)"; then
       NEED_SECRET=false
+      SECRET_EXPIRES="$EXP"
       ok "existing secret is valid for >30 days - not rotating"
     fi
   fi
@@ -208,6 +210,7 @@ print((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(days=30*i
   az keyvault secret set --vault-name "$KV_NAME" --name "$SECRET_NAME" \
     --value "$SECRET" --expires "$END" -o none
   unset SECRET
+  SECRET_EXPIRES="$END"
   ok "secret stored at ${KV_NAME}/${SECRET_NAME} (never emitted to outputs or logs)"
 fi
 
@@ -253,11 +256,20 @@ fi
 if [ "$RBAC_FAILED" = true ]; then
   die "app and consent are in place but a subscription role assignment failed - failing so the policy retries"
 fi
-# The policy's existence check reads this tag, so it is written only after everything
-# above is verified. Without it the subscription stays non-compliant and is retried.
+# The policy's existence check reads these tags, so they are written only after everything
+# above is verified. Without them the subscription stays non-compliant and is retried.
+# abstract-appreg-secret-expires is what renews the secret: 30 days before that date the
+# subscription turns non-compliant again, and a remediation task re-runs this script,
+# which then mints a new secret.
+SECRET_EXPIRES=$(python3 -c "
+import datetime
+d=datetime.datetime.fromisoformat('$SECRET_EXPIRES'.replace('Z','+00:00'))
+print(d.astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))") \
+  || die "could not read the secret's expiry ('$SECRET_EXPIRES')"
 if [ -n "${MARKER_RG:-}" ]; then
-  az group update --name "$MARKER_RG" --subscription "$TARGET_SUB" --set tags.abstract-appreg=onboarded -o none \
+  az group update --name "$MARKER_RG" --subscription "$TARGET_SUB" \
+    --set tags.abstract-appreg=onboarded "tags.abstract-appreg-secret-expires=${SECRET_EXPIRES}" -o none \
     || die "could not tag resource group $MARKER_RG as onboarded"
-  ok "marked $MARKER_RG as onboarded"
+  ok "marked $MARKER_RG as onboarded; secret expires ${SECRET_EXPIRES}"
 fi
 ok "done"
