@@ -330,9 +330,19 @@ resource appRegPolicy 'Microsoft.Authorization/policyDefinitions@2023-04-01' = {
           name: '[parameters(\'scriptResourceGroup\')]'
           existenceScope: 'Subscription'
           evaluationDelay: 'AfterProvisioningSuccess'
+          // Compliant only while the secret has more than 30 days left. After that the
+          // subscription is non-compliant again, and a remediation task renews the secret.
           existenceCondition: {
-            field: 'tags[\'abstract-appreg\']'
-            equals: 'onboarded'
+            allOf: [
+              {
+                field: 'tags[\'abstract-appreg\']'
+                equals: 'onboarded'
+              }
+              {
+                field: 'tags[\'abstract-appreg-secret-expires\']'
+                greater: '[addDays(utcNow(), 30)]'
+              }
+            ]
           }
           roleDefinitionIds: [
             // Owner: the script's own deployment assigns RBAC on the subscription,
