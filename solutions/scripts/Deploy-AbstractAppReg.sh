@@ -102,11 +102,12 @@ resolve_graph_roles() {
     --url "${GRAPH}/servicePrincipals(appId='${GRAPH_APP_ID}')?\$select=id,appRoles" \
     --headers "Content-Type=application/json")
   GRAPH_SP_ID=$(echo "$sp" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
-  # The JSON travels in an environment variable: a pipe into `python3 - <<'PY'` loses to the heredoc,
-  # which becomes Python's stdin, so json.load(sys.stdin) would read the script text, not the JSON.
-  ROLE_PAIRS=$(SP_JSON="$sp" PERMS="${BOOTSTRAP_PERMS[*]}" python3 - <<'PY'
+  # The Graph role catalogue is hundreds of KB: it goes to Python on stdin, with the program
+  # passed as an argument. An environment variable is capped at 128 KiB on Linux ("Argument
+  # list too long"), and a pipe into `python3 - <<'PY'` loses to the heredoc, which becomes stdin.
+  ROLE_PAIRS=$(printf '%s' "$sp" | PERMS="${BOOTSTRAP_PERMS[*]}" python3 -c "$(cat <<'PY'
 import json, os, sys
-roles = {r['value']: r['id'] for r in json.loads(os.environ['SP_JSON']).get('appRoles', [])
+roles = {r['value']: r['id'] for r in json.load(sys.stdin).get('appRoles', [])
          if 'Application' in r.get('allowedMemberTypes', [])}
 want = os.environ['PERMS'].split()
 missing = [w for w in want if w not in roles]
@@ -114,6 +115,7 @@ if missing:
     sys.stderr.write("Unresolved: %s\n" % ', '.join(missing)); sys.exit(1)
 print(' '.join('%s=%s' % (w, roles[w]) for w in want))
 PY
+)"
   ) || die "could not resolve the bootstrap permissions against Graph"
 }
 
@@ -397,11 +399,14 @@ do_verify() {
   # `set -e` would abort on the python exit(1) before we could branch on it, so
   # capture the status explicitly instead of reading $? after the fact.
   local rc=0
-  REQ="$requested" GRA="$granted" MAP="$rolemap" python3 - <<'PY' || rc=$?
+  # The Graph role catalogue is hundreds of KB: it goes to Python on stdin, with the program
+  # passed as an argument. An environment variable is capped at 128 KiB on Linux ("Argument
+  # list too long"), and a pipe into `python3 - <<'PY'` loses to the heredoc, which becomes stdin.
+  printf '%s' "$rolemap" | REQ="$requested" GRA="$granted" python3 -c "$(cat <<'PY'
 import json, os, sys
 req = set(json.loads(os.environ['REQ']))
 gra = set(json.loads(os.environ['GRA']))
-names = {r['id']: r['value'] for r in json.loads(os.environ['MAP']).get('appRoles', [])}
+names = {r['id']: r['value'] for r in json.load(sys.stdin).get('appRoles', [])}
 missing = sorted(names.get(i, i) for i in req - gra)
 have = sorted(names.get(i, i) for i in req & gra)
 extra = sorted(names.get(i, i) for i in gra - req)
@@ -415,6 +420,7 @@ if extra:
     for e in extra: print("    ? " + e)
 sys.exit(1 if missing else 0)
 PY
+)" || rc=$?
   if [[ $rc -eq 0 ]]; then ok "consent COMPLETE"; else die "consent INCOMPLETE - grant the missing permissions"; fi
 }
 

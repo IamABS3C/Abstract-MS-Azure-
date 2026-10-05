@@ -52,9 +52,12 @@ GRAPH_SP_ID=$(echo "$GRAPH_SP" | python3 -c 'import json,sys; print(json.load(sy
 
 # name -> appRoleId, application-type roles only. An unresolved name is a HARD
 # failure: silently skipping it is how a permission gap reaches production.
-ROLE_IDS=$(GRAPH_SP="$GRAPH_SP" GRAPH_PERMS="$GRAPH_PERMS" python3 - <<'PY'
+# The Graph role catalogue is hundreds of KB: it goes to Python on stdin, with the program
+# passed as an argument. An environment variable is capped at 128 KiB on Linux ("Argument
+# list too long"), and a pipe into `python3 - <<'PY'` loses to the heredoc, which becomes stdin.
+ROLE_IDS=$(printf '%s' "$GRAPH_SP" | GRAPH_PERMS="$GRAPH_PERMS" python3 -c "$(cat <<'PY'
 import json, os, sys
-sp = json.loads(os.environ['GRAPH_SP'])
+sp = json.load(sys.stdin)
 roles = {r['value']: r['id'] for r in sp.get('appRoles', [])
          if 'Application' in r.get('allowedMemberTypes', [])}
 want = os.environ['GRAPH_PERMS'].split()
@@ -67,7 +70,7 @@ if missing:
     sys.exit(1)
 print(' '.join('%s=%s' % (w, roles[w]) for w in want))
 PY
-) || die "could not resolve every requested Graph permission - nothing was created"
+)") || die "could not resolve every requested Graph permission - nothing was created"
 ok "resolved $(echo "$ROLE_IDS" | wc -w | tr -d ' ') permission(s)"
 
 # --- App registration (idempotent by display name) ------------------------
