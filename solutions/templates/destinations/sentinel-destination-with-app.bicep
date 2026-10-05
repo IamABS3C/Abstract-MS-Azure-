@@ -221,7 +221,7 @@ var logAnalyticsDestinationName = 'abstractSentinelWorkspace'
 
 var monitoringMetricsPublisherRoleId = '3913510d-42f4-4e42-8a64-420c390055eb'
 var monitoringContributorRoleId = '749f88d5-cbae-40b8-bcfc-e573ddc772fa'
-var keyVaultSecretsOfficerRoleId = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd6'
+var keyVaultSecretsOfficerRoleId = 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 
 // Identity that runs the script (must already have app-creation directory rights).

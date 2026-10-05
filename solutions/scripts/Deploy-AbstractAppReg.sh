@@ -54,7 +54,7 @@ ACTION=""; MG_ID=""; RG=""; LOCATION="eastus"; KV_NAME=""; SUB_ID=""
 IDENTITY_NAME="id-abstract-appreg"; IDENTITY_ID=""; APP_ID=""
 WORKFLOW_NAME="abstract-appreg-onboarder"; PREFIX="abs"; ASSUME_YES=false
 
-KV_SECRETS_OFFICER="b86a8fe4-44ce-4948-aee5-eccb2c155cd6"
+KV_SECRETS_OFFICER="b86a8fe4-44ce-4948-aee5-eccb2c155cd7"
 OWNER_ROLE="8e3af657-a8ff-443c-a75c-2fe8c4bcb635"
 
 say()  { printf '\n\033[1;35m==> %s\033[0m\n' "$*"; }
@@ -102,7 +102,10 @@ resolve_graph_roles() {
     --url "${GRAPH}/servicePrincipals(appId='${GRAPH_APP_ID}')?\$select=id,appRoles" \
     --headers "Content-Type=application/json")
   GRAPH_SP_ID=$(echo "$sp" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
-  ROLE_PAIRS=$(echo "$sp" | PERMS="${BOOTSTRAP_PERMS[*]}" python3 - <<'PY'
+  # The Graph role catalogue is hundreds of KB: it goes to Python on stdin, with the program
+  # passed as an argument. An environment variable is capped at 128 KiB on Linux ("Argument
+  # list too long"), and a pipe into `python3 - <<'PY'` loses to the heredoc, which becomes stdin.
+  ROLE_PAIRS=$(printf '%s' "$sp" | PERMS="${BOOTSTRAP_PERMS[*]}" python3 -c "$(cat <<'PY'
 import json, os, sys
 roles = {r['value']: r['id'] for r in json.load(sys.stdin).get('appRoles', [])
          if 'Application' in r.get('allowedMemberTypes', [])}
@@ -112,6 +115,7 @@ if missing:
     sys.stderr.write("Unresolved: %s\n" % ', '.join(missing)); sys.exit(1)
 print(' '.join('%s=%s' % (w, roles[w]) for w in want))
 PY
+)"
   ) || die "could not resolve the bootstrap permissions against Graph"
 }
 
@@ -175,11 +179,13 @@ EOF
   say "Verifying against Graph"
   sleep 10
   local verified
-  verified=$(az rest --method GET \
+  local assignments
+  assignments=$(az rest --method GET \
     --url "${GRAPH}/servicePrincipals/${principal_id}/appRoleAssignments" \
-    --headers "Content-Type=application/json" | ROLE_PAIRS="$ROLE_PAIRS" python3 - <<'PY'
+    --headers "Content-Type=application/json")
+  verified=$(ASSIGNMENTS_JSON="$assignments" ROLE_PAIRS="$ROLE_PAIRS" python3 - <<'PY'
 import json, os, sys
-have = {a['appRoleId'] for a in json.load(sys.stdin).get('value', [])}
+have = {a['appRoleId'] for a in json.loads(os.environ['ASSIGNMENTS_JSON']).get('value', [])}
 want = [p.split('=')[1] for p in os.environ['ROLE_PAIRS'].split()]
 print(sum(1 for w in want if w in have))
 PY
@@ -278,6 +284,21 @@ do_deploy_a() {
 # ---------------------------------------------------------------------------
 # Grant - RBAC the acting identity needs
 # ---------------------------------------------------------------------------
+# assign_role <principal-id> <role-id> <scope>. Only an assignment that already exists counts as
+# success; any other error (a wrong role id, a missing permission) is printed and stops the run.
+assign_role() {
+  local err
+  if err=$(az role assignment create --assignee-object-id "$1" \
+      --assignee-principal-type ServicePrincipal \
+      --role "$2" --scope "$3" -o none 2>&1); then
+    ok "granted"
+  elif grep -qiE 'RoleAssignmentExists|already exists' <<<"$err"; then
+    ok "already present"
+  else
+    die "role assignment failed: $err"
+  fi
+}
+
 do_grant() {
   local principal_id resource_id
   resource_id=${IDENTITY_ID:-$(az identity show -g "$RG" -n "$IDENTITY_NAME" --query id -o tsv)}
@@ -289,10 +310,7 @@ do_grant() {
     local kv_id
     kv_id=$(az keyvault show -n "$KV_NAME" --query id -o tsv)
     if [[ "$(az keyvault show -n "$KV_NAME" --query properties.enableRbacAuthorization -o tsv)" == "true" ]]; then
-      az role assignment create --assignee-object-id "$principal_id" \
-        --assignee-principal-type ServicePrincipal \
-        --role "$KV_SECRETS_OFFICER" --scope "$kv_id" -o none 2>/dev/null \
-        && ok "granted" || ok "already present"
+      assign_role "$principal_id" "$KV_SECRETS_OFFICER" "$kv_id"
     else
       warn "vault uses ACCESS POLICIES, not RBAC - setting a set/get policy instead"
       az keyvault set-policy -n "$KV_NAME" --object-id "$principal_id" \
@@ -303,13 +321,10 @@ do_grant() {
   if [[ -n "$SUB_ID" ]]; then
     say "Owner on subscription $SUB_ID"
     warn "Owner is needed because the workflow assigns RBAC. Contributor + User Access Administrator is the narrower equivalent."
-    az role assignment create --assignee-object-id "$principal_id" \
-      --assignee-principal-type ServicePrincipal \
-      --role "$OWNER_ROLE" --scope "/subscriptions/${SUB_ID}" -o none 2>/dev/null \
-      && ok "granted" || ok "already present"
+    assign_role "$principal_id" "$OWNER_ROLE" "/subscriptions/${SUB_ID}"
   fi
 
-  [[ -z "$KV_NAME" && -z "$SUB_ID" ]] && warn "nothing to do - pass -k and/or -s"
+  if [[ -z "$KV_NAME" && -z "$SUB_ID" ]]; then warn "nothing to do - pass -k and/or -s"; fi
 }
 
 # ---------------------------------------------------------------------------
@@ -384,11 +399,14 @@ do_verify() {
   # `set -e` would abort on the python exit(1) before we could branch on it, so
   # capture the status explicitly instead of reading $? after the fact.
   local rc=0
-  REQ="$requested" GRA="$granted" MAP="$rolemap" python3 - <<'PY' || rc=$?
+  # The Graph role catalogue is hundreds of KB: it goes to Python on stdin, with the program
+  # passed as an argument. An environment variable is capped at 128 KiB on Linux ("Argument
+  # list too long"), and a pipe into `python3 - <<'PY'` loses to the heredoc, which becomes stdin.
+  printf '%s' "$rolemap" | REQ="$requested" GRA="$granted" python3 -c "$(cat <<'PY'
 import json, os, sys
 req = set(json.loads(os.environ['REQ']))
 gra = set(json.loads(os.environ['GRA']))
-names = {r['id']: r['value'] for r in json.loads(os.environ['MAP']).get('appRoles', [])}
+names = {r['id']: r['value'] for r in json.load(sys.stdin).get('appRoles', [])}
 missing = sorted(names.get(i, i) for i in req - gra)
 have = sorted(names.get(i, i) for i in req & gra)
 extra = sorted(names.get(i, i) for i in gra - req)
@@ -402,6 +420,7 @@ if extra:
     for e in extra: print("    ? " + e)
 sys.exit(1 if missing else 0)
 PY
+)" || rc=$?
   if [[ $rc -eq 0 ]]; then ok "consent COMPLETE"; else die "consent INCOMPLETE - grant the missing permissions"; fi
 }
 
