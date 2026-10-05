@@ -54,7 +54,7 @@ ACTION=""; MG_ID=""; RG=""; LOCATION="eastus"; KV_NAME=""; SUB_ID=""
 IDENTITY_NAME="id-abstract-appreg"; IDENTITY_ID=""; APP_ID=""
 WORKFLOW_NAME="abstract-appreg-onboarder"; PREFIX="abs"; ASSUME_YES=false
 
-KV_SECRETS_OFFICER="b86a8fe4-44ce-4948-aee5-eccb2c155cd6"
+KV_SECRETS_OFFICER="b86a8fe4-44ce-4948-aee5-eccb2c155cd7"
 OWNER_ROLE="8e3af657-a8ff-443c-a75c-2fe8c4bcb635"
 
 say()  { printf '\n\033[1;35m==> %s\033[0m\n' "$*"; }
