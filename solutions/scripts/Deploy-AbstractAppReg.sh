@@ -282,6 +282,21 @@ do_deploy_a() {
 # ---------------------------------------------------------------------------
 # Grant - RBAC the acting identity needs
 # ---------------------------------------------------------------------------
+# assign_role <principal-id> <role-id> <scope>. Only an assignment that already exists counts as
+# success; any other error (a wrong role id, a missing permission) is printed and stops the run.
+assign_role() {
+  local err
+  if err=$(az role assignment create --assignee-object-id "$1" \
+      --assignee-principal-type ServicePrincipal \
+      --role "$2" --scope "$3" -o none 2>&1); then
+    ok "granted"
+  elif grep -qiE 'RoleAssignmentExists|already exists' <<<"$err"; then
+    ok "already present"
+  else
+    die "role assignment failed: $err"
+  fi
+}
+
 do_grant() {
   local principal_id resource_id
   resource_id=${IDENTITY_ID:-$(az identity show -g "$RG" -n "$IDENTITY_NAME" --query id -o tsv)}
@@ -293,10 +308,7 @@ do_grant() {
     local kv_id
     kv_id=$(az keyvault show -n "$KV_NAME" --query id -o tsv)
     if [[ "$(az keyvault show -n "$KV_NAME" --query properties.enableRbacAuthorization -o tsv)" == "true" ]]; then
-      az role assignment create --assignee-object-id "$principal_id" \
-        --assignee-principal-type ServicePrincipal \
-        --role "$KV_SECRETS_OFFICER" --scope "$kv_id" -o none 2>/dev/null \
-        && ok "granted" || ok "already present"
+      assign_role "$principal_id" "$KV_SECRETS_OFFICER" "$kv_id"
     else
       warn "vault uses ACCESS POLICIES, not RBAC - setting a set/get policy instead"
       az keyvault set-policy -n "$KV_NAME" --object-id "$principal_id" \
@@ -307,13 +319,10 @@ do_grant() {
   if [[ -n "$SUB_ID" ]]; then
     say "Owner on subscription $SUB_ID"
     warn "Owner is needed because the workflow assigns RBAC. Contributor + User Access Administrator is the narrower equivalent."
-    az role assignment create --assignee-object-id "$principal_id" \
-      --assignee-principal-type ServicePrincipal \
-      --role "$OWNER_ROLE" --scope "/subscriptions/${SUB_ID}" -o none 2>/dev/null \
-      && ok "granted" || ok "already present"
+    assign_role "$principal_id" "$OWNER_ROLE" "/subscriptions/${SUB_ID}"
   fi
 
-  [[ -z "$KV_NAME" && -z "$SUB_ID" ]] && warn "nothing to do - pass -k and/or -s"
+  if [[ -z "$KV_NAME" && -z "$SUB_ID" ]]; then warn "nothing to do - pass -k and/or -s"; fi
 }
 
 # ---------------------------------------------------------------------------
