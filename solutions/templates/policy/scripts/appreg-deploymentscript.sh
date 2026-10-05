@@ -52,9 +52,9 @@ GRAPH_SP_ID=$(echo "$GRAPH_SP" | python3 -c 'import json,sys; print(json.load(sy
 
 # name -> appRoleId, application-type roles only. An unresolved name is a HARD
 # failure: silently skipping it is how a permission gap reaches production.
-ROLE_IDS=$(echo "$GRAPH_SP" | GRAPH_PERMS="$GRAPH_PERMS" python3 - <<'PY'
+ROLE_IDS=$(GRAPH_SP="$GRAPH_SP" GRAPH_PERMS="$GRAPH_PERMS" python3 - <<'PY'
 import json, os, sys
-sp = json.load(sys.stdin)
+sp = json.loads(os.environ['GRAPH_SP'])
 roles = {r['value']: r['id'] for r in sp.get('appRoles', [])
          if 'Application' in r.get('allowedMemberTypes', [])}
 want = os.environ['GRAPH_PERMS'].split()
@@ -104,9 +104,9 @@ APP_OBJ_ID=$(az ad app show --id "$APP_ID" --query id -o tsv)
 # Declared for portal visibility and audit. On its own this grants nothing;
 # the appRoleAssignments below are what actually authorise the app.
 log "Declaring requiredResourceAccess"
-RRA=$(echo "$ROLE_IDS" | GRAPH_APP_ID="$GRAPH_APP_ID" python3 - <<'PY'
+RRA=$(ROLE_IDS="$ROLE_IDS" GRAPH_APP_ID="$GRAPH_APP_ID" python3 - <<'PY'
 import json, os, sys
-pairs = sys.stdin.read().split()
+pairs = os.environ['ROLE_IDS'].split()
 access = [{"id": p.split('=')[1], "type": "Role"} for p in pairs]
 print(json.dumps([{"resourceAppId": os.environ['GRAPH_APP_ID'], "resourceAccess": access}]))
 PY
@@ -156,10 +156,11 @@ ok "granted $GRANTED, already present $SKIPPED, failed $FAILED"
 
 # Independent read-back. This is the check that matters - not our POST results.
 sleep 10
-VERIFIED=$(az rest --method GET --url "${GRAPH}/servicePrincipals/${SP_ID}/appRoleAssignments" \
-  --headers "Content-Type=application/json" | ROLE_IDS="$ROLE_IDS" python3 - <<'PY'
+ASSIGNED=$(az rest --method GET --url "${GRAPH}/servicePrincipals/${SP_ID}/appRoleAssignments" \
+  --headers "Content-Type=application/json")
+VERIFIED=$(ASSIGNED="$ASSIGNED" ROLE_IDS="$ROLE_IDS" python3 - <<'PY'
 import json, os, sys
-have = {a['appRoleId'] for a in json.load(sys.stdin).get('value', [])}
+have = {a['appRoleId'] for a in json.loads(os.environ['ASSIGNED']).get('value', [])}
 want = [p.split('=')[1] for p in os.environ['ROLE_IDS'].split()]
 print(sum(1 for w in want if w in have))
 PY

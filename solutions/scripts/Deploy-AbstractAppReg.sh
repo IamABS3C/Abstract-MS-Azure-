@@ -102,9 +102,11 @@ resolve_graph_roles() {
     --url "${GRAPH}/servicePrincipals(appId='${GRAPH_APP_ID}')?\$select=id,appRoles" \
     --headers "Content-Type=application/json")
   GRAPH_SP_ID=$(echo "$sp" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
-  ROLE_PAIRS=$(echo "$sp" | PERMS="${BOOTSTRAP_PERMS[*]}" python3 - <<'PY'
+  # The JSON travels in an environment variable: a pipe into `python3 - <<'PY'` loses to the heredoc,
+  # which becomes Python's stdin, so json.load(sys.stdin) would read the script text, not the JSON.
+  ROLE_PAIRS=$(SP_JSON="$sp" PERMS="${BOOTSTRAP_PERMS[*]}" python3 - <<'PY'
 import json, os, sys
-roles = {r['value']: r['id'] for r in json.load(sys.stdin).get('appRoles', [])
+roles = {r['value']: r['id'] for r in json.loads(os.environ['SP_JSON']).get('appRoles', [])
          if 'Application' in r.get('allowedMemberTypes', [])}
 want = os.environ['PERMS'].split()
 missing = [w for w in want if w not in roles]
@@ -175,11 +177,13 @@ EOF
   say "Verifying against Graph"
   sleep 10
   local verified
-  verified=$(az rest --method GET \
+  local assignments
+  assignments=$(az rest --method GET \
     --url "${GRAPH}/servicePrincipals/${principal_id}/appRoleAssignments" \
-    --headers "Content-Type=application/json" | ROLE_PAIRS="$ROLE_PAIRS" python3 - <<'PY'
+    --headers "Content-Type=application/json")
+  verified=$(ASSIGNMENTS_JSON="$assignments" ROLE_PAIRS="$ROLE_PAIRS" python3 - <<'PY'
 import json, os, sys
-have = {a['appRoleId'] for a in json.load(sys.stdin).get('value', [])}
+have = {a['appRoleId'] for a in json.loads(os.environ['ASSIGNMENTS_JSON']).get('value', [])}
 want = [p.split('=')[1] for p in os.environ['ROLE_PAIRS'].split()]
 print(sum(1 for w in want if w in have))
 PY
